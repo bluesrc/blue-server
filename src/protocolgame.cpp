@@ -636,11 +636,11 @@ void ProtocolGame::GetMapDescription(int32_t x, int32_t y, int32_t z, int32_t wi
 	int32_t startz, endz, zstep;
 
 	if (z > 7) {
-		startz = z - 2;
-		endz = std::min<int32_t>(MAP_MAX_LAYERS - 1, z + 2);
+		startz = 0;
+		endz = MAP_MAX_LAYERS - 1;
 		zstep = 1;
 	} else {
-		startz = 7;
+		startz = MAP_MAX_LAYERS - 1;
 		endz = 0;
 		zstep = -1;
 	}
@@ -741,13 +741,13 @@ bool ProtocolGame::canSee(int32_t x, int32_t y, int32_t z) const
 	if (myPos.z <= 7) {
 		//we are on ground level or above (7 -> 0)
 		//view is from 7 -> 0
-		if (z > 7) {
+		if (z > MAP_MAX_LAYERS -1) {
 			return false;
 		}
 	} else { // if (myPos.z >= 8) {
 		//we are underground (8 -> 15)
 		//view is +/- 2 from the floor we stand on
-		if (std::abs(myPos.getZ() - z) > 2) {
+		if (z > MAP_MAX_LAYERS -1) {
 			return false;
 		}
 	}
