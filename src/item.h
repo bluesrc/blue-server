@@ -24,6 +24,7 @@ class Mailbox;
 class Door;
 class MagicField;
 class BedItem;
+class Pokeball;
 
 enum ITEMPROPERTY {
 	CONST_PROP_BLOCKSOLID = 0,
@@ -583,6 +584,12 @@ class Item : virtual public Thing
 			return nullptr;
 		}
 		virtual const BedItem* getBed() const {
+			return nullptr;
+		}
+		virtual Pokeball* getPokeball() {
+			return nullptr;
+		}
+		virtual const Pokeball* getPokeball() const {
 			return nullptr;
 		}
 

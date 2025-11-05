@@ -2525,9 +2525,6 @@ void ProtocolGame::sendAddCreature(const Creature* creature, const Position& pos
 			writeToOutputBuffer(msg);
 		}
 
-		if (isLogin) {
-			sendMagicEffect(pos, CONST_ME_TELEPORT);
-		}
 		return;
 	}
 
@@ -2566,6 +2563,14 @@ void ProtocolGame::sendAddCreature(const Creature* creature, const Position& pos
 
 	for (int i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; ++i) {
 		sendInventoryItem(static_cast<slots_t>(i), player->getInventoryItem(static_cast<slots_t>(i)));
+
+		auto item = player->getInventoryItem(static_cast<slots_t>(i));
+		if (item && item->getPokeball())
+		{
+			auto pokeball = item->getPokeball();
+			pokeball->setPokemonId(0);
+			sendPokemonInfo(i, pokeball->getPokemonInfo());
+		}
 	}
 
 	sendInventoryItem(CONST_SLOT_STORE_INBOX, player->getStoreInbox()->getItem());
@@ -2937,6 +2942,19 @@ void ProtocolGame::AddCreature(NetworkMessage& msg, const Creature* creature, bo
 	CreatureType_t creatureType = creature->getType();
 
 	const Player* otherPlayer = creature->getPlayer();
+	const Player* masterPlayer = nullptr;
+	uint32_t masterId = 0;
+
+	if (creatureType == CREATURETYPE_POKEMON) {
+		const Creature* master = creature->getMaster();
+		if (master) {
+			masterPlayer = master->getPlayer();
+			if (masterPlayer) {
+				masterId = master->getID();
+				creatureType = CREATURETYPE_SUMMON_OWN;
+			}
+		}
+	}
 
 	if (known) {
 		msg.add<uint16_t>(0x62);
@@ -2947,6 +2965,9 @@ void ProtocolGame::AddCreature(NetworkMessage& msg, const Creature* creature, bo
 		msg.add<uint32_t>(creature->getID());
 		msg.addByte(creatureType);
 		msg.addString(creature->getName());
+
+		if (creatureType == CREATURETYPE_SUMMON_OWN)
+			msg.add<uint32_t>(masterId);
 	}
 
 	if (creature->isHealthHidden()) {
@@ -3230,4 +3251,20 @@ void ProtocolGame::parseExtendedOpcode(NetworkMessage& msg)
 
 	// process additional opcodes via lua script event
 	addGameTask(&Game::parsePlayerExtendedOpcode, player->getID(), opcode, buffer);
+}
+
+void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo info, bool active)
+{
+	NetworkMessage msg;
+	msg.addByte(0x39);
+	msg.add<uint16_t>(slot);
+	msg.add<uint32_t>(info.p_id);
+
+	auto percent = (static_cast<float>(info.health) / info.maxHealth) * 100.0f;
+	msg.add<uint8_t>(percent);
+
+
+	msg.add<bool>(info.fainted);
+	msg.add<bool>(active);
+	writeToOutputBuffer(msg);
 }

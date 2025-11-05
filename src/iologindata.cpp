@@ -6,11 +6,13 @@
 #include "iologindata.h"
 #include "configmanager.h"
 #include "game.h"
+#include "pokeball.h"
 
 #include <fmt/format.h>
 
 extern ConfigManager g_config;
 extern Game g_game;
+extern Pokemons g_pokemons;
 
 Account IOLoginData::loadAccount(uint32_t accno)
 {
@@ -751,6 +753,10 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
+	//todo: remove only inventory pokemon
+	if (!db.executeQuery(fmt::format("DELETE FROM `pokemons` WHERE `player_id` = {:d}", player->getGUID())))
+		return false;
+
 	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
 
 	ItemBlockList itemList;
@@ -758,6 +764,15 @@ bool IOLoginData::savePlayer(Player* player)
 		Item* item = player->inventory[slotId];
 		if (item) {
 			itemList.emplace_back(slotId, item);
+
+			auto pokeball = item->getPokeball();
+			if (pokeball)
+			{
+				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
+				DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`) VALUES ");
+				pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}", p_uid, player->getGUID(), db.escapeString(pokeball->getPokemonName()), pokeball->getPokemonHealth(), pokeball->isPokemonFainted()));
+				pokemonQuery.execute();
+			}
 		}
 	}
 
@@ -913,6 +928,21 @@ void IOLoginData::loadItems(ItemMap& itemMap, DBResult_ptr result)
 		if (item) {
 			if (!item->unserializeAttr(propStream)) {
 				std::cout << "WARNING: Serialize error in IOLoginData::loadItems" << std::endl;
+			}
+
+			auto pokeball = item->getPokeball();
+			if (pokeball)
+			{
+				Database& db = Database::getInstance();
+				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
+				DBResult_ptr p_result = db.storeQuery(fmt::format("SELECT `uid`, `name`, `health`, `fainted` FROM `pokemons` WHERE `uid` = {:d}", p_uid));
+				auto pInfo = PokemonInfo();
+				pInfo.p_uid = p_result->getNumber<uint32_t>("uid");
+				pInfo.name = p_result->getString("name");
+				pInfo.health = p_result->getNumber<uint32_t>("health");
+				pInfo.maxHealth = g_pokemons.getPokemonType(pInfo.name)->info.healthMax;
+				pInfo.fainted = p_result->getNumber<bool>("fainted");
+				pokeball->setPokemonInfo(pInfo);
 			}
 
 			std::pair<Item*, uint32_t> pair(item, pid);

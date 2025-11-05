@@ -1147,6 +1147,24 @@ class Player final : public Creature, public Cylinder
 
 		void updateRegeneration();
 
+		//pokemon
+		void goback(Pokeball* item, bool pz = false, bool death = false);
+
+		void setGobackTicks(int64_t time)
+		{
+			if (time > gobackTicks)
+				gobackTicks = time;
+		}
+
+		bool canDoGoback() const { return gobackTicks <= OTSYS_TIME(); }
+
+		bool hasActivePokemon() { return activePokemon != nullptr; }
+		Pokeball* getActivePokemon() { return activePokemon; }
+		void setActivePokemon(Pokeball* pokemon) { activePokemon = pokemon; }
+
+		void addPokemon(std::string pokeball, std::string pokemon);
+		void healPokebag();
+
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
 
@@ -1346,6 +1364,10 @@ class Player final : public Creature, public Cylinder
 		}
 		uint16_t getLookCorpse() const override;
 		void getPathSearchParams(const Creature* creature, FindPathParams& fpp) const override;
+
+		//pokemon 
+		int64_t gobackTicks = 0;
+		Pokeball* activePokemon = nullptr;
 
 		friend class Game;
 		friend class Npc;

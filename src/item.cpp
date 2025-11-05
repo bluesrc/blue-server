@@ -11,6 +11,7 @@
 #include "house.h"
 #include "game.h"
 #include "bed.h"
+#include "pokeball.h"
 
 #include "actions.h"
 #include "moves.h"
@@ -63,6 +64,10 @@ Item* Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 			newItem = new Item(6300, count);
 		} else if (it.id == 18528) { // prismatic ring
 			newItem = new Item(18408, count);
+		}
+		//todo: it.isPokeball
+		else if (it.id >= 26459 && it.id <= 26461) { // pokeballs
+			newItem = new Pokeball(type);
 		} else {
 			newItem = new Item(type, count);
 		}

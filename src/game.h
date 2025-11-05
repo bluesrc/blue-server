@@ -531,6 +531,11 @@ class Game
 		std::vector<Creature*> getCreaturesInZone(uint16_t zoneId);
 		std::vector<Creature*> getCreaturesInZone(uint16_t zoneId, CreatureType_t dataType);
 
+		//pokemon
+		uint32_t assignPokemonUID() { return ++pokemonUID; }
+		void loadPokemonUID();
+		void savePokemonUID() const;
+
 	private:
 		bool playerSayMove(Player* player, SpeakClasses type, const std::string& text);
 		void playerWhisper(Player* player, const std::string& text);
@@ -602,6 +607,8 @@ class Game
 		uint32_t lastStageLevel = 0;
 		bool stagesEnabled = false;
 		bool useLastStageLevel = false;
+
+		uint32_t pokemonUID = 0;
 };
 
 #endif

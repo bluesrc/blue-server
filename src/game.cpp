@@ -112,6 +112,7 @@ void Game::setGameState(GameState_t newState)
 
 			loadMotdNum();
 			loadPlayersRecord();
+			loadPokemonUID();
 			loadAccountStorageValues();
 
 			g_globalEvents->startup();
@@ -129,6 +130,8 @@ void Game::setGameState(GameState_t newState)
 			}
 
 			saveMotdNum();
+
+			;
 			saveGameState();
 
 			g_dispatcher.addTask(
@@ -922,6 +925,13 @@ void Game::playerMoveItem(Player* player, const Position& fromPos,
 		}
 
 		item = thing->getItem();
+	}
+
+	//todo: enable to move to depot
+	if(item->getPokeball())
+	{
+		player->sendCancelMessage(RETURNVALUE_CANNOTTHROWPOKEBALL);
+		return;
 	}
 
 	if (item->getClientID() != spriteId) {
@@ -2198,6 +2208,13 @@ void Game::playerUseItem(uint32_t playerId, const Position& pos, uint8_t stackPo
 
 	player->resetIdleTime();
 	player->setNextActionTask(nullptr);
+
+	auto pokeball = item->getPokeball();
+	if(pokeball)
+	{
+		player->goback(pokeball);
+		return;
+	}
 
 	g_actions->useItem(player, pos, index, item, isHotkey);
 }
@@ -4619,6 +4636,7 @@ void Game::shutdown()
 {
 	std::cout << "Shutting down..." << std::flush;
 
+	savePokemonUID();
 	g_scheduler.shutdown();
 	g_databaseTasks.shutdown();
 	g_dispatcher.shutdown();
@@ -4817,6 +4835,25 @@ void Game::loadPlayersRecord()
 		playersRecord = result->getNumber<uint32_t>("value");
 	} else {
 		db.executeQuery("INSERT INTO `server_config` (`config`, `value`) VALUES ('players_record', '0')");
+	}
+}
+
+void Game::savePokemonUID() const
+{
+	Database& db = Database::getInstance();
+	db.executeQuery(fmt::format("UPDATE `server_config` SET `value` = '{:d}' WHERE `config` = 'pokemon_uid'", pokemonUID));
+}
+
+void Game::loadPokemonUID()
+{
+	Database& db = Database::getInstance();
+
+	DBResult_ptr result = db.storeQuery("SELECT `value` FROM `server_config` WHERE `config` = 'pokemon_uid'");
+	if (result) {
+		pokemonUID = result->getNumber<uint32_t>("value");
+	}
+	else {
+		db.executeQuery("INSERT INTO `server_config` (`config`, `value`) VALUES ('pokemon_uid', '0')");
 	}
 }
 

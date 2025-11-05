@@ -1873,6 +1873,11 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_YOUDONTHAVEREQUIREDPROFESSION)
 	registerEnum(RETURNVALUE_YOUCANNOTUSETHISBED)
 
+	registerEnum(RETURNVALUE_CANNOTGOBACK)
+	registerEnum(RETURNVALUE_CANNOTSENDFAINTEDPOKEMON)
+	registerEnum(RETURNVALUE_CANNOTTHROWPOKEBALL)
+	registerEnum(RETURNVALUE_FULLPOKEMONBAG)
+
 	registerEnum(RELOAD_TYPE_ALL)
 	registerEnum(RELOAD_TYPE_ACTIONS)
 	registerEnum(RELOAD_TYPE_CHAT)
@@ -2526,6 +2531,9 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getFightMode", LuaScriptInterface::luaPlayerGetFightMode);
 
 	registerMethod("Player", "getStoreInbox", LuaScriptInterface::luaPlayerGetStoreInbox);
+
+	registerMethod("Player", "addPokemon", LuaScriptInterface::luaPlayerAddPokemon);
+	registerMethod("Player", "healPokebag", LuaScriptInterface::luaPlayerHealPokebag);
 
 	// Pokemon
 	registerClass("Pokemon", "Creature", LuaScriptInterface::luaPokemonCreate);
@@ -10451,6 +10459,40 @@ int LuaScriptInterface::luaPlayerGetStoreInbox(lua_State* L)
 
 	pushUserdata<Container>(L, storeInbox);
 	setMetatable(L, -1, "Container");
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerAddPokemon(lua_State* L)
+{
+	// player:addPokemon(pokeball, pokemon)
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	auto pokeball = getString(L, 2);
+	if (pokeball.empty())
+		return 1;
+
+	auto pokemon = getString(L, 3);
+	if (pokemon.empty())
+		return 1;
+
+	player->addPokemon(pokeball, pokemon);
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerHealPokebag(lua_State* L)
+{
+	// player:healPokebag()
+	Player* player = getUserdata<Player>(L, 1);
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	player->healPokebag();
 	return 1;
 }
 
