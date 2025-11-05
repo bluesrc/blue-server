@@ -1039,6 +1039,9 @@ class LuaScriptInterface
 
 		static int luaPlayerGetStoreInbox(lua_State* L);
 
+		static int luaPlayerAddPokemon(lua_State* L);
+		static int luaPlayerHealPokebag(lua_State* L);
+
 		// Pokemon
 		static int luaPokemonCreate(lua_State* L);
 

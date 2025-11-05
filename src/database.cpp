@@ -30,6 +30,14 @@ bool Database::connect()
 	bool reconnect = true;
 	mysql_options(handle, MYSQL_OPT_RECONNECT, &reconnect);
 
+	my_bool ssl_enforce = 0;
+	my_bool ssl_verify = 0;
+	unsigned int ssl_mode = 0;
+	mysql_options(handle, MYSQL_OPT_SSL_ENFORCE, &ssl_enforce);
+	mysql_options(handle, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &ssl_verify);
+	mysql_options(handle, MYSQL_OPT_SSL_ENFORCE, &ssl_mode);
+	mysql_ssl_set(handle, nullptr, nullptr, nullptr, nullptr, nullptr);
+
 	// connects to database
 	if (!mysql_real_connect(handle, g_config.getString(ConfigManager::MYSQL_HOST).c_str(), g_config.getString(ConfigManager::MYSQL_USER).c_str(), g_config.getString(ConfigManager::MYSQL_PASS).c_str(), g_config.getString(ConfigManager::MYSQL_DB).c_str(), g_config.getNumber(ConfigManager::SQL_PORT), g_config.getString(ConfigManager::MYSQL_SOCK).c_str(), 0)) {
 		std::cout << std::endl << "MySQL Error Message: " << mysql_error(handle) << std::endl;

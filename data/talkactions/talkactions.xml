@@ -50,4 +50,9 @@
 	<!-- test talkactions -->
 	<talkaction words="!z" separator=" " script="magiceffect.lua" />
 	<talkaction words="!x" separator=" " script="animationeffect.lua" />
+
+	<!-- pokemon -->
+	<talkaction words="/ap" separator=" " script="add_pokemon.lua" />
+	<talkaction words="/hp" separator=" " script="heal_pokebag.lua" />
+
 </talkactions>

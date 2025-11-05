@@ -15,6 +15,7 @@
 #include "movement.h"
 #include "scheduler.h"
 #include "weapons.h"
+#include "pokeball.h"
 
 #include <fmt/format.h>
 
@@ -26,6 +27,7 @@ extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
+extern Pokemons g_pokemons;
 
 MuteCountMap Player::muteCountMap;
 
@@ -1129,6 +1131,8 @@ void Player::onFollowCreatureDisappear(bool isLogout)
 void Player::onChangeZone(ZoneType_t zone)
 {
 	if (zone == ZONE_PROTECTION) {
+		goback(activePokemon, true);
+
 		if (attackedCreature && !hasFlag(PlayerFlag_IgnoreProtectionZone)) {
 			setAttackedCreature(nullptr);
 			onAttackedCreatureDisappear(false);
@@ -2496,6 +2500,21 @@ ReturnValue Player::queryAdd(int32_t index, const Thing& thing, uint32_t count, 
 			}
 			break;
 		}
+
+		case CONST_SLOT_POKEBALL1:
+		case CONST_SLOT_POKEBALL2:
+		case CONST_SLOT_POKEBALL3:
+		case CONST_SLOT_POKEBALL4:
+		case CONST_SLOT_POKEBALL5:
+		case CONST_SLOT_POKEBALL6:
+			//todo: exchange pokeball placement
+			{
+				auto pokeball = item->getPokeball();
+				if (pokeball) {
+					ret = RETURNVALUE_NOERROR;
+				}	
+			}
+			break;
 
 		case CONST_SLOT_WHEREEVER:
 		case -1:
@@ -4612,5 +4631,120 @@ void Player::updateRegeneration()
 		condition->setParam(CONDITION_PARAM_HEALTHTICKS, vocation->getHealthGainTicks() * 1000);
 		condition->setParam(CONDITION_PARAM_MANAGAIN, vocation->getManaGainAmount());
 		condition->setParam(CONDITION_PARAM_MANATICKS, vocation->getManaGainTicks() * 1000);
+	}
+}
+
+void Player::addPokemon(std::string pokeball, std::string pokemon)
+{
+	auto item = Item::CreateItem(Item::items.getItemIdByName(pokeball));
+
+	for (int slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; slot++)
+	{
+		ReturnValue ret = g_game.internalPlayerAddItem(this, item, false, static_cast<slots_t>(slot));
+		if (ret != RETURNVALUE_NOERROR)
+			continue;
+
+		auto pInfo = PokemonInfo();
+		pInfo.fainted = false;
+		pInfo.maxHealth = g_pokemons.getPokemonType(pokemon)->info.healthMax;
+		pInfo.health = pInfo.maxHealth;
+		pInfo.name = pokemon;
+		pInfo.p_uid = g_game.assignPokemonUID();
+		auto pokeball = item->getPokeball();
+		pokeball->setPokemonInfo(pInfo);
+		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+		sendMagicEffect(getPosition(), CONST_ME_MAGIC_GREEN);
+		return;
+	}
+
+	//todo: send to depot
+	sendCancelMessage(RETURNVALUE_FULLPOKEMONBAG);
+	delete item;
+}
+
+void Player::goback(Pokeball* pokeball, bool pz, bool death)
+{
+	if (!pokeball)
+		return;
+
+	if (pokeball->isPokemonFainted() && !death)
+	{
+		sendCancelMessage(RETURNVALUE_CANNOTSENDFAINTEDPOKEMON);
+		return;
+	}
+
+	if (getTile()->hasFlag(TILESTATE_PROTECTIONZONE) && !pz)
+		return;
+
+	if (!canDoGoback() && !pz)
+	{
+		sendCancelMessage(RETURNVALUE_CANNOTGOBACK);
+		return;
+	}
+
+	setGobackTicks(OTSYS_TIME() + 1000);
+
+	if (hasActivePokemon())
+	{
+		auto pokemon = activePokemon->getPokemon();
+		activePokemon->setPokemonHealth(pokemon->getHealth());
+
+		g_game.removeCreature(pokemon);
+
+		if (activePokemon == pokeball)
+		{
+			g_game.addMagicEffect(pokemon->getPosition(), pokeball->getGobackEffect());
+			activePokemon = nullptr;
+
+			auto idx = std::find(std::begin(inventory), std::end(inventory), pokeball);
+			if (idx != std::end(inventory))
+			{
+				auto index = std::distance(std::begin(inventory), idx);
+				pokeball->setPokemonId(0);
+				client->sendPokemonInfo(index, pokeball->getPokemonInfo());
+			}
+
+			return;
+		}
+	}
+
+	Pokemon* pokemon = Pokemon::createPokemon(pokeball->getPokemonInfo().name);
+	pokeball->setPokemon(pokemon);
+	pokemon->drainHealth(nullptr, pokemon->getMaxHealth() - pokeball->getPokemonHealth());
+
+	pokemon->setMaster(this);
+	pokemon->setFollowCreature(this);
+
+	g_game.placeCreature(pokemon, getPosition(), false, false);
+	g_game.addMagicEffect(pokemon->getPosition(), pokeball->getGobackEffect());
+
+	pokeball->setPokemonId(pokemon->getID());
+	setActivePokemon(pokeball);
+
+	auto idx = std::find(std::begin(inventory), std::end(inventory), pokeball);
+	if (idx != std::end(inventory))
+	{
+		auto index = std::distance(std::begin(inventory), idx);
+		client->sendPokemonInfo(index, pokeball->getPokemonInfo(), true);
+	}
+}
+
+void Player::healPokebag()
+{
+	if (activePokemon)
+		goback(activePokemon);
+
+	for (int slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; slot++)
+	{
+		auto item = inventory[slot];
+		if (!item || !item->getPokeball())
+			continue;
+
+		auto pokeball = item->getPokeball();
+		pokeball->setPokemonFullHealth();
+		pokeball->setPokemonAlive();
+		sendMagicEffect(getPosition(), CONST_ME_MAGIC_GREEN);
+
+		client->sendPokemonInfo(slot, pokeball->getPokemonInfo());
 	}
 }

@@ -37371,5 +37371,9 @@
 	<item fromid="26382" toid="26382" name="waterfall" />
 	<item fromid="26388" toid="26399" name="transparent water" />
 	<item id="26446" name="transparent water" />
+
+	<item id="26459" article="a" name="greatball" />
+	<item id="26460" article="a" name="pokeball" />
+	<item id="26461" article="a" name="ultraball" />
 	
 </items>

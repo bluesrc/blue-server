@@ -8,6 +8,7 @@
 #include "pokemon.h"
 #include "configmanager.h"
 #include "scheduler.h"
+#include "pokeball.h"
 
 double Creature::speedA = 857.36;
 double Creature::speedB = 261.29;
@@ -699,12 +700,22 @@ void Creature::onDeath()
 		}
 	}
 
-	bool droppedCorpse = dropCorpse(lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
-	death(lastHitCreature);
-
 	if (master) {
+		auto player = master->getPlayer();
+		if (player)
+		{
+			
+			auto pokeball = player->getPlayer()->getActivePokemon();
+			death(lastHitCreature);
+			pokeball->setPokemonFainted();
+			player->goback(pokeball, false, true);
+			return;
+		}
 		setMaster(nullptr);
 	}
+
+	bool droppedCorpse = dropCorpse(lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
+	death(lastHitCreature);
 
 	if (droppedCorpse) {
 		g_game.removeCreature(this, false);

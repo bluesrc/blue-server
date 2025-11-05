@@ -1225,6 +1225,18 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_YOUCANNOTUSETHISBED:
 			return "This bed can't be used, but Premium Account players can rent houses and sleep in beds there to regain health and mana.";
 
+		case RETURNVALUE_CANNOTGOBACK:
+			return "You cannot use a pokeball yet.";
+
+		case RETURNVALUE_CANNOTSENDFAINTEDPOKEMON:
+			return "You cannot send a fainted pokemon.";
+
+		case RETURNVALUE_CANNOTTHROWPOKEBALL:
+			return "You cannot throw a pokeball away.";
+
+		case RETURNVALUE_FULLPOKEMONBAG:
+			return "You already have six pokemon.";
+
 		default: // RETURNVALUE_NOTPOSSIBLE, etc
 			return "Sorry, not possible.";
 	}
