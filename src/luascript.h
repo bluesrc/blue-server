@@ -1371,6 +1371,21 @@ class LuaScriptInterface
 		static int luaPokemonTypeChangeTargetChance(lua_State* L);
 		static int luaPokemonTypeChangeTargetSpeed(lua_State* L);
 
+		static int luaPokemonTypeNumber(lua_State* L);
+		static int luaPokemonTypeTypes(lua_State* L);
+		static int luaPokemonTypeCatchRate(lua_State* L);
+		static int luaPokemonTypeLevelRate(lua_State* L);
+		static int luaPokemonTypeBaseExperience(lua_State* L);
+		static int luaPokemonTypeHeight(lua_State* L);
+		static int luaPokemonTypeWeight(lua_State* L);
+		static int luaPokemonTypeGender(lua_State* L);
+		static int luaPokemonTypeEggGroup(lua_State* L);
+		static int luaPokemonTypeEggCycles(lua_State* L);
+		static int luaPokemonTypeFriendship(lua_State* L);
+		static int luaPokemonTypeEvYield(lua_State* L);
+		static int luaPokemonTypeBaseStats(lua_State* L);
+		static int luaPokemonTypeEvolution(lua_State* L);
+
 		// Loot
 		static int luaCreateLoot(lua_State* L);
 		static int luaDeleteLoot(lua_State* L);

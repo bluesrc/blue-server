@@ -1,16 +1,7 @@
 #pragma once
 
 #include "item.h"
-
-struct PokemonInfo
-{
-	uint32_t p_id;
-	uint32_t p_uid;
-	std::string name;
-	int32_t health;
-	int32_t maxHealth;
-	bool fainted;
-};
+#include "pokemons.h"
 
 class Pokeball final : public Item
 {
@@ -33,8 +24,8 @@ public:
 
 	uint16_t getGobackEffect() { return gobackEffect; }
 
-	PokemonInfo getPokemonInfo() { return pInfo;  }
-	void setPokemonInfo(PokemonInfo info) { pInfo = info; }
+	PokemonInfo_t getPokemonInfo() { return pInfo;  }
+	void setPokemonInfo(PokemonInfo_t info) { pInfo = info; }
 
 	int32_t getPokemonHealth() { return pInfo.health; }
 	void setPokemonHealth(int32_t health) { pInfo.health = health; }
@@ -52,9 +43,11 @@ public:
 
 	bool isPokemonFainted() { return pInfo.fainted; }
 
+	static PokemonInfo_t createNewPokemon(std::string pokemon);
+
 private:
 	bool active;
 	uint16_t gobackEffect;
 	Pokemon* pokemon;
-	PokemonInfo pInfo;
+	PokemonInfo_t pInfo;
 };

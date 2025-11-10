@@ -4644,16 +4644,13 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 		if (ret != RETURNVALUE_NOERROR)
 			continue;
 
-		auto pInfo = PokemonInfo();
-		pInfo.fainted = false;
-		pInfo.maxHealth = g_pokemons.getPokemonType(pokemon)->info.healthMax;
-		pInfo.health = pInfo.maxHealth;
-		pInfo.name = pokemon;
-		pInfo.p_uid = g_game.assignPokemonUID();
+		auto pInfo = Pokeball::createNewPokemon(pokemon);
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
 		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
 		sendMagicEffect(getPosition(), CONST_ME_MAGIC_GREEN);
+
+		client->sendPokemonInfo(slot, pokeball->getPokemonInfo());
 		return;
 	}
 
@@ -4708,10 +4705,9 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 		}
 	}
 
-	Pokemon* pokemon = Pokemon::createPokemon(pokeball->getPokemonInfo().name);
+	Pokemon* pokemon = Pokemon::createPlayerPokemon(pokeball->getPokemonInfo());
 	pokeball->setPokemon(pokemon);
-	pokemon->drainHealth(nullptr, pokemon->getMaxHealth() - pokeball->getPokemonHealth());
-
+	
 	pokemon->setMaster(this);
 	pokemon->setFollowCreature(this);
 
