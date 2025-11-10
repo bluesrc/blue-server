@@ -608,4 +608,13 @@ enum PokemonsEvent_t : uint8_t {
 	POKEMONS_EVENT_SAY = 5,
 };
 
+struct PokemonStats_t {
+	uint8_t hp = 0;
+	uint8_t attack = 0;
+	uint8_t defense = 0;
+	uint8_t sp_attack = 0;
+	uint8_t sp_defense = 0;
+	uint8_t speed = 0;
+};
+
 #endif

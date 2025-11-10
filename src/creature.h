@@ -513,8 +513,8 @@ class Creature : virtual public Thing
 		uint32_t lastStepCost = 1;
 		uint32_t baseSpeed = 220;
 		int32_t varSpeed = 0;
-		int32_t health = 1000;
-		int32_t healthMax = 1000;
+		int32_t health = 1;
+		int32_t healthMax = 1;
 		uint8_t drunkenness = 0;
 
 		Outfit_t currentOutfit;

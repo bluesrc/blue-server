@@ -9,6 +9,8 @@
 #include "events.h"
 #include "configmanager.h"
 
+#include <numeric>
+
 extern Game g_game;
 extern Pokemons g_pokemons;
 extern Events* g_events;
@@ -28,6 +30,15 @@ Pokemon* Pokemon::createPokemon(const std::string& name)
 	return new Pokemon(mType);
 }
 
+Pokemon* Pokemon::createPlayerPokemon(PokemonInfo_t pInfo)
+{
+	PokemonType* mType = g_pokemons.getPokemonType(pInfo.name);
+	if (!mType) {
+		return nullptr;
+	}
+	return new Pokemon(mType, pInfo);
+}
+
 Pokemon::Pokemon(PokemonType* mType) :
 	Creature(),
 	nameDescription(mType->nameDescription),
@@ -36,11 +47,94 @@ Pokemon::Pokemon(PokemonType* mType) :
 	defaultOutfit = mType->info.outfit;
 	currentOutfit = mType->info.outfit;
 	skull = mType->info.skull;
-	health = mType->info.health;
-	healthMax = mType->info.healthMax;
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+
+	std::mt19937 generator(static_cast<unsigned int>(std::time(0)));
+	std::uniform_int_distribution<int> distribution(1, 31);
+	ivs.hp = distribution(generator);
+	ivs.attack = distribution(generator);
+	ivs.defense = distribution(generator);
+	ivs.sp_attack = distribution(generator);
+	ivs.sp_defense = distribution(generator);
+	ivs.speed = distribution(generator);
+
+	//todo: nature modifier
+	stats.hp = health = healthMax = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
+	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
+	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5; 
+	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
+	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5; 
+	stats.speed = baseSpeed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5 /*adaptation: */ + 100;
+
+	friendship = mType->info.base_friendship;
+
+	if (mType->info.gender_ratio.male == 0.0 && mType->info.gender_ratio.female == 0.0) {
+		gender = GENDER_UNDEFINED;
+	} else {
+		std::vector<double> weights = { mType->info.gender_ratio.male, mType->info.gender_ratio.female };
+		std::mt19937 generator(static_cast<unsigned int>(std::time(0)));
+		std::discrete_distribution<> distribution(weights.begin(), weights.end());
+		int selection = distribution(generator);
+
+		if (selection == 0) {
+			gender = GENDER_MALE;
+		}
+		else {
+			gender = GENDER_FEMALE;
+		}
+	}
+
+	// register creature events
+	for (const std::string& scriptName : mType->info.scripts) {
+		if (!registerCreatureEvent(scriptName)) {
+			std::cout << "[Warning - Pokemon::Pokemon] Unknown event name: " << scriptName << std::endl;
+		}
+	}
+}
+
+Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
+	Creature(),
+	nameDescription(mType->nameDescription),
+	mType(mType)
+{
+	defaultOutfit = mType->info.outfit;
+	currentOutfit = mType->info.outfit;
+	skull = mType->info.skull;
+	internalLight = mType->info.light;
+	hiddenHealth = mType->info.hiddenHealth;
+
+	ivs.hp = pInfo.ivs.hp;
+	ivs.attack = pInfo.ivs.attack;
+	ivs.defense = pInfo.ivs.defense;
+	ivs.sp_attack = pInfo.ivs.sp_attack;
+	ivs.sp_defense = pInfo.ivs.sp_defense;
+	ivs.speed = pInfo.ivs.speed;
+
+	evs.hp = pInfo.evs.hp;
+	evs.attack = pInfo.evs.attack;
+	evs.defense = pInfo.evs.defense;
+	evs.sp_attack = pInfo.evs.sp_attack;
+	evs.sp_defense = pInfo.evs.sp_defense;
+	evs.speed = pInfo.evs.speed;
+
+	//todo: nature modifier
+	stats.hp = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
+	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
+	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5;
+	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
+	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5;
+	stats.speed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5;
+
+	healthMax = stats.hp;
+	health = pInfo.health;
+	baseSpeed = stats.speed + 100; /* adaptation */
+
+	friendship = pInfo.friendship;
+	shiny = pInfo.shiny;
+	level = pInfo.level;
+	gender = pInfo.gender;
 
 	// register creature events
 	for (const std::string& scriptName : mType->info.scripts) {

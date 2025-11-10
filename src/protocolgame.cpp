@@ -19,6 +19,9 @@
 #include "ban.h"
 #include "scheduler.h"
 
+#include "pokeball.h"
+#include "pokemon.h"
+
 #include <fmt/format.h>
 
 extern ConfigManager g_config;
@@ -2945,7 +2948,15 @@ void ProtocolGame::AddCreature(NetworkMessage& msg, const Creature* creature, bo
 	const Player* masterPlayer = nullptr;
 	uint32_t masterId = 0;
 
+	uint8_t level = 0;
+	uint8_t gender = 0;
+	bool shiny = false;
+	auto pokemon = creature->getPokemon();
 	if (creatureType == CREATURETYPE_POKEMON) {
+		level = pokemon->getLevel();
+		gender = pokemon->getGender();
+		shiny = pokemon->isShiny();
+
 		const Creature* master = creature->getMaster();
 		if (master) {
 			masterPlayer = master->getPlayer();
@@ -2965,6 +2976,10 @@ void ProtocolGame::AddCreature(NetworkMessage& msg, const Creature* creature, bo
 		msg.add<uint32_t>(creature->getID());
 		msg.addByte(creatureType);
 		msg.addString(creature->getName());
+
+		msg.add<uint8_t>(level);
+		msg.add<uint8_t>(gender);
+		msg.addByte(shiny);
 
 		if (creatureType == CREATURETYPE_SUMMON_OWN)
 			msg.add<uint32_t>(masterId);
@@ -3253,16 +3268,16 @@ void ProtocolGame::parseExtendedOpcode(NetworkMessage& msg)
 	addGameTask(&Game::parsePlayerExtendedOpcode, player->getID(), opcode, buffer);
 }
 
-void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo info, bool active)
+void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool active)
 {
 	NetworkMessage msg;
 	msg.addByte(0x39);
 	msg.add<uint16_t>(slot);
 	msg.add<uint32_t>(info.p_id);
+	msg.add<uint16_t>(info.number);
 
 	auto percent = (static_cast<float>(info.health) / info.maxHealth) * 100.0f;
 	msg.add<uint8_t>(percent);
-
 
 	msg.add<bool>(info.fainted);
 	msg.add<bool>(active);
