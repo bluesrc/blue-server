@@ -25,10 +25,12 @@ class Pokemon final : public Creature
 {
 	public:
 		static Pokemon* createPokemon(const std::string& name);
+		static Pokemon* createPlayerPokemon(PokemonInfo_t pInfo);
 		static int32_t despawnRange;
 		static int32_t despawnRadius;
 
 		explicit Pokemon(PokemonType* mType);
+		explicit Pokemon(PokemonType* mType, PokemonInfo_t pInfo);
 		~Pokemon();
 
 		// non-copyable
@@ -168,6 +170,10 @@ class Pokemon final : public Creature
 
 		static uint32_t pokemonAutoID;
 
+		uint8_t getLevel() const { return level; }
+		uint8_t getGender() const { return gender; }
+		bool isShiny() const { return shiny; }
+
 	private:
 		CreatureHashSet friendList;
 		CreatureList targetList;
@@ -198,6 +204,17 @@ class Pokemon final : public Creature
 		bool isMasterInRange = false;
 		bool randomStepping = false;
 		bool walkingToSpawn = false;
+
+		PokemonStats_t stats = {};
+		PokemonStats_t ivs = {};
+		PokemonStats_t evs = {};
+		PokemonGenders_t gender = GENDER_NONE;
+		uint8_t friendship {0};
+		uint8_t evasion {100};
+		uint8_t accuracy {100};
+
+		uint8_t level = 1;
+		bool shiny = false;
 
 		void onCreatureEnter(Creature* creature);
 		void onCreatureLeave(Creature* creature);

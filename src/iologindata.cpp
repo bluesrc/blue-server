@@ -769,9 +769,7 @@ bool IOLoginData::savePlayer(Player* player)
 			if (pokeball)
 			{
 				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
-				DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`) VALUES ");
-				pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}", p_uid, player->getGUID(), db.escapeString(pokeball->getPokemonName()), pokeball->getPokemonHealth(), pokeball->isPokemonFainted()));
-				pokemonQuery.execute();
+				savePokemon(player->getGUID(), pokeball, p_uid);
 			}
 		}
 	}
@@ -933,16 +931,8 @@ void IOLoginData::loadItems(ItemMap& itemMap, DBResult_ptr result)
 			auto pokeball = item->getPokeball();
 			if (pokeball)
 			{
-				Database& db = Database::getInstance();
 				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
-				DBResult_ptr p_result = db.storeQuery(fmt::format("SELECT `uid`, `name`, `health`, `fainted` FROM `pokemons` WHERE `uid` = {:d}", p_uid));
-				auto pInfo = PokemonInfo();
-				pInfo.p_uid = p_result->getNumber<uint32_t>("uid");
-				pInfo.name = p_result->getString("name");
-				pInfo.health = p_result->getNumber<uint32_t>("health");
-				pInfo.maxHealth = g_pokemons.getPokemonType(pInfo.name)->info.healthMax;
-				pInfo.fainted = p_result->getNumber<bool>("fainted");
-				pokeball->setPokemonInfo(pInfo);
+				loadPokemon(pokeball, p_uid);
 			}
 
 			std::pair<Item*, uint32_t> pair(item, pid);
@@ -1001,4 +991,82 @@ void IOLoginData::removeVIPEntry(uint32_t accountId, uint32_t guid)
 void IOLoginData::updatePremiumTime(uint32_t accountId, time_t endTime)
 {
 	Database::getInstance().executeQuery(fmt::format("UPDATE `accounts` SET `premium_ends_at` = {:d} WHERE `id` = {:d}", endTime, accountId));
+}
+
+void IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t pokemonUID)
+{
+	Database& db = Database::getInstance();
+	DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`, `level`, `gender`, `friendship`, `shiny`,"
+		"`iv_hp`, `iv_attack`, `iv_defense`, `iv_sp_attack`, `iv_sp_defense`, `iv_speed`, `ev_hp`, `ev_attack`, `ev_defense`, `ev_sp_attack`, `ev_sp_defense`, `ev_speed`) VALUES ");
+
+	auto pInfo = pokeball->getPokemonInfo();
+
+	pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
+		pokemonUID,
+		playerId,
+		db.escapeString(pInfo.name),
+		pInfo.health,
+		pInfo.fainted,
+		pInfo.level,
+		static_cast<int>(pInfo.gender),
+		pInfo.friendship,
+		pInfo.shiny,
+		pInfo.ivs.hp,
+		pInfo.ivs.attack,
+		pInfo.ivs.defense,
+		pInfo.ivs.sp_attack,
+		pInfo.ivs.sp_defense,
+		pInfo.ivs.speed,
+		pInfo.evs.hp,
+		pInfo.evs.attack,
+		pInfo.evs.defense,
+		pInfo.evs.sp_attack,
+		pInfo.evs.sp_defense,
+		pInfo.evs.speed
+		));
+
+	pokemonQuery.execute();
+}
+
+void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
+{
+	Database& db = Database::getInstance();
+
+	DBResult_ptr p_result = db.storeQuery(fmt::format(
+		"SELECT `uid`, `name`, `health`, `fainted`, `level`, `gender`, `friendship`, `shiny`, "
+		"`iv_hp`, `iv_attack`, `iv_defense`, `iv_sp_attack`, `iv_sp_defense`, `iv_speed`, "
+		"`ev_hp`, `ev_attack`, `ev_defense`, `ev_sp_attack`, `ev_sp_defense`, `ev_speed` "
+		"FROM `pokemons` WHERE `uid` = {:d}", pokemonUID));
+
+		auto pInfo = PokemonInfo_t();
+
+		pInfo.p_uid = p_result->getNumber<uint32_t>("uid");
+		pInfo.name = p_result->getString("name");
+		pInfo.health = p_result->getNumber<uint32_t>("health");
+
+		pInfo.fainted = p_result->getNumber<bool>("fainted");
+		pInfo.level = p_result->getNumber<uint32_t>("level");
+		pInfo.gender = static_cast<PokemonGenders_t>(p_result->getNumber<int>("gender"));
+		pInfo.friendship = p_result->getNumber<uint32_t>("friendship");
+		pInfo.shiny = p_result->getNumber<bool>("shiny");
+
+		pInfo.ivs.hp = p_result->getNumber<uint32_t>("iv_hp");
+		pInfo.ivs.attack = p_result->getNumber<uint32_t>("iv_attack");
+		pInfo.ivs.defense = p_result->getNumber<uint32_t>("iv_defense");
+		pInfo.ivs.sp_attack = p_result->getNumber<uint32_t>("iv_sp_attack");
+		pInfo.ivs.sp_defense = p_result->getNumber<uint32_t>("iv_sp_defense");
+		pInfo.ivs.speed = p_result->getNumber<uint32_t>("iv_speed");
+
+		pInfo.evs.hp = p_result->getNumber<uint32_t>("ev_hp");
+		pInfo.evs.attack = p_result->getNumber<uint32_t>("ev_attack");
+		pInfo.evs.defense = p_result->getNumber<uint32_t>("ev_defense");
+		pInfo.evs.sp_attack = p_result->getNumber<uint32_t>("ev_sp_attack");
+		pInfo.evs.sp_defense = p_result->getNumber<uint32_t>("ev_sp_defense");
+		pInfo.evs.speed = p_result->getNumber<uint32_t>("ev_speed");
+
+		auto mType = g_pokemons.getPokemonType(pInfo.name);
+		pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
+		pInfo.number = mType->info.number;
+
+		pokeball->setPokemonInfo(pInfo);
 }

@@ -1915,6 +1915,57 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(POKEMONS_EVENT_MOVE)
 	registerEnum(POKEMONS_EVENT_SAY)
 
+	registerEnum(RATE_ERRATIC)
+	registerEnum(RATE_FAST)
+	registerEnum(RATE_MEDIUM_FAST)
+	registerEnum(RATE_MEDIUM_SLOW)
+	registerEnum(RATE_SLOW)
+	registerEnum(RATE_FLUCTUATING)
+
+	registerEnum(TYPE_BUG)
+	registerEnum(TYPE_DARK)
+	registerEnum(TYPE_DRAGON)
+	registerEnum(TYPE_ELECTRIC)
+	registerEnum(TYPE_FAIRY)
+	registerEnum(TYPE_FIGHTING)
+	registerEnum(TYPE_FIRE)
+	registerEnum(TYPE_FLYING)
+	registerEnum(TYPE_GHOST)
+	registerEnum(TYPE_GRASS)
+	registerEnum(TYPE_GROUND)
+	registerEnum(TYPE_ICE)
+	registerEnum(TYPE_NORMAL)
+	registerEnum(TYPE_POISON)
+	registerEnum(TYPE_PSYCHIC)
+	registerEnum(TYPE_ROCK)
+	registerEnum(TYPE_STEEL)
+	registerEnum(TYPE_WATER)
+
+	registerEnum(EGG_AMORPHOUS)
+	registerEnum(EGG_BUG)
+	registerEnum(EGG_DRAGON)
+	registerEnum(EGG_FAIRY)
+	registerEnum(EGG_FIELD)
+	registerEnum(EGG_FLYING)
+	registerEnum(EGG_GRASS)
+	registerEnum(EGG_HUMAN_LIKE)
+	registerEnum(EGG_MINERAL)
+	registerEnum(EGG_MONSTER)
+	registerEnum(EGG_UNDISCOVERED)
+	registerEnum(EGG_WATER_1)
+	registerEnum(EGG_WATER_2)
+	registerEnum(EGG_WATER_3)
+
+	registerEnum(GENDER_NONE)
+	registerEnum(GENDER_MALE)
+	registerEnum(GENDER_FEMALE)
+	registerEnum(GENDER_UNDEFINED)
+
+	registerEnum(EVOLVE_NONE)
+	registerEnum(EVOLVE_LEVEL)
+	registerEnum(EVOLVE_ITEM)
+	registerEnum(EVOLTE_SPECIAL)
+
 	// _G
 	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);
 	registerGlobalBoolean("VIRTUAL_PARENT", true);
@@ -2882,6 +2933,21 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "yellSpeedTicks", LuaScriptInterface::luaPokemonTypeYellSpeedTicks);
 	registerMethod("PokemonType", "changeTargetChance", LuaScriptInterface::luaPokemonTypeChangeTargetChance);
 	registerMethod("PokemonType", "changeTargetSpeed", LuaScriptInterface::luaPokemonTypeChangeTargetSpeed);
+
+	registerMethod("PokemonType", "number", LuaScriptInterface::luaPokemonTypeNumber);
+	registerMethod("PokemonType", "types", LuaScriptInterface::luaPokemonTypeTypes);
+	registerMethod("PokemonType", "catch_rate", LuaScriptInterface::luaPokemonTypeCatchRate);
+	registerMethod("PokemonType", "level_rate", LuaScriptInterface::luaPokemonTypeLevelRate);
+	registerMethod("PokemonType", "experience", LuaScriptInterface::luaPokemonTypeBaseExperience);
+	registerMethod("PokemonType", "height", LuaScriptInterface::luaPokemonTypeHeight);
+	registerMethod("PokemonType", "weight", LuaScriptInterface::luaPokemonTypeWeight);
+	registerMethod("PokemonType", "gender", LuaScriptInterface::luaPokemonTypeGender);
+	registerMethod("PokemonType", "egg_group", LuaScriptInterface::luaPokemonTypeEggGroup);
+	registerMethod("PokemonType", "egg_cycles", LuaScriptInterface::luaPokemonTypeEggCycles);
+	registerMethod("PokemonType", "friendship", LuaScriptInterface::luaPokemonTypeFriendship);
+	registerMethod("PokemonType", "ev_yield", LuaScriptInterface::luaPokemonTypeEvYield);
+	registerMethod("PokemonType", "base_stats", LuaScriptInterface::luaPokemonTypeBaseStats);
+	registerMethod("PokemonType", "evolution", LuaScriptInterface::luaPokemonTypeEvolution);
 
 	// Loot
 	registerClass("Loot", "", LuaScriptInterface::luaCreateLoot);
@@ -13493,6 +13559,369 @@ int LuaScriptInterface::luaPokemonTypeCanWalkOnPoison(lua_State* L)
 		lua_pushnil(L);
 	}
 	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeNumber(lua_State* L)
+{
+	// get: pokemonType:number() set: pokemonType:number(number)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.number);
+		} else {
+			pokemonType->info.number = getNumber<int16_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeTypes(lua_State* L)
+{
+    // get: pokemonType:types() set: pokemonType:types(types)
+    PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+
+    if (pokemonType && lua_gettop(L) == 2 && lua_istable(L, 2)) 
+	{
+        pokemonType->info.types.fill(TYPE_NONE); 
+        
+        const int table_index = 2;
+        int current_slot = 0;
+        
+        lua_pushnil(L); 
+        while (lua_next(L, table_index) != 0) {
+            
+            if (current_slot < pokemonType->info.types.size()) {
+                if (lua_isnumber(L, -1)) {
+					PokemonTypes_t type_value = getNumber<PokemonTypes_t>(L, -1);
+                    
+                    pokemonType->info.types[current_slot] = type_value;
+                    current_slot++;
+                }
+            } else {
+                lua_pop(L, 2); 
+                break;
+            }
+
+            lua_pop(L, 1); 
+        }
+        pushBoolean(L, true);
+        
+    } else {
+        lua_pushnil(L);
+    }
+    
+    return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeCatchRate(lua_State* L)
+{
+	// get: pokemonType:catch_rate() set: pokemonType:catch_rate(catch_rate)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.catch_rate);
+		}
+		else {
+			pokemonType->info.catch_rate = getNumber<uint8_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	}
+	else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeLevelRate(lua_State* L)
+{
+	// get: pokemonType:level_rate() set: pokemonType:level_rate(level_rate)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.level_rate);
+		} else {
+			pokemonType->info.level_rate = getNumber<LevelRate_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeBaseExperience(lua_State* L)
+{
+	// get: pokemonType:experience() set: pokemonType:experience(experience)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.base_experience);
+		} else {
+			pokemonType->info.base_experience = getNumber<uint8_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeHeight(lua_State* L)
+{
+	// get: pokemonType:height() set: pokemonType:height(experience)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.height);
+		} else {
+			pokemonType->info.height = getNumber<float>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeWeight(lua_State* L)
+{
+	// get: pokemonType:weight() set: pokemonType:weight(experience)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.weight);
+		} else {
+			pokemonType->info.weight = getNumber<float>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeGender(lua_State* L)
+{
+	// pokemonType:gender(gender_ratio)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+    if (pokemonType && lua_gettop(L) == 2 && lua_istable(L, 2)) {
+        const int table_index = 2; 
+
+        lua_getfield(L, table_index, "male"); 
+        
+        if (lua_isnumber(L, -1)) {
+            pokemonType->info.gender_ratio.male = getNumber<float>(L, -1);
+        } else {
+            pokemonType->info.gender_ratio.male = 0.0f; 
+        }
+        
+        lua_pop(L, 1); 
+
+        lua_getfield(L, table_index, "female"); 
+        
+        if (lua_isnumber(L, -1)) {
+            pokemonType->info.gender_ratio.female = getNumber<float>(L, -1);
+        } else {
+            pokemonType->info.gender_ratio.female = 0.0f;
+        }
+
+        lua_pop(L, 1); 
+
+        pushBoolean(L, true);
+        
+    } else {
+        lua_pushnil(L);
+    }
+    
+    return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeEggGroup(lua_State* L)
+{
+    // pokemonType:egg_groups(egg_groups)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+
+    if (pokemonType && lua_gettop(L) == 2 && lua_istable(L, 2)) 
+    {
+        pokemonType->info.egg_groups.clear(); 
+        
+        const int table_index = 2;
+        
+        lua_pushnil(L); 
+        while (lua_next(L, table_index) != 0) {
+            if (lua_isnumber(L, -1)) {
+                EggGroups_t group_value = getNumber<EggGroups_t>(L, -1);
+                pokemonType->info.egg_groups.push_back(group_value);
+            }
+
+            lua_pop(L, 1); 
+        }
+        
+        pushBoolean(L, true);
+    } else {
+        lua_pushnil(L); 
+    }
+    
+    return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeEggCycles(lua_State* L)
+{
+	// get: pokemonType:egg_cycles() set: pokemonType:egg_cycles(egg_cycles)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.egg_cycles);
+		} else {
+			pokemonType->info.egg_cycles = getNumber<uint8_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeFriendship(lua_State* L)
+{
+	// get: pokemonType:friendship() set: pokemonType:friendship(base_friendship)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			lua_pushnumber(L, pokemonType->info.base_friendship);
+		} else {
+			pokemonType->info.base_friendship = getNumber<uint8_t>(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeEvolution(lua_State* L)
+{
+	// get: pokemonType:evolution() set: pokemonType:evolution(evolution)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+
+    if (pokemonType && lua_gettop(L) == 2 && lua_istable(L, 2)) {
+        
+        const int table_index = 2; 
+        
+        lua_getfield(L, table_index, "type"); 
+        
+        EvolveTypes_t evolveType = EVOLVE_NONE;
+        if (lua_isnumber(L, -1)) {
+            evolveType = static_cast<EvolveTypes_t>(getNumber<uint8_t>(L, -1));
+        }
+        
+        pokemonType->info.evolution.type = evolveType;
+        
+        lua_pop(L, 1); 
+
+        pokemonType->info.evolution.level = 0; 
+        
+        if (evolveType == EVOLVE_LEVEL) {
+            lua_getfield(L, table_index, "level"); 
+            
+            if (lua_isnumber(L, -1)) {
+                uint8_t level_value = getNumber<uint8_t>(L, -1);
+                pokemonType->info.evolution.level = level_value;
+            }
+            lua_pop(L, 1);
+
+        } else if (evolveType == EVOLVE_ITEM) { 
+            lua_getfield(L, table_index, "itemId"); 
+
+            if (lua_isnumber(L, -1)) {
+                uint8_t itemId_value = getNumber<uint32_t>(L, -1); 
+                pokemonType->info.evolution.itemId = itemId_value;
+            }
+            lua_pop(L, 1);
+        }
+        
+        pushBoolean(L, true);
+        
+    } else {
+        lua_pushnil(L);
+    }
+    
+    return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeBaseStats(lua_State* L)
+{
+	// pokemonType:base_stats(base_stats)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+    if (pokemonType && lua_gettop(L) == 2 && lua_istable(L, 2)) {
+        
+        const int table_index = 2; 
+        
+        auto set_stat = [&](const char* key, uint8_t& target_field) {
+            lua_getfield(L, table_index, key); 
+            
+            if (lua_isnumber(L, -1)) {
+                target_field = getNumber<uint8_t>(L, -1);
+            } 
+            
+            lua_pop(L, 1); 
+        };
+        
+        PokemonStats_t& stats = pokemonType->info.base_stats;
+
+        set_stat("hp", stats.hp);
+        set_stat("attack", stats.attack);
+        set_stat("defense", stats.defense);
+        set_stat("sp_attack", stats.sp_attack);
+        set_stat("sp_defense", stats.sp_defense);
+        set_stat("speed", stats.speed);
+        
+        pushBoolean(L, true);
+        
+    } else {
+        lua_pushnil(L);
+    }
+    
+    return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeEvYield(lua_State* L)
+{
+	// pokemonType:ev_yield(ev_yield)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+    if (pokemonType && lua_gettop(L) == 2 && lua_istable(L, 2)) {
+        
+        const int table_index = 2; 
+        
+        auto set_stat = [&](const char* key, uint8_t& target_field) {
+            lua_getfield(L, table_index, key); 
+            
+            if (lua_isnumber(L, -1)) {
+                target_field = getNumber<uint8_t>(L, -1);
+            } 
+            
+            lua_pop(L, 1); 
+        };
+        
+        PokemonStats_t& stats = pokemonType->info.ev_yield;
+
+        set_stat("hp", stats.hp);
+        set_stat("attack", stats.attack);
+        set_stat("defense", stats.defense);
+        set_stat("sp_attack", stats.sp_attack);
+        set_stat("sp_defense", stats.sp_defense);
+        set_stat("speed", stats.speed);
+        
+        pushBoolean(L, true);
+        
+    } else {
+        lua_pushnil(L);
+    }
+    
+    return 1;
 }
 
 int32_t LuaScriptInterface::luaPokemonTypeName(lua_State* L)

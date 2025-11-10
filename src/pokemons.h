@@ -145,6 +145,34 @@ class PokemonType
 		bool canWalkOnPoison = true;
 
 		PokemonsEvent_t eventType = POKEMONS_EVENT_NONE;
+
+		PokemonStats_t ev_yield = {};
+		PokemonStats_t base_stats = {};
+
+		uint16_t number {0};
+		std::array<PokemonTypes_t, 2> types = { TYPE_NONE, TYPE_NONE };
+		uint8_t catch_rate {0};
+		LevelRate_t level_rate {RATE_NONE};
+		uint8_t base_experience {0};
+		float height {0};
+		float weight {0};
+
+		struct gender_ratio {
+			float male = 0.0;
+			float female = 0.0;
+		} gender_ratio;
+
+		std::vector<EggGroups_t> egg_groups;
+		uint8_t egg_cycles {0};
+		uint8_t base_friendship {0};
+
+		struct evolution {
+			EvolveTypes_t type = EVOLVE_NONE;
+			union {
+				uint8_t level;
+				uint32_t itemId;
+			};
+		}evolution;
 	};
 
 	public:
@@ -242,6 +270,40 @@ class Pokemons
 		std::map<std::string, std::string> unloadedPokemons;
 
 		bool loaded = false;
+};
+
+struct PokemonInfo_t
+{
+	uint32_t p_id;
+	uint32_t p_uid;
+	std::string name;
+	uint16_t number;
+	int32_t health;
+	int32_t maxHealth;
+	bool fainted;
+
+	uint8_t level;
+	PokemonGenders_t gender;
+	uint8_t friendship;
+	bool shiny;
+
+	PokemonStats_t stats;
+	PokemonStats_t ivs;
+	PokemonStats_t evs;
+
+	PokemonInfo_t() :
+		p_id(0),
+		p_uid(0),
+		number(0),
+		health(0),
+		maxHealth(1),
+		fainted(false),
+		level(0),
+		gender(GENDER_UNDEFINED),
+		friendship(0),
+		shiny(false)
+	{
+	}
 };
 
 #endif

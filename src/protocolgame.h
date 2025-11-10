@@ -8,7 +8,7 @@
 #include "chat.h"
 #include "creature.h"
 #include "tasks.h"
-#include "pokeball.h"
+#include "pokemons.h"
 
 class NetworkMessage;
 class Player;
@@ -255,7 +255,7 @@ class ProtocolGame final : public Protocol
 		void sendItems();
 
 		//pokemon
-		void sendPokemonInfo(uint16_t slot, PokemonInfo info, bool active = false);
+		void sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool active = false);
 
 		//messages
 		void sendModalWindow(const ModalWindow& modalWindow);

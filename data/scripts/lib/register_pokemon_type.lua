@@ -13,6 +13,90 @@ PokemonType.register = function(self, mask)
 	return registerPokemonType(self, mask)
 end
 
+registerPokemonType.number = function(mtype, mask)
+	if mask.number then
+		mtype:number(mask.number)
+	end
+end
+
+registerPokemonType.types = function(mtype, mask)
+	if mask.types then
+		mtype:types(mask.types)
+	end
+end
+
+registerPokemonType.catch_rate = function(mtype, mask)
+	if mask.catch_rate then
+		mtype:catch_rate(mask.catch_rate)
+	end
+end
+
+registerPokemonType.level_rate = function(mtype, mask)
+	if mask.level_rate then
+		mtype:level_rate(mask.level_rate)
+	end
+end
+
+registerPokemonType.base_experience = function(mtype, mask)
+	if mask.base_experience then
+		mtype:experience(mask.base_experience)
+	end
+end
+
+registerPokemonType.height = function(mtype, mask)
+	if mask.height then
+		mtype:height(mask.height)
+	end
+end
+
+registerPokemonType.weight = function(mtype, mask)
+	if mask.weight then
+		mtype:weight(mask.weight)
+	end
+end
+
+registerPokemonType.gender_ratio = function(mtype, mask)
+	if mask.gender_ratio then
+		mtype:gender(mask.gender_ratio)
+	end
+end
+
+registerPokemonType.egg_group = function(mtype, mask)
+	if mask.egg_group then
+		mtype:egg_group(mask.egg_group)
+	end
+end
+
+registerPokemonType.egg_cycles = function(mtype, mask)
+	if mask.egg_cycles then
+		mtype:egg_cycles(mask.egg_cycles)
+	end
+end
+
+registerPokemonType.base_friendship = function(mtype, mask)
+	if mask.base_friendship then
+		mtype:friendship(mask.base_friendship)
+	end
+end
+
+registerPokemonType.ev_yield = function(mtype, mask)
+	if mask.ev_yield then
+		mtype:ev_yield(mask.ev_yield)
+	end
+end
+
+registerPokemonType.base_stats = function(mtype, mask)
+	if mask.base_stats then
+		mtype:base_stats(mask.base_stats)
+	end
+end
+
+registerPokemonType.evolution = function(mtype, mask)
+	if mask.evolution then
+		mtype:evolution(mask.evolution)
+	end
+end
+
 registerPokemonType.name = function(mtype, mask)
 	if mask.name then
 		mtype:name(mask.name)
