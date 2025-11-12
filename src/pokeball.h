@@ -44,10 +44,24 @@ public:
 	bool isPokemonFainted() { return pInfo.fainted; }
 
 	static PokemonInfo_t createNewPokemon(std::string pokemon);
+	static PokemonInfo_t createPokeballFromPokemon(Pokemon* pokemon);
 
 private:
 	bool active;
 	uint16_t gobackEffect;
 	Pokemon* pokemon;
 	PokemonInfo_t pInfo;
+};
+
+class ThrowablePokeball final : public Item
+{
+public:
+	explicit ThrowablePokeball(uint16_t itemId, uint8_t count = 1) : Item(itemId, count) {}
+
+	ThrowablePokeball* getThrowablePokeball() override {
+		return this;
+	}
+	const ThrowablePokeball* getThrowablePokeball() const override {
+		return this;
+	}
 };

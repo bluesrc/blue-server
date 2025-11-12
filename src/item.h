@@ -9,6 +9,7 @@
 #include "items.h"
 #include "luascript.h"
 #include "tools.h"
+
 #include <typeinfo>
 
 #include <boost/variant.hpp>
@@ -25,6 +26,7 @@ class Door;
 class MagicField;
 class BedItem;
 class Pokeball;
+class ThrowablePokeball;
 
 enum ITEMPROPERTY {
 	CONST_PROP_BLOCKSOLID = 0,
@@ -590,6 +592,12 @@ class Item : virtual public Thing
 			return nullptr;
 		}
 		virtual const Pokeball* getPokeball() const {
+			return nullptr;
+		}
+		virtual ThrowablePokeball* getThrowablePokeball() {
+			return nullptr;
+		}
+		virtual const ThrowablePokeball* getThrowablePokeball() const {
 			return nullptr;
 		}
 

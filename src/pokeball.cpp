@@ -3,18 +3,13 @@
 #include "pokemon.h"
 
 #include "pokeball.h"
+#include "pokeballs.h"
 
 extern Pokemons g_pokemons;
 
 Pokeball::Pokeball(uint16_t id) : Item(id), active{ false }, pokemon{nullptr}
 {
-	//todo: read effect from somewhere else
-	if (id == 26459)
-		gobackEffect = 176;
-	else if (id == 26460)
-		gobackEffect = 177;
-	else if (id == 26461)
-		gobackEffect = 178;
+	gobackEffect = PokeballManager::getPropertiesByPokeballId(id)->gobackEffect;
 }
 
 void Pokeball::setPokemon(Pokemon* pokemon)
@@ -71,6 +66,26 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon)
 			pInfo.gender = GENDER_FEMALE;
 		}
 	}
+
+	return pInfo;
+}
+
+PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
+{
+	auto pInfo = PokemonInfo_t();
+	pInfo.p_uid = 0;
+	pInfo.name = pokemon->getName();
+	pInfo.fainted = false;
+
+	pInfo.ivs = pokemon->getIvs();
+	pInfo.level = pokemon->getLevel();
+
+	pInfo.maxHealth = pokemon->getMaxHealth();
+	pInfo.health = pokemon->getHealth();
+	pInfo.number = pokemon->getNumber();
+	pInfo.friendship = pokemon->getFriendship();
+	pInfo.gender = (PokemonGenders_t)pokemon->getGender();
+	pInfo.shiny = pokemon->isShiny();
 
 	return pInfo;
 }

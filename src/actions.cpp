@@ -10,6 +10,7 @@
 #include "game.h"
 #include "pugicast.h"
 #include "moves.h"
+#include "pokemon.h"
 #include <fmt/format.h>
 
 extern Game g_game;
@@ -438,6 +439,16 @@ bool Actions::useItemEx(Player* player, const Position& fromPos, const Position&
                         uint8_t toStackPos, Item* item, bool isHotkey, Creature* creature/* = nullptr*/)
 {
 	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::EX_ACTIONS_DELAY_INTERVAL));
+
+	if (item->getThrowablePokeball() && creature)
+	{
+		auto pokemon = creature->getPokemon();
+		if (pokemon && !pokemon->isSummon())
+		{
+			player->tryCatch(item->getThrowablePokeball(), pokemon);
+			return true;
+		}
+	}
 
 	Action* action = getAction(item);
 	if (!action) {

@@ -37375,5 +37375,9 @@
 	<item id="26459" article="a" name="greatball" />
 	<item id="26460" article="a" name="pokeball" />
 	<item id="26461" article="a" name="ultraball" />
+
+	<item id="26462" article="a" name="poke ball" plural="pokeballs"/>
+	<item id="26463" article="a" name="great balls" plural="greatballs"/>
+	<item id="26464" article="a" name="ultra balls" plural="ultraballs"/>
 	
 </items>

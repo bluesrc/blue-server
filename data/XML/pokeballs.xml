@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pokeballs>
+	<pokeball name="pokeball" id="26462" pokeballId="26460"  goback="177" missile="55" success="180" fail="179" rate="1.0"/>
+	<pokeball name="greatball" id="26463" pokeballId="26459"  goback="176" missile="56" success="182" fail="181" rate="1.5"/>
+	<pokeball name="ultraball" id="26464" pokeballId="26461"  goback="178" missile="57" success="184" fail="183" rate="2.0"/>
+</pokeballs>

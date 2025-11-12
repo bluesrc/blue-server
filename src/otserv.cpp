@@ -11,6 +11,7 @@
 
 #include "configmanager.h"
 #include "scriptmanager.h"
+#include "pokeballs.h"
 #include "rsa.h"
 #include "protocolold.h"
 #include "protocollogin.h"
@@ -221,6 +222,13 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	if (!Item::items.loadFromXml()) {
 		startupErrorMessage("Unable to load items (XML)!");
+		return;
+	}
+
+	// load pokeballs data
+	std::cout << ">> Loading pokeballs" << std::endl;
+	if (!PokeballManager::loadData()) {
+		startupErrorMessage("Unable to load pokeballs (XML)!");
 		return;
 	}
 

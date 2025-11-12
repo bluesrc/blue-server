@@ -173,6 +173,10 @@ class Pokemon final : public Creature
 		uint8_t getLevel() const { return level; }
 		uint8_t getGender() const { return gender; }
 		bool isShiny() const { return shiny; }
+		PokemonStats_t getIvs() { return ivs; }
+		PokemonStats_t getEvs() { return evs; }
+		uint8_t getFriendship() { return friendship;  }
+		uint16_t getNumber() { return mType->info.number; }
 
 	private:
 		CreatureHashSet friendList;

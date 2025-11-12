@@ -1237,6 +1237,9 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_FULLPOKEMONBAG:
 			return "You already have six pokemon.";
 
+		case RETURNVALUE_CANNOTTRYCATCH:
+			return "You cannot try to catch a pokemon yet.";
+
 		default: // RETURNVALUE_NOTPOSSIBLE, etc
 			return "Sorry, not possible.";
 	}
