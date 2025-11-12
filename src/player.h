@@ -1148,22 +1148,32 @@ class Player final : public Creature, public Cylinder
 		void updateRegeneration();
 
 		//pokemon
-		void goback(Pokeball* item, bool pz = false, bool death = false);
+		void goback(Pokeball* pokeball, bool pz = false, bool death = false);
+		void tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon);
 
 		void setGobackTicks(int64_t time)
 		{
 			if (time > gobackTicks)
 				gobackTicks = time;
 		}
-
 		bool canDoGoback() const { return gobackTicks <= OTSYS_TIME(); }
+		void setTryCatchTicks(int64_t time)
+		{
+			if (time > tryCatchTicks)
+				tryCatchTicks = time;
+		}
+
+		bool canTryCatch() const { return tryCatchTicks <= OTSYS_TIME(); }
 
 		bool hasActivePokemon() { return activePokemon != nullptr; }
 		Pokeball* getActivePokemon() { return activePokemon; }
 		void setActivePokemon(Pokeball* pokemon) { activePokemon = pokemon; }
 
 		void addPokemon(std::string pokeball, std::string pokemon);
+		void addPokemon(uint16_t pokeballId, Pokemon* pokemon);
 		void healPokebag();
+
+		bool sendPokemonToBox(Item* item);
 
 	private:
 		std::forward_list<Condition*> getMuteConditions() const;
@@ -1367,6 +1377,8 @@ class Player final : public Creature, public Cylinder
 
 		//pokemon 
 		int64_t gobackTicks = 0;
+		int64_t tryCatchTicks = 0;
+
 		Pokeball* activePokemon = nullptr;
 
 		friend class Game;

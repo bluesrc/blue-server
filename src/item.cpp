@@ -12,6 +12,7 @@
 #include "game.h"
 #include "bed.h"
 #include "pokeball.h"
+#include "pokeballs.h"
 
 #include "actions.h"
 #include "moves.h"
@@ -65,10 +66,13 @@ Item* Item::CreateItem(const uint16_t type, uint16_t count /*= 0*/)
 		} else if (it.id == 18528) { // prismatic ring
 			newItem = new Item(18408, count);
 		}
-		//todo: it.isPokeball
-		else if (it.id >= 26459 && it.id <= 26461) { // pokeballs
+		else if (PokeballManager::getPropertiesByPokeballId(it.id) != nullptr) { // pokeballs
 			newItem = new Pokeball(type);
-		} else {
+		}
+		else if (PokeballManager::pokeballData.find(it.id) != PokeballManager::pokeballData.end()) { // throwable pokeball
+			newItem = new ThrowablePokeball(type, count);
+		}
+		else {
 			newItem = new Item(type, count);
 		}
 

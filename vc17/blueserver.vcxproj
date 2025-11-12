@@ -201,6 +201,7 @@
     <ClCompile Include="..\src\mailbox.cpp" />
     <ClCompile Include="..\src\map.cpp" />
     <ClCompile Include="..\src\pokeball.cpp" />
+    <ClCompile Include="..\src\pokeballs.cpp" />
     <ClCompile Include="..\src\pokemon.cpp" />
     <ClCompile Include="..\src\pokemons.cpp" />
     <ClCompile Include="..\src\mounts.cpp" />
@@ -292,6 +293,7 @@
     <ClInclude Include="..\src\mailbox.h" />
     <ClInclude Include="..\src\map.h" />
     <ClInclude Include="..\src\pokeball.h" />
+    <ClInclude Include="..\src\pokeballs.h" />
     <ClInclude Include="..\src\pokemon.h" />
     <ClInclude Include="..\src\pokemons.h" />
     <ClInclude Include="..\src\mounts.h" />

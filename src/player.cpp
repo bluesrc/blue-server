@@ -16,6 +16,7 @@
 #include "scheduler.h"
 #include "weapons.h"
 #include "pokeball.h"
+#include "pokeballs.h"
 
 #include <fmt/format.h>
 
@@ -4654,9 +4655,47 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 		return;
 	}
 
-	//todo: send to depot
-	sendCancelMessage(RETURNVALUE_FULLPOKEMONBAG);
-	delete item;
+	{
+		auto pInfo = Pokeball::createNewPokemon(pokemon);
+		auto pokeball = item->getPokeball();
+		pokeball->setPokemonInfo(pInfo);
+		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+		std::cout << pInfo.p_uid << "\n";
+		sendMagicEffect(getPosition(), CONST_ME_MAGIC_GREEN);
+	}
+
+	sendPokemonToBox(item);
+}
+
+void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)
+{
+	auto item = Item::CreateItem(pokeballId);
+
+	for (int slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; slot++)
+	{
+		ReturnValue ret = g_game.internalPlayerAddItem(this, item, false, static_cast<slots_t>(slot));
+		if (ret != RETURNVALUE_NOERROR)
+			continue;
+
+		auto pInfo = Pokeball::createPokeballFromPokemon(pokemon);
+		pInfo.p_uid = g_game.assignPokemonUID();
+		auto pokeball = item->getPokeball();
+		pokeball->setPokemonInfo(pInfo);
+		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+
+		client->sendPokemonInfo(slot, pokeball->getPokemonInfo());
+		return;
+	}
+
+	{
+		auto pInfo = Pokeball::createPokeballFromPokemon(pokemon);
+		pInfo.p_uid = g_game.assignPokemonUID();
+		auto pokeball = item->getPokeball();
+		pokeball->setPokemonInfo(pInfo);
+		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+	}
+
+	sendPokemonToBox(item);
 }
 
 void Player::goback(Pokeball* pokeball, bool pz, bool death)
@@ -4743,4 +4782,83 @@ void Player::healPokebag()
 
 		client->sendPokemonInfo(slot, pokeball->getPokemonInfo());
 	}
+}
+
+void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
+{
+	if (!canTryCatch())
+	{
+		sendCancelMessage(RETURNVALUE_CANNOTTRYCATCH);
+		return;
+	}
+
+	g_game.internalRemoveItem(pokeball, 1);
+	setTryCatchTicks(OTSYS_TIME() + 6000);
+
+	auto pokemonCatchRate = (int)g_pokemons.getPokemonType(pokemon->getName())->getCatchRate();
+	auto pokeballCatchRate = PokeballManager::pokeballData[pokeball->getID()].catchRate;
+	auto pokemonMaxHealth = pokemon->getMaxHealth();
+	auto pokemonCurrentHealth = pokemon->getHealth();
+
+	auto virtualPokemon = Pokeball::createPokeballFromPokemon(pokemon);
+
+	double a = std::floor(
+		(((3.0 * pokemonMaxHealth - 2.0 * pokemonCurrentHealth) * pokemonCatchRate * pokeballCatchRate)
+										/ (3.0 * pokemonMaxHealth))										* 1 /*todo: bonus status*/);
+	if (a > 255.0) a = 255.0;
+
+	if (a >= 255.0) {
+		g_game.addDistanceEffect(getPosition(), pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].throwEffect);
+		g_game.removeCreature(pokemon);
+		sendMagicEffect(pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].catchSuccessEffect);
+
+		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, pokeball]() {
+			addPokemon(PokeballManager::pokeballData[pokeball->getID()].pokeballId, Pokemon::createPlayerPokemon(virtualPokemon));
+		}));
+
+		return;
+	}
+
+	double inner = std::floor(16711680.0 / std::floor(a));
+	double b = std::floor(1048560.0 / std::floor(std::sqrt(std::sqrt(inner))));
+	if (b > 65535.0) b = 65535.0;
+
+	int shakes = 0;
+	for (int i = 0; i < 4; ++i) {
+		uint16_t roll = uniform_random(0, 65535);
+		if (roll >= static_cast<uint16_t>(b))
+			break;
+		shakes++;
+	}
+
+	if (shakes == 4) {
+		g_game.addDistanceEffect(getPosition(), pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].throwEffect);
+		g_game.removeCreature(pokemon);
+		sendMagicEffect(pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].catchSuccessEffect);
+
+		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, pokeball]() {
+			addPokemon(PokeballManager::pokeballData[pokeball->getID()].pokeballId, Pokemon::createPlayerPokemon(virtualPokemon));
+		}));
+	}
+	else {
+		auto pokemonPos = pokemon->getPosition();
+		g_game.addDistanceEffect(getPosition(), pokemonPos, PokeballManager::pokeballData[pokeball->getID()].throwEffect);
+		g_game.removeCreature(pokemon);
+		sendMagicEffect(pokemonPos, PokeballManager::pokeballData[pokeball->getID()].catchFailEffect);
+
+		g_scheduler.addEvent(createSchedulerTask(4000, [virtualPokemon, pokemonPos]() {
+			g_game.placeCreature(Pokemon::createPlayerPokemon(virtualPokemon), pokemonPos);
+		}));
+	}
+}
+
+bool Player::sendPokemonToBox(Item* item)
+{
+	if (g_game.internalAddItem(getInbox(), item, INDEX_WHEREEVER, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
+		return true;
+	}
+
+	sendCancelMessage(RETURNVALUE_FULLPOKEMONBAG);
+	delete item;
+	return false;
 }

@@ -190,6 +190,8 @@ class PokemonType
 		PokemonInfo info;
 
 		void loadLoot(PokemonType* pokemonType, LootBlock lootBlock);
+
+		uint8_t getCatchRate() { return info.catch_rate; }
 };
 
 class PokemonMove

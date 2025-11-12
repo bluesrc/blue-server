@@ -790,6 +790,13 @@ bool IOLoginData::savePlayer(Player* player)
 		for (const auto& it : player->depotChests) {
 			for (Item* item : it.second->getItemList()) {
 				itemList.emplace_back(it.first, item);
+
+				auto pokeball = item->getPokeball();
+				if (pokeball)
+				{
+					auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
+					savePokemon(player->getGUID(), pokeball, p_uid);
+				}
 			}
 		}
 
@@ -808,6 +815,13 @@ bool IOLoginData::savePlayer(Player* player)
 
 	for (Item* item : player->getInbox()->getItemList()) {
 		itemList.emplace_back(0, item);
+
+		auto pokeball = item->getPokeball();
+		if (pokeball)
+		{
+			auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
+			savePokemon(player->getGUID(), pokeball, p_uid);
+		}
 	}
 
 	if (!saveItems(player, itemList, inboxQuery, propWriteStream)) {
