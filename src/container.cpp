@@ -269,6 +269,13 @@ ReturnValue Container::queryAdd(int32_t index, const Thing& thing, uint32_t coun
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
+	if (item->getPokeball()) {
+		const DepotChest* depotChest = dynamic_cast<const DepotChest*>(this);
+		if (!depotChest || !depotChest->isPokemonBox()) {
+			return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
+		}
+	}
+
 	if (!item->isPickupable()) {
 		return RETURNVALUE_CANNOTPICKUP;
 	}
@@ -299,6 +306,16 @@ ReturnValue Container::queryAdd(int32_t index, const Thing& thing, uint32_t coun
 				return RETURNVALUE_THISISIMPOSSIBLE;
 			}
 
+			if (const DepotChest* depotChest = dynamic_cast<const DepotChest*>(cylinder)) {
+				if (!depotChest->canModify(actor)) {
+					return RETURNVALUE_NOTPOSSIBLE;
+				}
+
+				if (!depotChest->isItemAllowed(*item)) {
+					return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
+				}
+			}
+
 			if (dynamic_cast<const Inbox*>(cylinder)) {
 				return RETURNVALUE_CONTAINERNOTENOUGHROOM;
 			}
@@ -306,7 +323,7 @@ ReturnValue Container::queryAdd(int32_t index, const Thing& thing, uint32_t coun
 			cylinder = cylinder->getParent();
 		}
 
-		if (index == INDEX_WHEREEVER && size() >= capacity()) {
+		if (index == INDEX_WHEREEVER && size() >= capacity() && !hasPagination()) {
 			return RETURNVALUE_CONTAINERNOTENOUGHROOM;
 		}
 	} else {
@@ -344,7 +361,7 @@ ReturnValue Container::queryMaxCount(int32_t index, const Thing& thing, uint32_t
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
-	if (hasBitSet(FLAG_NOLIMIT, flags)) {
+	if (hasBitSet(FLAG_NOLIMIT, flags) || hasPagination()) {
 		maxQueryCount = std::max<uint32_t>(1, count);
 		return RETURNVALUE_NOERROR;
 	}
@@ -396,6 +413,24 @@ ReturnValue Container::queryRemove(const Thing& thing, uint32_t count, uint32_t 
 	const Item* item = thing.getItem();
 	if (item == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	if (actor) {
+		if (const DepotChest* depotChest = dynamic_cast<const DepotChest*>(this)) {
+			if (!depotChest->canModify(actor)) {
+				return RETURNVALUE_NOTPOSSIBLE;
+			}
+		}
+
+		const Cylinder* cylinder = getParent();
+		while (cylinder) {
+			if (const DepotChest* depotChest = dynamic_cast<const DepotChest*>(cylinder)) {
+				if (!depotChest->canModify(actor)) {
+					return RETURNVALUE_NOTPOSSIBLE;
+				}
+			}
+			cylinder = cylinder->getParent();
+		}
 	}
 
 	if (count == 0 || (item->isStackable() && count > item->getItemCount())) {

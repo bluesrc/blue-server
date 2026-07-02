@@ -4,16 +4,28 @@
 #ifndef FS_DEPOTCHEST_H_6538526014684E3DBC92CC12815B6766
 #define FS_DEPOTCHEST_H_6538526014684E3DBC92CC12815B6766
 
+#include <limits>
+
 #include "container.h"
 
 class DepotChest final : public Container
 {
 	public:
-		explicit DepotChest(uint16_t type);
+		static constexpr uint16_t NO_DEPOT_ID = std::numeric_limits<uint16_t>::max();
+
+		explicit DepotChest(uint16_t type, bool paginated = true, uint16_t depotId = NO_DEPOT_ID);
 
 		//serialization
 		void setMaxDepotItems(uint32_t maxitems) {
 			maxDepotItems = maxitems;
+		}
+		bool isItemAllowed(const Item& item) const;
+		bool canModify(const Creature* actor) const;
+		uint16_t getDepotId() const {
+			return depotId;
+		}
+		bool isPokemonBox() const {
+			return depotId >= 5 && depotId <= 16;
 		}
 
 		//cylinder implementations
@@ -34,7 +46,8 @@ class DepotChest final : public Container
 		}
 
 	private:
-		uint32_t maxDepotItems;
+		uint32_t maxDepotItems = 0;
+		uint16_t depotId = NO_DEPOT_ID;
 };
 
 #endif

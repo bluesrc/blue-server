@@ -927,9 +927,7 @@ void Game::playerMoveItem(Player* player, const Position& fromPos,
 		item = thing->getItem();
 	}
 
-	//todo: enable to move to depot
-	if(item->getPokeball())
-	{
+	if (item->getPokeball() && toPos.x != 0xFFFF) {
 		player->sendCancelMessage(RETURNVALUE_CANNOTTHROWPOKEBALL);
 		return;
 	}
@@ -1114,6 +1112,19 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 	//check if we can add this item
 	ReturnValue ret = toCylinder->queryAdd(index, *item, count, flags, actor);
 	if (ret == RETURNVALUE_NEEDEXCHANGE) {
+		if (fromCylinder == toCylinder) {
+			if (Player* inventoryPlayer = dynamic_cast<Player*>(fromCylinder)) {
+				const int32_t sourceIndex = inventoryPlayer->getThingIndex(item);
+				if (inventoryPlayer->swapPokeballs(sourceIndex, index)) {
+					if (actorPlayer && fromPos && toPos) {
+						g_events->eventPlayerOnItemMoved(actorPlayer, item, count, *fromPos, *toPos, fromCylinder, toCylinder);
+						g_events->eventPlayerOnItemMoved(actorPlayer, toItem, toItem->getItemCount(), *toPos, *fromPos, toCylinder, fromCylinder);
+					}
+					return RETURNVALUE_NOERROR;
+				}
+			}
+		}
+
 		//check if we can add it to source cylinder
 		ret = fromCylinder->queryAdd(fromCylinder->getThingIndex(item), *toItem, toItem->getItemCount(), 0);
 		if (ret == RETURNVALUE_NOERROR) {
@@ -5169,12 +5180,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 			return;
 		}
 
-		DepotChest* depotChest = player->getDepotChest(player->getLastDepotId(), false);
-		if (!depotChest) {
-			return;
-		}
-
-		std::forward_list<Item*> itemList = getMarketItemList(it.wareId, amount, depotChest, player->getInbox());
+		const auto& itemList = getMarketItemList(it.wareId, amount, *player);
 		if (itemList.empty()) {
 			return;
 		}
@@ -5215,7 +5221,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 
 	IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.id, amount, price, anonymous);
 
-	player->sendMarketEnter(player->getLastDepotId());
+	player->sendMarketEnter();
 	const MarketOfferList& buyOffers = IOMarket::getActiveOffers(MARKETACTION_BUY, it.id);
 	const MarketOfferList& sellOffers = IOMarket::getActiveOffers(MARKETACTION_SELL, it.id);
 	player->sendMarketBrowseItem(it.id, buyOffers, sellOffers);
@@ -5239,7 +5245,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 
 	if (offer.type == MARKETACTION_BUY) {
 		player->bankBalance += static_cast<uint64_t>(offer.price) * offer.amount;
-		player->sendMarketEnter(player->getLastDepotId());
+		player->sendMarketEnter();
 	} else {
 		const ItemType& it = Item::items[offer.itemId];
 		if (it.id == 0) {
@@ -5280,7 +5286,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 	offer.amount = 0;
 	offer.timestamp += g_config.getNumber(ConfigManager::MARKET_OFFER_DURATION);
 	player->sendMarketCancelOffer(offer);
-	player->sendMarketEnter(player->getLastDepotId());
+	player->sendMarketEnter();
 }
 
 void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16_t counter, uint16_t amount)
@@ -5320,12 +5326,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 	uint64_t totalPrice = static_cast<uint64_t>(offer.price) * amount;
 
 	if (offer.type == MARKETACTION_BUY) {
-		DepotChest* depotChest = player->getDepotChest(player->getLastDepotId(), false);
-		if (!depotChest) {
-			return;
-		}
-
-		std::forward_list<Item*> itemList = getMarketItemList(it.wareId, amount, depotChest, player->getInbox());
+		const auto& itemList = getMarketItemList(it.wareId, amount, *player);
 		if (itemList.empty()) {
 			return;
 		}
@@ -5456,7 +5457,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 		IOMarket::acceptOffer(offer.id, amount);
 	}
 
-	player->sendMarketEnter(player->getLastDepotId());
+	player->sendMarketEnter();
 	offer.timestamp += marketOfferDuration;
 	player->sendMarketAcceptOffer(offer);
 }
@@ -5468,25 +5469,57 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		return;
 	}
 
+	static constexpr uint8_t BOX_EXTENDED_OPCODE = 73;
+	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
+	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
+
+	if (opcode == BOX_EXTENDED_OPCODE) {
+		if (buffer.empty()) {
+			return;
+		}
+
+		uint16_t depotId = 0;
+		for (const char character : buffer) {
+			if (character < '0' || character > '9') {
+				return;
+			}
+
+			depotId = static_cast<uint16_t>((depotId * 10) + (character - '0'));
+			if (depotId >= BOX_DEPOT_COUNT) {
+				return;
+			}
+		}
+
+		player->openDepotBox(depotId, BOX_CONTAINER_ID);
+		return;
+	}
+
 	for (CreatureEvent* creatureEvent : player->getCreatureEvents(CREATURE_EVENT_EXTENDED_OPCODE)) {
 		creatureEvent->executeExtendedOpcode(player, opcode, buffer);
 	}
 }
 
-std::forward_list<Item*> Game::getMarketItemList(uint16_t wareId, uint16_t sufficientCount, DepotChest* depotChest, Inbox* inbox)
+std::vector<Item*> Game::getMarketItemList(uint16_t wareId, uint16_t sufficientCount, const Player& player)
 {
-	std::forward_list<Item*> itemList;
 	uint16_t count = 0;
+	std::list<Container*> containers{ player.getInbox() };
 
-	std::list<Container*> containers { depotChest, inbox };
+	for (const auto& chest : player.depotChests) {
+		if (!chest.second->empty()) {
+			containers.push_front(chest.second);
+		}
+	}
+
+	std::vector<Item*> itemList;
+
 	do {
 		Container* container = containers.front();
 		containers.pop_front();
 
 		for (Item* item : container->getItemList()) {
-			Container* c = item->getContainer();
-			if (c && !c->empty()) {
-				containers.push_back(c);
+			Container* containerItem = item->getContainer();
+			if (containerItem && !containerItem->empty()) {
+				containers.push_back(containerItem);
 				continue;
 			}
 
@@ -5495,7 +5528,7 @@ std::forward_list<Item*> Game::getMarketItemList(uint16_t wareId, uint16_t suffi
 				continue;
 			}
 
-			if (c && (!itemType.isContainer() || c->capacity() != itemType.maxItems)) {
+			if (containerItem && (!itemType.isContainer() || containerItem->capacity() != itemType.maxItems)) {
 				continue;
 			}
 
@@ -5503,7 +5536,7 @@ std::forward_list<Item*> Game::getMarketItemList(uint16_t wareId, uint16_t suffi
 				continue;
 			}
 
-			itemList.push_front(item);
+			itemList.push_back(item);
 
 			count += Item::countByType(item, -1);
 			if (count >= sufficientCount) {
@@ -5511,7 +5544,7 @@ std::forward_list<Item*> Game::getMarketItemList(uint16_t wareId, uint16_t suffi
 			}
 		}
 	} while (!containers.empty());
-	return std::forward_list<Item*>();
+	return {};
 }
 
 void Game::forceAddCondition(uint32_t creatureId, Condition* condition)
