@@ -4,10 +4,41 @@
 #include "otpch.h"
 
 #include "depotchest.h"
+#include "creature.h"
 #include "tools.h"
 
-DepotChest::DepotChest(uint16_t type) :
-	Container(type), maxDepotItems(2000) {}
+DepotChest::DepotChest(uint16_t type, bool paginated /*= true*/, uint16_t depotId /*= NO_DEPOT_ID*/) :
+	Container{type, items[type].maxItems, true, paginated}, depotId{depotId} {}
+
+bool DepotChest::isItemAllowed(const Item& item) const
+{
+	if (depotId <= 4) {
+		if (item.getPokeball() != nullptr) {
+			return false;
+		}
+
+		if (const Container* container = item.getContainer()) {
+			for (ContainerIterator it = container->iterator(); it.hasNext(); it.advance()) {
+				if ((*it)->getPokeball() != nullptr) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	if (isPokemonBox()) {
+		return item.getPokeball() != nullptr;
+	}
+
+	return true;
+}
+
+bool DepotChest::canModify(const Creature* actor) const
+{
+	return depotId == NO_DEPOT_ID || actor == nullptr || actor->getZone() == ZONE_PROTECTION;
+}
 
 ReturnValue DepotChest::queryAdd(int32_t index, const Thing& thing, uint32_t count,
 		uint32_t flags, Creature* actor/* = nullptr*/) const
@@ -15,6 +46,14 @@ ReturnValue DepotChest::queryAdd(int32_t index, const Thing& thing, uint32_t cou
 	const Item* item = thing.getItem();
 	if (item == nullptr) {
 		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	if (!canModify(actor)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
+	if (!isItemAllowed(*item)) {
+		return RETURNVALUE_ITEMCANNOTBEMOVEDTHERE;
 	}
 
 	bool skipLimit = hasBitSet(FLAG_NOLIMIT, flags);

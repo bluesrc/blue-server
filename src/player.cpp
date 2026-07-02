@@ -17,6 +17,7 @@
 #include "weapons.h"
 #include "pokeball.h"
 #include "pokeballs.h"
+#include "tools.h"
 
 #include <fmt/format.h>
 
@@ -52,8 +53,8 @@ Player::~Player()
 		}
 	}
 
-	for (const auto& it : depotLockerMap) {
-		it.second->removeInbox(inbox);
+	if (depotLocker) {
+		depotLocker->removeInbox(inbox);
 	}
 
 	inbox->decrementReferenceCounter();
@@ -815,25 +816,85 @@ DepotChest* Player::getDepotChest(uint32_t depotId, bool autoCreate)
 		return nullptr;
 	}
 
-	it = depotChests.emplace(depotId, new DepotChest(ITEM_DEPOT)).first;
+	uint16_t depotItemId = getDepotBoxId(depotId);
+	if (depotItemId == 0) {
+		return nullptr;
+	}
+
+	it = depotChests.emplace(depotId, new DepotChest(depotItemId, true, depotId)).first;
 	it->second->setMaxDepotItems(getMaxDepotItems());
 	return it->second;
 }
 
-DepotLocker* Player::getDepotLocker(uint32_t depotId)
+bool Player::swapPokeballs(int32_t firstSlot, int32_t secondSlot)
 {
-	auto it = depotLockerMap.find(depotId);
-	if (it != depotLockerMap.end()) {
-		inbox->setParent(it->second.get());
-		return it->second.get();
+	if (firstSlot < CONST_SLOT_POKEBALL1 || firstSlot > CONST_SLOT_POKEBALL6 ||
+			secondSlot < CONST_SLOT_POKEBALL1 || secondSlot > CONST_SLOT_POKEBALL6) {
+		return false;
 	}
 
-	it = depotLockerMap.emplace(depotId, new DepotLocker(ITEM_LOCKER1)).first;
-	it->second->setDepotId(depotId);
-	it->second->internalAddThing(Item::CreateItem(ITEM_MARKET));
-	it->second->internalAddThing(inbox);
-	it->second->internalAddThing(getDepotChest(depotId, true));
-	return it->second.get();
+	Item* firstItem = inventory[firstSlot];
+	Item* secondItem = inventory[secondSlot];
+	if (!firstItem || !secondItem) {
+		return false;
+	}
+
+	Pokeball* firstPokeball = firstItem->getPokeball();
+	Pokeball* secondPokeball = secondItem->getPokeball();
+	if (!firstPokeball || !secondPokeball) {
+		return false;
+	}
+
+	std::swap(inventory[firstSlot], inventory[secondSlot]);
+	sendInventoryItem(static_cast<slots_t>(firstSlot), secondItem);
+	sendInventoryItem(static_cast<slots_t>(secondSlot), firstItem);
+
+	if (client) {
+		client->sendPokemonInfo(firstSlot, secondPokeball->getPokemonInfo(), activePokemon == secondPokeball);
+		client->sendPokemonInfo(secondSlot, firstPokeball->getPokemonInfo(), activePokemon == firstPokeball);
+	}
+
+	return true;
+}
+
+bool Player::openDepotBox(uint32_t depotId, uint8_t containerId)
+{
+	DepotChest* depotChest = getDepotChest(depotId, true);
+	if (!depotChest) {
+		return false;
+	}
+
+	depotChest->setParent(this);
+
+	if (Container* previousContainer = getContainerByID(containerId)) {
+		onCloseContainer(previousContainer);
+	}
+
+	addContainer(containerId, depotChest);
+	sendContainer(containerId, depotChest, false, 0);
+	return true;
+}
+
+DepotLocker& Player::getDepotLocker()
+{
+	if (!depotLocker) {
+		depotLocker = std::make_shared<DepotLocker>(ITEM_LOCKER);
+		depotLocker->internalAddThing(Item::CreateItem(ITEM_MARKET));
+		depotLocker->internalAddThing(inbox);
+
+		DepotChest* depotChest = new DepotChest(ITEM_DEPOT, false);
+		if (depotChest) {
+			// adding in reverse to align them from first to last
+			for (int16_t depotId = depotChest->capacity(); depotId >= 0; --depotId) {
+				if (DepotChest* box = getDepotChest(depotId, true)) {
+					depotChest->internalAddThing(box);
+				}
+			}
+
+			depotLocker->internalAddThing(depotChest);
+		}
+	}
+	return *depotLocker;
 }
 
 void Player::sendCancelMessage(ReturnValue message) const
@@ -1282,6 +1343,17 @@ void Player::onCreatureMove(Creature* creature, const Tile* newTile, const Posit
 
 	if (creature != this) {
 		return;
+	}
+
+	if (oldTile && newTile &&
+			(oldTile->getZone() == ZONE_PROTECTION) != (newTile->getZone() == ZONE_PROTECTION)) {
+		for (const auto& entry : openContainers) {
+			if (const DepotChest* depotChest = dynamic_cast<const DepotChest*>(entry.second.container)) {
+				if (depotChest->getDepotId() != DepotChest::NO_DEPOT_ID) {
+					sendContainer(entry.first, depotChest, false, entry.second.index);
+				}
+			}
+		}
 	}
 
 	if (tradeState != TRADE_TRANSFER) {
@@ -2796,6 +2868,14 @@ void Player::addThing(int32_t index, Thing* thing)
 
 	//send to client
 	sendInventoryItem(static_cast<slots_t>(index), item);
+
+	if (index >= CONST_SLOT_POKEBALL1 && index <= CONST_SLOT_POKEBALL6) {
+		if (Pokeball* pokeball = item->getPokeball()) {
+			if (client) {
+				client->sendPokemonInfo(index, pokeball->getPokemonInfo(), activePokemon == pokeball);
+			}
+		}
+	}
 }
 
 void Player::updateThing(Thing* thing, uint16_t itemId, uint32_t count)
@@ -3055,6 +3135,12 @@ void Player::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_
 
 			for (const auto& it : openContainers) {
 				Container* container = it.second.container;
+				if (const DepotChest* depotChest = dynamic_cast<const DepotChest*>(container)) {
+					if (depotChest->getDepotId() != DepotChest::NO_DEPOT_ID) {
+						continue;
+					}
+				}
+
 				if (!Position::areInRange<1, 1, 0>(container->getPosition(), getPosition())) {
 					containers.push_back(container);
 				}

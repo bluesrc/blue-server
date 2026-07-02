@@ -344,17 +344,12 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 	}
 
 	if (Container* container = item->getContainer()) {
-		Container* openContainer;
-
-		//depot container
-		if (DepotLocker* depot = container->getDepotLocker()) {
-			DepotLocker* myDepotLocker = player->getDepotLocker(depot->getDepotId());
-			myDepotLocker->setParent(depot->getParent()->getTile());
-			openContainer = myDepotLocker;
-			player->setLastDepotId(depot->getDepotId());
-		} else {
-			openContainer = container;
+		if (container->getDepotLocker()) {
+			player->openDepotBox(0, 0x0F);
+			return RETURNVALUE_NOERROR;
 		}
+
+		Container* openContainer = container;
 
 		uint32_t corpseOwner = container->getCorpseOwner();
 		if (corpseOwner != 0 && !player->canOpenCorpse(corpseOwner)) {
@@ -514,11 +509,7 @@ namespace {
 
 bool enterMarket(Player* player, Item*, const Position&, Thing*, const Position&, bool)
 {
-	if (player->getLastDepotId() == -1) {
-		return false;
-	}
-
-	player->sendMarketEnter(player->getLastDepotId());
+	player->sendMarketEnter();
 	return true;
 }
 

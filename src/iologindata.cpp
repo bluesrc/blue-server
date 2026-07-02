@@ -778,31 +778,29 @@ bool IOLoginData::savePlayer(Player* player)
 		return false;
 	}
 
-	if (player->lastDepotId != -1) {
-		//save depot items
-		if (!db.executeQuery(fmt::format("DELETE FROM `player_depotitems` WHERE `player_id` = {:d}", player->getGUID()))) {
-			return false;
-		}
+	//save depot items
+	if (!db.executeQuery(fmt::format("DELETE FROM `player_depotitems` WHERE `player_id` = {:d}", player->getGUID()))) {
+		return false;
+	}
 
-		DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
-		itemList.clear();
+	DBInsert depotQuery("INSERT INTO `player_depotitems` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
+	itemList.clear();
 
-		for (const auto& it : player->depotChests) {
-			for (Item* item : it.second->getItemList()) {
-				itemList.emplace_back(it.first, item);
+	for (const auto& it : player->depotChests) {
+		for (Item* item : it.second->getItemList()) {
+			itemList.emplace_back(it.first, item);
 
-				auto pokeball = item->getPokeball();
-				if (pokeball)
-				{
-					auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
-					savePokemon(player->getGUID(), pokeball, p_uid);
-				}
+			auto pokeball = item->getPokeball();
+			if (pokeball)
+			{
+				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
+				savePokemon(player->getGUID(), pokeball, p_uid);
 			}
 		}
+	}
 
-		if (!saveItems(player, itemList, depotQuery, propWriteStream)) {
-			return false;
-		}
+	if (!saveItems(player, itemList, depotQuery, propWriteStream)) {
+		return false;
 	}
 
 	//save inbox items
