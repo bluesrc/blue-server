@@ -2594,6 +2594,11 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "isPokemon", LuaScriptInterface::luaPokemonIsPokemon);
 
 	registerMethod("Pokemon", "getType", LuaScriptInterface::luaPokemonGetType);
+	registerMethod("Pokemon", "getLevel", LuaScriptInterface::luaPokemonGetLevel);
+	registerMethod("Pokemon", "getExperience", LuaScriptInterface::luaPokemonGetExperience);
+	registerMethod("Pokemon", "setLevel", LuaScriptInterface::luaPokemonSetLevel);
+	registerMethod("Pokemon", "addExperience", LuaScriptInterface::luaPokemonAddExperience);
+	registerMethod("Pokemon", "addLevel", LuaScriptInterface::luaPokemonAddLevel);
 
 	registerMethod("Pokemon", "rename", LuaScriptInterface::luaPokemonRename);
 
@@ -4572,6 +4577,7 @@ int LuaScriptInterface::luaGameCreateContainer(lua_State* L)
 
 int LuaScriptInterface::luaGameCreatePokemon(lua_State* L)
 {
+	// Game.createPokemon(pokemonName, position[, level = 1[, extended = false[, force = false]]])
 	// Game.createPokemon(pokemonName, position[, extended = false[, force = false]])
 	Pokemon* pokemon = Pokemon::createPokemon(getString(L, 1));
 	if (!pokemon) {
@@ -4580,8 +4586,19 @@ int LuaScriptInterface::luaGameCreatePokemon(lua_State* L)
 	}
 
 	const Position& position = getPosition(L, 2);
-	bool extended = getBoolean(L, 3, false);
-	bool force = getBoolean(L, 4, false);
+	uint8_t level = 1;
+	bool extended = false;
+	bool force = false;
+	if (isNumber(L, 3)) {
+		const int32_t requestedLevel = getNumber<int32_t>(L, 3);
+		level = static_cast<uint8_t>(std::clamp<int32_t>(requestedLevel, 1, 100));
+		extended = getBoolean(L, 4, false);
+		force = getBoolean(L, 5, false);
+	} else {
+		extended = getBoolean(L, 3, false);
+		force = getBoolean(L, 4, false);
+	}
+	pokemon->setLevel(level);
 	if (g_events->eventPokemonOnSpawn(pokemon, position, false, true) || force) {
 		if (g_game.placeCreature(pokemon, position, extended, force)) {
 			pushUserdata<Pokemon>(L, pokemon);
@@ -10530,7 +10547,7 @@ int LuaScriptInterface::luaPlayerGetStoreInbox(lua_State* L)
 
 int LuaScriptInterface::luaPlayerAddPokemon(lua_State* L)
 {
-	// player:addPokemon(pokeball, pokemon)
+	// player:addPokemon(pokeball, pokemon[, level = 1])
 	Player* player = getUserdata<Player>(L, 1);
 	if (!player) {
 		lua_pushnil(L);
@@ -10545,7 +10562,9 @@ int LuaScriptInterface::luaPlayerAddPokemon(lua_State* L)
 	if (pokemon.empty())
 		return 1;
 
-	player->addPokemon(pokeball, pokemon);
+	const int32_t requestedLevel = getNumber<int32_t>(L, 4, 1);
+	const uint8_t level = static_cast<uint8_t>(std::clamp<int32_t>(requestedLevel, 1, 100));
+	player->addPokemon(pokeball, pokemon, level);
 	return 1;
 }
 
@@ -10605,6 +10624,74 @@ int LuaScriptInterface::luaPokemonGetType(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetLevel(lua_State* L)
+{
+	// pokemon:getLevel()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (pokemon) {
+		lua_pushnumber(L, pokemon->getLevel());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetExperience(lua_State* L)
+{
+	// pokemon:getExperience()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (pokemon) {
+		lua_pushnumber(L, pokemon->getExperience());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonSetLevel(lua_State* L)
+{
+	// pokemon:setLevel(level[, fullHealth = true])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const int32_t requestedLevel = getNumber<int32_t>(L, 2);
+	const uint8_t level = static_cast<uint8_t>(std::clamp<int32_t>(requestedLevel, 1, 100));
+	const bool fullHealth = getBoolean(L, 3, true);
+	pushBoolean(L, pokemon->setLevel(level, fullHealth));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonAddExperience(lua_State* L)
+{
+	// pokemon:addExperience(experience[, sendText = false])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const uint64_t experience = getNumber<uint64_t>(L, 2);
+	const bool sendText = getBoolean(L, 3, false);
+	lua_pushnumber(L, pokemon->addExperience(experience, sendText));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonAddLevel(lua_State* L)
+{
+	// pokemon:addLevel([sendText = false])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, pokemon->addLevel(getBoolean(L, 2, false)));
 	return 1;
 }
 

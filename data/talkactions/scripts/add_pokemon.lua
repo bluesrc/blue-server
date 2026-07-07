@@ -7,22 +7,34 @@ function onSay(player, words, param)
 		return false
 	end
 
-    local split = param:splitTrimmed(",")
-	if #split < 1 or #split > 2 then
-		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Error creating a pokemon, wrong parameters.")
-		return false
+	local split = param:splitTrimmed(",")
+	if #split < 1 or #split > 3 then
+		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Usage: /ap <pokemon>[, level] or /ap <pokeball>, <pokemon>[, level]")
+		return true
 	end
 
-	local pokeball = nil
-	local pokemon = nil
+	local pokeball = "pokeball"
+	local pokemon
+	local level = 1
+
 	if #split == 1 then
-		pokeball = 'pokeball'
 		pokemon = split[1]
+	elseif #split == 2 and tonumber(split[2]) then
+		pokemon = split[1]
+		level = tonumber(split[2])
 	else
 		pokeball = split[1]
 		pokemon = split[2]
+		if #split == 3 then
+			level = tonumber(split[3])
+		end
 	end
 
-	player:addPokemon(pokeball, pokemon)
+	if not level or level ~= math.floor(level) or level < 1 or level > 100 then
+		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Pokemon level must be an integer between 1 and 100.")
+		return true
+	end
+
+	player:addPokemon(pokeball, pokemon, level)
 	return true
 end

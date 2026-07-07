@@ -43,7 +43,7 @@ public:
 
 	bool isPokemonFainted() { return pInfo.fainted; }
 
-	static PokemonInfo_t createNewPokemon(std::string pokemon);
+	static PokemonInfo_t createNewPokemon(std::string pokemon, uint8_t level = 1);
 	static PokemonInfo_t createPokeballFromPokemon(Pokemon* pokemon);
 
 private:

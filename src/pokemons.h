@@ -285,6 +285,7 @@ struct PokemonInfo_t
 	bool fainted;
 
 	uint8_t level;
+	uint64_t experience;
 	PokemonGenders_t gender;
 	uint8_t friendship;
 	bool shiny;
@@ -301,6 +302,7 @@ struct PokemonInfo_t
 		maxHealth(1),
 		fainted(false),
 		level(0),
+		experience(0),
 		gender(GENDER_UNDEFINED),
 		friendship(0),
 		shiny(false)

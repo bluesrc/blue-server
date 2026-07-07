@@ -4721,7 +4721,7 @@ void Player::updateRegeneration()
 	}
 }
 
-void Player::addPokemon(std::string pokeball, std::string pokemon)
+void Player::addPokemon(std::string pokeball, std::string pokemon, uint8_t level)
 {
 	auto item = Item::CreateItem(Item::items.getItemIdByName(pokeball));
 
@@ -4731,7 +4731,7 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 		if (ret != RETURNVALUE_NOERROR)
 			continue;
 
-		auto pInfo = Pokeball::createNewPokemon(pokemon);
+		auto pInfo = Pokeball::createNewPokemon(pokemon, level);
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
 		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
@@ -4742,7 +4742,7 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 	}
 
 	{
-		auto pInfo = Pokeball::createNewPokemon(pokemon);
+		auto pInfo = Pokeball::createNewPokemon(pokemon, level);
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
 		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
@@ -4751,6 +4751,21 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 	}
 
 	sendPokemonToBox(item);
+}
+
+void Player::updatePokemonInfo(Pokeball* pokeball)
+{
+	if (!pokeball || !client) {
+		return;
+	}
+
+	auto it = std::find(std::begin(inventory), std::end(inventory), pokeball);
+	if (it == std::end(inventory)) {
+		return;
+	}
+
+	const auto slot = static_cast<uint16_t>(std::distance(std::begin(inventory), it));
+	client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
 }
 
 void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)

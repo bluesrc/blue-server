@@ -8,6 +8,7 @@
 #include "moves.h"
 #include "events.h"
 #include "configmanager.h"
+#include "pokeball.h"
 
 #include <numeric>
 
@@ -60,13 +61,9 @@ Pokemon::Pokemon(PokemonType* mType) :
 	ivs.sp_defense = distribution(generator);
 	ivs.speed = distribution(generator);
 
-	//todo: nature modifier
-	stats.hp = health = healthMax = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
-	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
-	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5; 
-	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
-	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5; 
-	stats.speed = baseSpeed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5 /*adaptation: */ + 100;
+	experience = getExperienceForLevel(mType->info.level_rate, level);
+	updateStats();
+	health = healthMax;
 
 	friendship = mType->info.base_friendship;
 
@@ -104,6 +101,13 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	skull = mType->info.skull;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
+	level = std::clamp<uint8_t>(pInfo.level, 1, 100);
+	experience = std::max(pInfo.experience, getExperienceForLevel(mType->info.level_rate, level));
+	const uint64_t maxExperience = getExperienceForLevel(mType->info.level_rate, 100);
+	experience = std::min(experience, maxExperience);
+	while (level < 100 && experience >= getExperienceForLevel(mType->info.level_rate, level + 1)) {
+		++level;
+	}
 
 	ivs.hp = pInfo.ivs.hp;
 	ivs.attack = pInfo.ivs.attack;
@@ -119,21 +123,11 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	evs.sp_defense = pInfo.evs.sp_defense;
 	evs.speed = pInfo.evs.speed;
 
-	//todo: nature modifier
-	stats.hp = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
-	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
-	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5;
-	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
-	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5;
-	stats.speed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5;
-
-	healthMax = stats.hp;
-	health = pInfo.health;
-	baseSpeed = stats.speed + 100; /* adaptation */
+	updateStats();
+	health = std::clamp(pInfo.health, 0, healthMax);
 
 	friendship = pInfo.friendship;
 	shiny = pInfo.shiny;
-	level = pInfo.level;
 	gender = pInfo.gender;
 
 	// register creature events
@@ -148,6 +142,199 @@ Pokemon::~Pokemon()
 {
 	clearTargetList();
 	clearFriendList();
+}
+
+uint64_t Pokemon::getExperienceForLevel(LevelRate_t rate, uint8_t requestedLevel)
+{
+	const uint64_t n = std::clamp<uint8_t>(requestedLevel, 1, 100);
+	const uint64_t n2 = n * n;
+	const uint64_t n3 = n2 * n;
+
+	switch (rate) {
+		case RATE_ERRATIC:
+			if (n <= 50) {
+				return n3 * (100 - n) / 50;
+			}
+			if (n <= 68) {
+				return n3 * (150 - n) / 100;
+			}
+			if (n <= 98) {
+				return n3 * ((1911 - (10 * n)) / 3) / 500;
+			}
+			return n3 * (160 - n) / 100;
+		case RATE_FAST:
+			return 4 * n3 / 5;
+		case RATE_MEDIUM_SLOW: {
+			if (n == 1) {
+				return 0;
+			}
+			const int64_t value = static_cast<int64_t>(6 * n3 / 5) - static_cast<int64_t>(15 * n2) + static_cast<int64_t>(100 * n) - 140;
+			return static_cast<uint64_t>(std::max<int64_t>(0, value));
+		}
+		case RATE_SLOW:
+			return 5 * n3 / 4;
+		case RATE_FLUCTUATING:
+			if (n <= 15) {
+				return n3 * (((n + 1) / 3) + 24) / 50;
+			}
+			if (n <= 35) {
+				return n3 * (n + 14) / 50;
+			}
+			return n3 * ((n / 2) + 32) / 50;
+		case RATE_MEDIUM_FAST:
+		case RATE_NONE:
+		default:
+			return n == 1 ? 0 : n3;
+	}
+}
+
+void Pokemon::updateStats(bool preserveHealth)
+{
+	const int32_t previousMaxHealth = healthMax;
+
+	// Nature modifiers are intentionally left for the existing nature implementation TODO.
+	stats.hp = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
+	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
+	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5;
+	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
+	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5;
+	stats.speed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5;
+
+	healthMax = stats.hp;
+	setBaseSpeed(stats.speed + 100); // Adaptation for the server movement-speed scale.
+	if (preserveHealth) {
+		health = std::clamp(health + (healthMax - previousMaxHealth), 0, healthMax);
+	}
+}
+
+void Pokemon::syncPokeball()
+{
+	Player* player = master ? master->getPlayer() : nullptr;
+	Pokeball* pokeball = player ? player->getActivePokemon() : nullptr;
+	if (!pokeball || pokeball->getPokemon() != this) {
+		return;
+	}
+
+	PokemonInfo_t info = pokeball->getPokemonInfo();
+	info.health = health;
+	info.maxHealth = healthMax;
+	info.level = level;
+	info.experience = experience;
+	info.stats = stats;
+	pokeball->setPokemonInfo(info);
+	player->updatePokemonInfo(pokeball);
+}
+
+uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
+{
+	if (amount == 0 || level >= 100) {
+		return 0;
+	}
+
+	const uint64_t maxExperience = getExperienceForLevel(mType->info.level_rate, 100);
+	const uint64_t oldExperience = experience;
+	experience = amount > maxExperience - experience ? maxExperience : experience + amount;
+	const uint64_t gainedExperience = experience - oldExperience;
+	if (gainedExperience == 0) {
+		return 0;
+	}
+
+	const uint8_t previousLevel = level;
+	while (level < 100 && experience >= getExperienceForLevel(mType->info.level_rate, level + 1)) {
+		++level;
+	}
+
+	if (level != previousLevel) {
+		updateStats(true);
+		g_game.changeSpeed(this, 0);
+		g_game.addCreatureHealth(this);
+		g_game.addMagicEffect(this->getPosition(), CONST_ME_HOLYDAMAGE);
+	}
+
+	syncPokeball();
+
+	if (sendText) {
+		TextMessage message(MESSAGE_EXPERIENCE_OTHERS, ucfirst(getNameDescription()) + " gained " + std::to_string(gainedExperience) + (gainedExperience != 1 ? " experience points." : " experience point."));
+		message.position = position;
+		message.primary.color = TEXTCOLOR_WHITE_EXP;
+		message.primary.value = gainedExperience;
+
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, position, false, true);
+		for (Creature* spectator : spectators) {
+			spectator->getPlayer()->sendTextMessage(message);
+		}
+	}
+
+	if (level != previousLevel) {
+		if (Player* player = master ? master->getPlayer() : nullptr) {
+			player->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Your {} advanced from Level {:d} to Level {:d}.", getName(), previousLevel, level));
+		}
+	}
+
+	return level - previousLevel;
+}
+
+bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
+{
+	newLevel = std::clamp<uint8_t>(newLevel, 1, 100);
+	if (level == newLevel) {
+		if (fullHealth) {
+			health = healthMax;
+			if (getTile()) {
+				g_game.addCreatureHealth(this);
+			}
+		}
+		syncPokeball();
+		return false;
+	}
+
+	level = newLevel;
+	experience = getExperienceForLevel(mType->info.level_rate, level);
+	updateStats(!fullHealth);
+	if (fullHealth) {
+		health = healthMax;
+	}
+
+	if (getTile()) {
+		g_game.changeSpeed(this, 0);
+		g_game.addCreatureHealth(this);
+	}
+	syncPokeball();
+	return true;
+}
+
+bool Pokemon::addLevel(bool sendText)
+{
+	if (level >= 100) {
+		return false;
+	}
+
+	const uint64_t nextLevelExperience = getExperienceForLevel(mType->info.level_rate, level + 1);
+	addExperience(nextLevelExperience - experience, sendText);
+	return true;
+}
+
+uint64_t Pokemon::getGainedExperience(Creature* attacker) const
+{
+	if (!attacker || mType->info.base_experience == 0) {
+		return 0;
+	}
+
+	// Generation IV flat formula for a wild battle: floor(b * L / 7),
+	// distributed by each attacker's contribution in this real-time battle system.
+	const uint64_t battleExperience = static_cast<uint64_t>(mType->info.base_experience) * level / 7;
+	return std::floor(getDamageRatio(attacker) * battleExperience);
+}
+
+void Pokemon::onGainExperience(uint64_t gainExp, Creature* target)
+{
+	if (gainExp == 0 || !master) {
+		return;
+	}
+
+	addExperience(gainExp, true);
+	master->onGainExperience(gainExp / 2, target);
 }
 
 void Pokemon::addList()

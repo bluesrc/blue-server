@@ -24,7 +24,7 @@ void Pokeball::setPokemonMaxHealth()
 	pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
 }
 
-PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon)
+PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, uint8_t level)
 {
 	auto pInfo = PokemonInfo_t();
 	pInfo.p_uid = g_game.assignPokemonUID();
@@ -40,9 +40,9 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon)
 	pInfo.ivs.sp_defense = distribution(generator);
 	pInfo.ivs.speed = distribution(generator);
 
-	pInfo.level = 1;
-
 	auto mType = g_pokemons.getPokemonType(pokemon);
+	pInfo.level = std::clamp<uint8_t>(level, 1, 100);
+	pInfo.experience = Pokemon::getExperienceForLevel(mType->info.level_rate, pInfo.level);
 	pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
 	pInfo.health = pInfo.maxHealth;
 	pInfo.number = mType->info.number;
@@ -78,7 +78,9 @@ PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
 	pInfo.fainted = false;
 
 	pInfo.ivs = pokemon->getIvs();
+	pInfo.evs = pokemon->getEvs();
 	pInfo.level = pokemon->getLevel();
+	pInfo.experience = pokemon->getExperience();
 
 	pInfo.maxHealth = pokemon->getMaxHealth();
 	pInfo.health = pokemon->getHealth();

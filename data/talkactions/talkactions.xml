@@ -54,5 +54,7 @@
 	<!-- pokemon -->
 	<talkaction words="/ap" separator=" " script="add_pokemon.lua" />
 	<talkaction words="/hp" separator=" " script="heal_pokebag.lua" />
+	<talkaction words="/pxp" separator=" " script="add_pokemon_experience.lua" />
+	<talkaction words="/plvl" script="add_pokemon_level.lua" />
 
 </talkactions>
