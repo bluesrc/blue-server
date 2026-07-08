@@ -7,30 +7,27 @@ function onSay(player, words, param)
 		return false
 	end
 
-	local pokemonName = param:trim()
-	local level = 1
-	local split = pokemonName:splitTrimmed(",")
-	if #split > 2 then
-		player:sendCancelMessage("Usage: /m pokemon[, level 1-100]")
+	local usage = "Usage: /m <pokemon>[, level][, options]. " .. getPokemonCreateOptionUsage()
+	local split = param:splitTrimmed(",")
+	local pokemonName = split[1] and split[1]:trim() or ""
+	local options, errorMessage = parsePokemonCreateOptions(split, 2)
+	if not options then
+		player:sendCancelMessage(errorMessage)
 		return false
 	end
 
-	if #split >= 2 then
-		pokemonName = split[1]
-		level = tonumber(split[2])
-		if not level or level < 1 or level > 100 or level ~= math.floor(level) then
-			player:sendCancelMessage("Usage: /m pokemon[, level 1-100]")
-			return false
-		end
+	if pokemonName == "" then
+		player:sendCancelMessage(usage)
+		return false
 	end
 
-	if pokemonName == "" then
-		player:sendCancelMessage("Usage: /m pokemon[, level 1-100]")
+	if not PokemonType(pokemonName) then
+		player:sendCancelMessage("Pokemon not found: " .. pokemonName)
 		return false
 	end
 
 	local position = player:getPosition()
-	local pokemon = Game.createPokemon(pokemonName, position, level)
+	local pokemon = Game.createPokemon(pokemonName, position, options)
 	if pokemon then
 		pokemon:getPosition():sendMagicEffect(CONST_ME_TELEPORT)
 		position:sendMagicEffect(CONST_ME_MAGIC_RED)

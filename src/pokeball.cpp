@@ -7,6 +7,39 @@
 
 extern Pokemons g_pokemons;
 
+namespace {
+uint8_t getPokemonStatOption(uint8_t current, int16_t option, uint8_t maxValue)
+{
+	if (option < 0) {
+		return current;
+	}
+
+	return static_cast<uint8_t>(std::clamp<int16_t>(option, 0, maxValue));
+}
+
+PokemonStats_t calculatePokemonStats(PokemonType* mType, uint8_t level, const PokemonStats_t& ivs, const PokemonStats_t& evs)
+{
+	PokemonStats_t stats;
+	stats.hp = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
+	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
+	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5;
+	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
+	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5;
+	stats.speed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5;
+	return stats;
+}
+
+void applyPokemonStatOptions(PokemonStats_t& stats, const PokemonStatOptions_t& options, uint8_t maxValue)
+{
+	stats.hp = getPokemonStatOption(stats.hp, options.hp, maxValue);
+	stats.attack = getPokemonStatOption(stats.attack, options.attack, maxValue);
+	stats.defense = getPokemonStatOption(stats.defense, options.defense, maxValue);
+	stats.sp_attack = getPokemonStatOption(stats.sp_attack, options.sp_attack, maxValue);
+	stats.sp_defense = getPokemonStatOption(stats.sp_defense, options.sp_defense, maxValue);
+	stats.speed = getPokemonStatOption(stats.speed, options.speed, maxValue);
+}
+}
+
 Pokeball::Pokeball(uint16_t id) : Item(id), active{ false }, pokemon{nullptr}
 {
 	gobackEffect = PokeballManager::getPropertiesByPokeballId(id)->gobackEffect;
@@ -26,6 +59,13 @@ void Pokeball::setPokemonMaxHealth()
 
 PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, uint8_t level)
 {
+	PokemonCreateOptions_t options;
+	options.level = level;
+	return createNewPokemon(pokemon, options);
+}
+
+PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, const PokemonCreateOptions_t& options)
+{
 	auto pInfo = PokemonInfo_t();
 	pInfo.p_uid = g_game.assignPokemonUID();
 	pInfo.name = pokemon;
@@ -41,14 +81,25 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, uint8_t level)
 	pInfo.ivs.speed = distribution(generator);
 
 	auto mType = g_pokemons.getPokemonType(pokemon);
-	pInfo.level = std::clamp<uint8_t>(level, 1, 100);
+	pInfo.level = static_cast<uint8_t>(std::clamp<int16_t>(options.level >= 0 ? options.level : 1, 1, 100));
+	if (options.ivs.hasAny()) {
+		applyPokemonStatOptions(pInfo.ivs, options.ivs, 31);
+	}
+	if (options.evs.hasAny()) {
+		applyPokemonStatOptions(pInfo.evs, options.evs, 252);
+	}
+
 	pInfo.experience = Pokemon::getExperienceForLevel(mType->info.level_rate, pInfo.level);
-	pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
+	pInfo.stats = calculatePokemonStats(mType, pInfo.level, pInfo.ivs, pInfo.evs);
+	pInfo.maxHealth = pInfo.stats.hp;
 	pInfo.health = pInfo.maxHealth;
 	pInfo.number = mType->info.number;
 
 
-	pInfo.friendship = mType->info.base_friendship;
+	pInfo.friendship = options.friendship >= 0 ? static_cast<uint8_t>(std::clamp<int16_t>(options.friendship, 0, 255)) : mType->info.base_friendship;
+	if (options.shiny >= 0) {
+		pInfo.shiny = options.shiny != 0;
+	}
 
 	if (mType->info.gender_ratio.male == 0.0 && mType->info.gender_ratio.female == 0.0) {
 		pInfo.gender = GENDER_UNDEFINED;
@@ -65,6 +116,9 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, uint8_t level)
 		else {
 			pInfo.gender = GENDER_FEMALE;
 		}
+	}
+	if (options.gender >= 0) {
+		pInfo.gender = static_cast<PokemonGenders_t>(std::clamp<int16_t>(options.gender, GENDER_NONE, GENDER_UNDEFINED));
 	}
 
 	return pInfo;

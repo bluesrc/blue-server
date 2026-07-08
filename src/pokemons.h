@@ -310,4 +310,29 @@ struct PokemonInfo_t
 	}
 };
 
+struct PokemonStatOptions_t
+{
+	int16_t hp = -1;
+	int16_t attack = -1;
+	int16_t defense = -1;
+	int16_t sp_attack = -1;
+	int16_t sp_defense = -1;
+	int16_t speed = -1;
+
+	bool hasAny() const
+	{
+		return hp >= 0 || attack >= 0 || defense >= 0 || sp_attack >= 0 || sp_defense >= 0 || speed >= 0;
+	}
+};
+
+struct PokemonCreateOptions_t
+{
+	int16_t level = -1;
+	int16_t friendship = -1;
+	int8_t shiny = -1;
+	int8_t gender = -1;
+	PokemonStatOptions_t ivs;
+	PokemonStatOptions_t evs;
+};
+
 #endif

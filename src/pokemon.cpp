@@ -188,6 +188,73 @@ uint64_t Pokemon::getExperienceForLevel(LevelRate_t rate, uint8_t requestedLevel
 	}
 }
 
+namespace {
+uint8_t getPokemonStatOption(uint8_t current, int16_t option, uint8_t maxValue)
+{
+	if (option < 0) {
+		return current;
+	}
+
+	return static_cast<uint8_t>(std::clamp<int16_t>(option, 0, maxValue));
+}
+}
+
+void Pokemon::applyCreateOptions(const PokemonCreateOptions_t& options, bool fullHealth)
+{
+	bool statsChanged = false;
+	if (options.level >= 0) {
+		level = static_cast<uint8_t>(std::clamp<int16_t>(options.level, 1, 100));
+		experience = getExperienceForLevel(mType->info.level_rate, level);
+		statsChanged = true;
+	}
+
+	if (options.ivs.hasAny()) {
+		ivs.hp = getPokemonStatOption(ivs.hp, options.ivs.hp, 31);
+		ivs.attack = getPokemonStatOption(ivs.attack, options.ivs.attack, 31);
+		ivs.defense = getPokemonStatOption(ivs.defense, options.ivs.defense, 31);
+		ivs.sp_attack = getPokemonStatOption(ivs.sp_attack, options.ivs.sp_attack, 31);
+		ivs.sp_defense = getPokemonStatOption(ivs.sp_defense, options.ivs.sp_defense, 31);
+		ivs.speed = getPokemonStatOption(ivs.speed, options.ivs.speed, 31);
+		statsChanged = true;
+	}
+
+	if (options.evs.hasAny()) {
+		evs.hp = getPokemonStatOption(evs.hp, options.evs.hp, 252);
+		evs.attack = getPokemonStatOption(evs.attack, options.evs.attack, 252);
+		evs.defense = getPokemonStatOption(evs.defense, options.evs.defense, 252);
+		evs.sp_attack = getPokemonStatOption(evs.sp_attack, options.evs.sp_attack, 252);
+		evs.sp_defense = getPokemonStatOption(evs.sp_defense, options.evs.sp_defense, 252);
+		evs.speed = getPokemonStatOption(evs.speed, options.evs.speed, 252);
+		statsChanged = true;
+	}
+
+	if (options.friendship >= 0) {
+		friendship = static_cast<uint8_t>(std::clamp<int16_t>(options.friendship, 0, 255));
+	}
+
+	if (options.shiny >= 0) {
+		shiny = options.shiny != 0;
+	}
+
+	if (options.gender >= 0) {
+		gender = static_cast<PokemonGenders_t>(std::clamp<int16_t>(options.gender, GENDER_NONE, GENDER_UNDEFINED));
+	}
+
+	if (statsChanged) {
+		updateStats(!fullHealth);
+		if (fullHealth) {
+			health = healthMax;
+		}
+
+		if (getTile()) {
+			g_game.changeSpeed(this, 0);
+			g_game.addCreatureHealth(this);
+		}
+	}
+
+	syncPokeball();
+}
+
 void Pokemon::updateStats(bool preserveHealth)
 {
 	const int32_t previousMaxHealth = healthMax;
@@ -221,6 +288,11 @@ void Pokemon::syncPokeball()
 	info.level = level;
 	info.experience = experience;
 	info.stats = stats;
+	info.ivs = ivs;
+	info.evs = evs;
+	info.friendship = friendship;
+	info.gender = gender;
+	info.shiny = shiny;
 	pokeball->setPokemonInfo(info);
 	player->updatePokemonInfo(pokeball);
 }

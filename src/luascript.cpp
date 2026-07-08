@@ -880,6 +880,157 @@ std::string LuaScriptInterface::getFieldString(lua_State* L, int32_t arg, const 
 	return getString(L, -1);
 }
 
+PokemonCreateOptions_t LuaScriptInterface::getPokemonCreateOptions(lua_State* L, int32_t arg)
+{
+	PokemonCreateOptions_t options;
+	if (!isTable(L, arg)) {
+		return options;
+	}
+
+	auto getIntegerField = [L, arg](const char* key) -> int16_t {
+		lua_getfield(L, arg, key);
+		if (!lua_isnumber(L, -1)) {
+			lua_pop(L, 1);
+			return -1;
+		}
+
+		const int16_t value = static_cast<int16_t>(std::clamp<int32_t>(static_cast<int32_t>(lua_tointeger(L, -1)), 0, std::numeric_limits<int16_t>::max()));
+		lua_pop(L, 1);
+		return value;
+	};
+
+	auto getStringField = [L, arg](const char* key) -> std::string {
+		lua_getfield(L, arg, key);
+		if (!lua_isstring(L, -1)) {
+			lua_pop(L, 1);
+			return {};
+		}
+
+		std::string value = lua_tostring(L, -1);
+		lua_pop(L, 1);
+		return asLowerCaseString(value);
+	};
+
+	auto readBooleanField = [L, arg](const char* key, int8_t& out) {
+		lua_getfield(L, arg, key);
+		if (lua_isboolean(L, -1)) {
+			out = lua_toboolean(L, -1) != 0 ? 1 : 0;
+		} else if (lua_isnumber(L, -1)) {
+			out = lua_tointeger(L, -1) != 0 ? 1 : 0;
+		} else if (lua_isstring(L, -1)) {
+			const std::string value = asLowerCaseString(lua_tostring(L, -1));
+			out = (value == "true" || value == "yes" || value == "on" || value == "1") ? 1 : 0;
+		}
+		lua_pop(L, 1);
+	};
+
+	auto readStatField = [L](int32_t tableIndex, const char* key) -> int16_t {
+		lua_getfield(L, tableIndex, key);
+		if (!lua_isnumber(L, -1)) {
+			lua_pop(L, 1);
+			return -1;
+		}
+
+		const int16_t value = static_cast<int16_t>(std::clamp<int32_t>(static_cast<int32_t>(lua_tointeger(L, -1)), 0, std::numeric_limits<int16_t>::max()));
+		lua_pop(L, 1);
+		return value;
+	};
+
+	auto applyStatValue = [](PokemonStatOptions_t& stats, int16_t value) {
+		if (value < 0) {
+			return;
+		}
+
+		stats.hp = value;
+		stats.attack = value;
+		stats.defense = value;
+		stats.sp_attack = value;
+		stats.sp_defense = value;
+		stats.speed = value;
+	};
+
+	auto readStats = [L, arg, &readStatField, &applyStatValue](const char* key, PokemonStatOptions_t& stats) {
+		lua_getfield(L, arg, key);
+		if (lua_isnumber(L, -1)) {
+			applyStatValue(stats, static_cast<int16_t>(std::clamp<int32_t>(static_cast<int32_t>(lua_tointeger(L, -1)), 0, std::numeric_limits<int16_t>::max())));
+			lua_pop(L, 1);
+			return;
+		}
+
+		if (lua_istable(L, -1)) {
+			const int32_t tableIndex = lua_gettop(L);
+			auto readAlias = [&readStatField, tableIndex](const char* first, const char* second = nullptr, const char* third = nullptr) -> int16_t {
+				int16_t value = readStatField(tableIndex, first);
+				if (value >= 0 || !second) {
+					return value;
+				}
+				value = readStatField(tableIndex, second);
+				if (value >= 0 || !third) {
+					return value;
+				}
+				return readStatField(tableIndex, third);
+			};
+
+			stats.hp = readAlias("hp");
+			stats.attack = readAlias("attack", "atk");
+			stats.defense = readAlias("defense", "def");
+			stats.sp_attack = readAlias("sp_attack", "spAttack", "spatk");
+			stats.sp_defense = readAlias("sp_defense", "spDefense", "spdef");
+			stats.speed = readAlias("speed", "spd");
+		}
+		lua_pop(L, 1);
+	};
+
+	options.level = getIntegerField("level");
+	options.friendship = getIntegerField("friendship");
+	if (options.friendship < 0) {
+		options.friendship = getIntegerField("happiness");
+	}
+	if (options.friendship < 0) {
+		options.friendship = getIntegerField("hapiness");
+	}
+	readBooleanField("shiny", options.shiny);
+
+	const std::string gender = getStringField("gender");
+	if (gender == "male" || gender == "m") {
+		options.gender = GENDER_MALE;
+	} else if (gender == "female" || gender == "f") {
+		options.gender = GENDER_FEMALE;
+	} else if (gender == "none") {
+		options.gender = GENDER_NONE;
+	} else if (gender == "undefined" || gender == "unknown") {
+		options.gender = GENDER_UNDEFINED;
+	} else {
+		const int16_t genderNumber = getIntegerField("gender");
+		if (genderNumber >= 0) {
+			options.gender = static_cast<int8_t>(std::clamp<int16_t>(genderNumber, GENDER_NONE, GENDER_UNDEFINED));
+		}
+	}
+
+	readStats("ivs", options.ivs);
+	readStats("evs", options.evs);
+	auto applyIntegerField = [&getIntegerField](int16_t& target, const char* key) {
+		const int16_t value = getIntegerField(key);
+		if (value >= 0) {
+			target = value;
+		}
+	};
+	applyIntegerField(options.ivs.hp, "iv_hp");
+	applyIntegerField(options.ivs.attack, "iv_attack");
+	applyIntegerField(options.ivs.defense, "iv_defense");
+	applyIntegerField(options.ivs.sp_attack, "iv_sp_attack");
+	applyIntegerField(options.ivs.sp_defense, "iv_sp_defense");
+	applyIntegerField(options.ivs.speed, "iv_speed");
+	applyIntegerField(options.evs.hp, "ev_hp");
+	applyIntegerField(options.evs.attack, "ev_attack");
+	applyIntegerField(options.evs.defense, "ev_defense");
+	applyIntegerField(options.evs.sp_attack, "ev_sp_attack");
+	applyIntegerField(options.evs.sp_defense, "ev_sp_defense");
+	applyIntegerField(options.evs.speed, "ev_speed");
+
+	return options;
+}
+
 LuaDataType LuaScriptInterface::getUserdataType(lua_State* L, int32_t arg)
 {
 	if (lua_getmetatable(L, arg) == 0) {
@@ -4586,19 +4737,22 @@ int LuaScriptInterface::luaGameCreatePokemon(lua_State* L)
 	}
 
 	const Position& position = getPosition(L, 2);
-	uint8_t level = 1;
+	PokemonCreateOptions_t options;
 	bool extended = false;
 	bool force = false;
-	if (isNumber(L, 3)) {
-		const int32_t requestedLevel = getNumber<int32_t>(L, 3);
-		level = static_cast<uint8_t>(std::clamp<int32_t>(requestedLevel, 1, 100));
+	if (isTable(L, 3)) {
+		options = getPokemonCreateOptions(L, 3);
+		extended = getBoolean(L, 4, false);
+		force = getBoolean(L, 5, false);
+	} else if (isNumber(L, 3)) {
+		options.level = static_cast<int16_t>(getNumber<int32_t>(L, 3));
 		extended = getBoolean(L, 4, false);
 		force = getBoolean(L, 5, false);
 	} else {
 		extended = getBoolean(L, 3, false);
 		force = getBoolean(L, 4, false);
 	}
-	pokemon->setLevel(level);
+	pokemon->applyCreateOptions(options);
 	if (g_events->eventPokemonOnSpawn(pokemon, position, false, true) || force) {
 		if (g_game.placeCreature(pokemon, position, extended, force)) {
 			pushUserdata<Pokemon>(L, pokemon);
@@ -10562,9 +10716,13 @@ int LuaScriptInterface::luaPlayerAddPokemon(lua_State* L)
 	if (pokemon.empty())
 		return 1;
 
-	const int32_t requestedLevel = getNumber<int32_t>(L, 4, 1);
-	const uint8_t level = static_cast<uint8_t>(std::clamp<int32_t>(requestedLevel, 1, 100));
-	player->addPokemon(pokeball, pokemon, level);
+	PokemonCreateOptions_t options;
+	if (isTable(L, 4)) {
+		options = getPokemonCreateOptions(L, 4);
+	} else if (isNumber(L, 4)) {
+		options.level = static_cast<int16_t>(getNumber<int32_t>(L, 4));
+	}
+	player->addPokemon(pokeball, pokemon, options);
 	return 1;
 }
 

@@ -7,34 +7,34 @@ function onSay(player, words, param)
 		return false
 	end
 
+	local usage = "Usage: /ap <pokemon>[, level][, options] or /ap <pokeball>, <pokemon>[, level][, options]. " .. getPokemonCreateOptionUsage()
 	local split = param:splitTrimmed(",")
-	if #split < 1 or #split > 3 then
-		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Usage: /ap <pokemon>[, level] or /ap <pokeball>, <pokemon>[, level]")
-		return true
-	end
 
 	local pokeball = "pokeball"
-	local pokemon
-	local level = 1
-
-	if #split == 1 then
-		pokemon = split[1]
-	elseif #split == 2 and tonumber(split[2]) then
-		pokemon = split[1]
-		level = tonumber(split[2])
-	else
+	local pokemon = split[1] and split[1]:trim() or ""
+	local optionsStart = 2
+	if #split >= 2 and not isPokemonCreateOptionToken(split[2]) then
 		pokeball = split[1]
 		pokemon = split[2]
-		if #split == 3 then
-			level = tonumber(split[3])
-		end
+		optionsStart = 3
 	end
 
-	if not level or level ~= math.floor(level) or level < 1 or level > 100 then
-		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Pokemon level must be an integer between 1 and 100.")
+	if pokemon == "" then
+		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, usage)
 		return true
 	end
 
-	player:addPokemon(pokeball, pokemon, level)
+	if not PokemonType(pokemon) then
+		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, "Pokemon not found: " .. pokemon)
+		return true
+	end
+
+	local options, errorMessage = parsePokemonCreateOptions(split, optionsStart)
+	if not options then
+		player:sendTextMessage(MESSAGE_STATUS_DEFAULT, errorMessage)
+		return true
+	end
+
+	player:addPokemon(pokeball, pokemon, options)
 	return true
 end

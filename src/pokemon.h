@@ -177,6 +177,7 @@ class Pokemon final : public Creature
 		bool setLevel(uint8_t level, bool fullHealth = true);
 		uint8_t addExperience(uint64_t experience, bool sendText = false);
 		bool addLevel(bool sendText = false);
+		void applyCreateOptions(const PokemonCreateOptions_t& options, bool fullHealth = true);
 		static uint64_t getExperienceForLevel(LevelRate_t rate, uint8_t level);
 		uint8_t getGender() const { return gender; }
 		bool isShiny() const { return shiny; }
