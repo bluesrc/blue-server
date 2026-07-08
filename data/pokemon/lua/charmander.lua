@@ -8,7 +8,7 @@ pokemon.types = { TYPE_FIRE }
 pokemon.catch_rate = 45
 
 pokemon.level_rate = RATE_MEDIUM_SLOW
-pokemon.base_experience = 64
+pokemon.base_experience = 65
 pokemon.ev_yield = { speed = 1 }
 
 pokemon.height = 0.6

@@ -4721,9 +4721,22 @@ void Player::updateRegeneration()
 	}
 }
 
-void Player::addPokemon(std::string pokeball, std::string pokemon)
+void Player::addPokemon(std::string pokeballName, std::string pokemon, uint8_t level)
 {
-	auto item = Item::CreateItem(Item::items.getItemIdByName(pokeball));
+	PokemonCreateOptions_t options;
+	options.level = level;
+	addPokemon(pokeballName, pokemon, options);
+}
+
+void Player::addPokemon(std::string pokeballName, std::string pokemon, const PokemonCreateOptions_t& options)
+{
+	auto item = Item::CreateItem(Item::items.getItemIdByName(pokeballName));
+	if (!item || !item->getPokeball() || !g_pokemons.getPokemonType(pokemon)) {
+		if (item) {
+			g_game.ReleaseItem(item);
+		}
+		return;
+	}
 
 	for (int slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; slot++)
 	{
@@ -4731,10 +4744,11 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 		if (ret != RETURNVALUE_NOERROR)
 			continue;
 
-		auto pInfo = Pokeball::createNewPokemon(pokemon);
+		auto pInfo = Pokeball::createNewPokemon(pokemon, options);
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
-		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+		std::string pokemonUidAttribute = "p_uid";
+		item->setCustomAttribute(pokemonUidAttribute, static_cast<int64_t>(pInfo.p_uid));
 		sendMagicEffect(getPosition(), CONST_ME_MAGIC_GREEN);
 
 		client->sendPokemonInfo(slot, pokeball->getPokemonInfo());
@@ -4742,15 +4756,31 @@ void Player::addPokemon(std::string pokeball, std::string pokemon)
 	}
 
 	{
-		auto pInfo = Pokeball::createNewPokemon(pokemon);
+		auto pInfo = Pokeball::createNewPokemon(pokemon, options);
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
-		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+		std::string pokemonUidAttribute = "p_uid";
+		item->setCustomAttribute(pokemonUidAttribute, static_cast<int64_t>(pInfo.p_uid));
 		std::cout << pInfo.p_uid << "\n";
 		sendMagicEffect(getPosition(), CONST_ME_MAGIC_GREEN);
 	}
 
 	sendPokemonToBox(item);
+}
+
+void Player::updatePokemonInfo(Pokeball* pokeball)
+{
+	if (!pokeball || !client) {
+		return;
+	}
+
+	auto it = std::find(std::begin(inventory), std::end(inventory), pokeball);
+	if (it == std::end(inventory)) {
+		return;
+	}
+
+	const auto slot = static_cast<uint16_t>(std::distance(std::begin(inventory), it));
+	client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
 }
 
 void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)
@@ -4767,7 +4797,8 @@ void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)
 		pInfo.p_uid = g_game.assignPokemonUID();
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
-		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+		std::string pokemonUidAttribute = "p_uid";
+		item->setCustomAttribute(pokemonUidAttribute, static_cast<int64_t>(pInfo.p_uid));
 
 		client->sendPokemonInfo(slot, pokeball->getPokemonInfo());
 		return;
@@ -4778,7 +4809,8 @@ void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)
 		pInfo.p_uid = g_game.assignPokemonUID();
 		auto pokeball = item->getPokeball();
 		pokeball->setPokemonInfo(pInfo);
-		item->setCustomAttribute(std::string("p_uid"), static_cast<int64_t>(pInfo.p_uid));
+		std::string pokemonUidAttribute = "p_uid";
+		item->setCustomAttribute(pokemonUidAttribute, static_cast<int64_t>(pInfo.p_uid));
 	}
 
 	sendPokemonToBox(item);

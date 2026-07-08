@@ -3285,6 +3285,7 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	msg.add<uint16_t>(slot);
 	msg.add<uint32_t>(info.p_id);
 	msg.add<uint16_t>(info.number);
+	msg.add<uint8_t>(info.level);
 
 	auto percent = (static_cast<float>(info.health) / info.maxHealth) * 100.0f;
 	msg.add<uint8_t>(percent);

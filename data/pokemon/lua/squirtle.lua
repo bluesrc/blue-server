@@ -8,7 +8,7 @@ pokemon.types = { TYPE_WATER }
 pokemon.catch_rate = 45
 
 pokemon.level_rate = RATE_MEDIUM_SLOW
-pokemon.base_experience = 64
+pokemon.base_experience = 66
 pokemon.ev_yield = { defense = 1 }
 
 pokemon.height = 0.5

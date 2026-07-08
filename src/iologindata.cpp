@@ -1008,18 +1008,19 @@ void IOLoginData::updatePremiumTime(uint32_t accountId, time_t endTime)
 void IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t pokemonUID)
 {
 	Database& db = Database::getInstance();
-	DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`, `level`, `gender`, `friendship`, `shiny`,"
+	DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `friendship`, `shiny`,"
 		"`iv_hp`, `iv_attack`, `iv_defense`, `iv_sp_attack`, `iv_sp_defense`, `iv_speed`, `ev_hp`, `ev_attack`, `ev_defense`, `ev_sp_attack`, `ev_sp_defense`, `ev_speed`) VALUES ");
 
 	auto pInfo = pokeball->getPokemonInfo();
 
-	pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
+	pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
 		pokemonUID,
 		playerId,
 		db.escapeString(pInfo.name),
 		pInfo.health,
 		pInfo.fainted,
 		pInfo.level,
+		pInfo.experience,
 		static_cast<int>(pInfo.gender),
 		pInfo.friendship,
 		pInfo.shiny,
@@ -1045,7 +1046,7 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 	Database& db = Database::getInstance();
 
 	DBResult_ptr p_result = db.storeQuery(fmt::format(
-		"SELECT `uid`, `name`, `health`, `fainted`, `level`, `gender`, `friendship`, `shiny`, "
+		"SELECT `uid`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `friendship`, `shiny`, "
 		"`iv_hp`, `iv_attack`, `iv_defense`, `iv_sp_attack`, `iv_sp_defense`, `iv_speed`, "
 		"`ev_hp`, `ev_attack`, `ev_defense`, `ev_sp_attack`, `ev_sp_defense`, `ev_speed` "
 		"FROM `pokemons` WHERE `uid` = {:d}", pokemonUID));
@@ -1058,6 +1059,7 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 
 		pInfo.fainted = p_result->getNumber<bool>("fainted");
 		pInfo.level = p_result->getNumber<uint32_t>("level");
+		pInfo.experience = p_result->getNumber<uint64_t>("experience");
 		pInfo.gender = static_cast<PokemonGenders_t>(p_result->getNumber<int>("gender"));
 		pInfo.friendship = p_result->getNumber<uint32_t>("friendship");
 		pInfo.shiny = p_result->getNumber<bool>("shiny");

@@ -285,6 +285,7 @@ struct PokemonInfo_t
 	bool fainted;
 
 	uint8_t level;
+	uint64_t experience;
 	PokemonGenders_t gender;
 	uint8_t friendship;
 	bool shiny;
@@ -301,11 +302,37 @@ struct PokemonInfo_t
 		maxHealth(1),
 		fainted(false),
 		level(0),
+		experience(0),
 		gender(GENDER_UNDEFINED),
 		friendship(0),
 		shiny(false)
 	{
 	}
+};
+
+struct PokemonStatOptions_t
+{
+	int16_t hp = -1;
+	int16_t attack = -1;
+	int16_t defense = -1;
+	int16_t sp_attack = -1;
+	int16_t sp_defense = -1;
+	int16_t speed = -1;
+
+	bool hasAny() const
+	{
+		return hp >= 0 || attack >= 0 || defense >= 0 || sp_attack >= 0 || sp_defense >= 0 || speed >= 0;
+	}
+};
+
+struct PokemonCreateOptions_t
+{
+	int16_t level = -1;
+	int16_t friendship = -1;
+	int8_t shiny = -1;
+	int8_t gender = -1;
+	PokemonStatOptions_t ivs;
+	PokemonStatOptions_t evs;
 };
 
 #endif

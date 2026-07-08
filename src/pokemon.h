@@ -133,6 +133,8 @@ class Pokemon final : public Creature
 		void onThink(uint32_t interval) override;
 
 		bool challengeCreature(Creature* creature, bool force = false) override;
+		uint64_t getGainedExperience(Creature* attacker) const override;
+		void onGainExperience(uint64_t gainExp, Creature* target) override;
 
 		void setNormalCreatureLight() override;
 		bool getCombatValues(int32_t& min, int32_t& max) override;
@@ -171,6 +173,12 @@ class Pokemon final : public Creature
 		static uint32_t pokemonAutoID;
 
 		uint8_t getLevel() const { return level; }
+		uint64_t getExperience() const { return experience; }
+		bool setLevel(uint8_t level, bool fullHealth = true);
+		uint8_t addExperience(uint64_t experience, bool sendText = false);
+		bool addLevel(bool sendText = false);
+		void applyCreateOptions(const PokemonCreateOptions_t& options, bool fullHealth = true);
+		static uint64_t getExperienceForLevel(LevelRate_t rate, uint8_t level);
 		uint8_t getGender() const { return gender; }
 		bool isShiny() const { return shiny; }
 		PokemonStats_t getIvs() { return ivs; }
@@ -218,7 +226,11 @@ class Pokemon final : public Creature
 		uint8_t accuracy {100};
 
 		uint8_t level = 1;
+		uint64_t experience = 0;
 		bool shiny = false;
+
+		void updateStats(bool preserveHealth = false);
+		void syncPokeball();
 
 		void onCreatureEnter(Creature* creature);
 		void onCreatureLeave(Creature* creature);

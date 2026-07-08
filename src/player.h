@@ -1163,8 +1163,10 @@ class Player final : public Creature, public Cylinder
 		Pokeball* getActivePokemon() { return activePokemon; }
 		void setActivePokemon(Pokeball* pokemon) { activePokemon = pokemon; }
 
-		void addPokemon(std::string pokeball, std::string pokemon);
+		void addPokemon(std::string pokeballName, std::string pokemon, uint8_t level = 1);
+		void addPokemon(std::string pokeballName, std::string pokemon, const PokemonCreateOptions_t& options);
 		void addPokemon(uint16_t pokeballId, Pokemon* pokemon);
+		void updatePokemonInfo(Pokeball* pokeball);
 		void healPokebag();
 
 		bool sendPokemonToBox(Item* item);

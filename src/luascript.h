@@ -38,6 +38,7 @@ class Condition;
 class Npc;
 class Pokemon;
 class InstantMove;
+struct PokemonCreateOptions_t;
 
 enum {
 	EVENT_ID_LOADING = 1,
@@ -351,6 +352,7 @@ class LuaScriptInterface
 		static Outfit getOutfitClass(lua_State* L, int32_t arg);
 		static LuaVariant getVariant(lua_State* L, int32_t arg);
 		static InstantMove* getInstantMove(lua_State* L, int32_t arg);
+		static PokemonCreateOptions_t getPokemonCreateOptions(lua_State* L, int32_t arg);
 
 		static Thing* getThing(lua_State* L, int32_t arg);
 		static Creature* getCreature(lua_State* L, int32_t arg);
@@ -1048,6 +1050,11 @@ class LuaScriptInterface
 		static int luaPokemonIsPokemon(lua_State* L);
 
 		static int luaPokemonGetType(lua_State* L);
+		static int luaPokemonGetLevel(lua_State* L);
+		static int luaPokemonGetExperience(lua_State* L);
+		static int luaPokemonSetLevel(lua_State* L);
+		static int luaPokemonAddExperience(lua_State* L);
+		static int luaPokemonAddLevel(lua_State* L);
 
 		static int luaPokemonRename(lua_State* L);
 

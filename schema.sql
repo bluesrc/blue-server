@@ -365,6 +365,7 @@ CREATE TABLE IF NOT EXISTS `pokemons` (
   `fainted` boolean NOT NULL DEFAULT 0,
 
   `level` int NOT NULL,
+  `experience` bigint unsigned NOT NULL DEFAULT 0,
   `gender` int NOT NULL,
   `friendship` int NOT NULL,
   `shiny` boolean NOT NULL DEFAULT 0,
