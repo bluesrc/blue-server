@@ -875,6 +875,41 @@ bool Player::openDepotBox(uint32_t depotId, uint8_t containerId)
 	return true;
 }
 
+bool Player::openTradeBackpack(uint8_t containerId)
+{
+	Item* backpackItem = getInventoryItem(CONST_SLOT_BACKPACK);
+	Container* backpack = backpackItem ? backpackItem->getContainer() : nullptr;
+	if (!backpack) {
+		return false;
+	}
+
+	const int8_t currentContainerId = getContainerID(backpack);
+	if (currentContainerId >= 0 && currentContainerId != containerId) {
+		onCloseContainer(backpack);
+		closeContainer(static_cast<uint8_t>(currentContainerId));
+	}
+
+	if (Container* previousContainer = getContainerByID(containerId); previousContainer && previousContainer != backpack) {
+		onCloseContainer(previousContainer);
+		closeContainer(containerId);
+	}
+
+	addContainer(containerId, backpack);
+	sendContainer(containerId, backpack, false, 0);
+	return true;
+}
+
+void Player::closeTradeBackpack(uint8_t containerId)
+{
+	Container* backpack = getContainerByID(containerId);
+	if (!backpack) {
+		return;
+	}
+
+	onCloseContainer(backpack);
+	closeContainer(containerId);
+}
+
 DepotLocker& Player::getDepotLocker()
 {
 	if (!depotLocker) {

@@ -43,6 +43,8 @@ extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
 extern Scripts* g_scripts;
 
+static constexpr uint8_t TRADE_BACKPACK_CONTAINER_ID = 0x0E;
+
 Game::Game()
 {
 	offlineTrainingWindow.defaultEnterButton = 1;
@@ -2762,6 +2764,8 @@ bool Game::internalStartTrade(Player* player, Player* tradePartner, Item* tradeI
 	}
 
 	sendTradeOffers(player, tradePartner);
+	player->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	tradePartner->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 	return true;
 }
 
@@ -2854,6 +2858,8 @@ bool Game::activateTradeSession(Player* player, Player* tradePartner)
 	player->tradeSessionActive = true;
 	tradePartner->tradeSessionActive = true;
 	sendTradeOffers(player, tradePartner);
+	player->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	tradePartner->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 	return true;
 }
 
@@ -3220,10 +3226,12 @@ void Game::playerAcceptTrade(uint32_t playerId)
 
 		player->setTradeState(TRADE_NONE);
 		player->tradePartner = nullptr;
+		player->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 		player->sendTradeClose();
 
 		tradePartner->setTradeState(TRADE_NONE);
 		tradePartner->tradePartner = nullptr;
+		tradePartner->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 		tradePartner->sendTradeClose();
 	}
 }
@@ -3332,6 +3340,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 	if (sendCancel) {
 		player->sendTextMessage(MESSAGE_STATUS_SMALL, "Trade cancelled.");
 	}
+	player->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 	player->sendTradeClose();
 
 	if (tradePartner) {
@@ -3343,6 +3352,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 		if (sendCancel) {
 			tradePartner->sendTextMessage(MESSAGE_STATUS_SMALL, "Trade cancelled.");
 		}
+		tradePartner->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 		tradePartner->sendTradeClose();
 	}
 }

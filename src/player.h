@@ -492,6 +492,8 @@ class Player final : public Creature, public Cylinder
 
 		DepotChest* getDepotChest(uint32_t depotId, bool autoCreate);
 		bool openDepotBox(uint32_t depotId, uint8_t containerId);
+		bool openTradeBackpack(uint8_t containerId);
+		void closeTradeBackpack(uint8_t containerId);
 		DepotLocker& getDepotLocker();
 		void onReceiveMail() const;
 		bool isNearDepotBox() const;
