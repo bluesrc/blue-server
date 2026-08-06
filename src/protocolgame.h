@@ -204,6 +204,11 @@ class ProtocolGame final : public Protocol
 		void sendMarketBrowseOwnHistory(const HistoryMarketOfferList& buyOffers, const HistoryMarketOfferList& sellOffers);
 		void sendMarketDetail(uint16_t itemId);
 		void sendTradeItemRequest(const std::string& traderName, const Item* item, bool ack);
+		void sendTradeOffer(const std::string& traderName, const std::vector<Item*>& items,
+				const std::vector<uint8_t>& counts, bool ownOffer);
+		void sendTradeState(bool ownConfirmed, bool counterConfirmed, bool ownAccepted, bool counterAccepted,
+				uint64_t ownMoney, uint64_t counterMoney, uint64_t bankBalance);
+		void sendTradeExtendedMessage(const std::string& buffer);
 		void sendCloseTrade();
 
 		void sendTextWindow(uint32_t windowTextId, Item* item, uint16_t maxlen, bool canWrite);

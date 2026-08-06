@@ -2731,10 +2731,6 @@ void Game::playerRequestTrade(uint32_t playerId, const Position& pos, uint8_t st
 		return;
 	}
 
-	if (!g_events->eventPlayerOnTradeRequest(player, tradePartner, tradeItem)) {
-		return;
-	}
-
 	internalStartTrade(player, tradePartner, tradeItem);
 }
 
@@ -2748,25 +2744,343 @@ bool Game::internalStartTrade(Player* player, Player* tradePartner, Item* tradeI
 		return false;
 	}
 
+	const bool isNewTrade = tradePartner->tradeState == TRADE_NONE;
 	player->tradePartner = tradePartner;
-	player->tradeItem = tradeItem;
 	player->tradeState = TRADE_INITIATED;
-	tradeItem->incrementReferenceCounter();
-	tradeItems[tradeItem] = player->getID();
 
-	player->sendTradeItemRequest(player->getName(), tradeItem, true);
-
-	if (tradePartner->tradeState == TRADE_NONE) {
+	if (isNewTrade) {
 		tradePartner->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("{:s} wants to trade with you.", player->getName()));
 		tradePartner->tradeState = TRADE_ACKNOWLEDGE;
 		tradePartner->tradePartner = player;
-	} else {
-		Item* counterOfferItem = tradePartner->tradeItem;
-		player->sendTradeItemRequest(tradePartner->getName(), counterOfferItem, false);
-		tradePartner->sendTradeItemRequest(player->getName(), tradeItem, false);
 	}
 
+	player->tradeSessionActive = true;
+	tradePartner->tradeSessionActive = true;
+	if (!addTradeItem(player, tradeItem, static_cast<uint8_t>(tradeItem->getItemCount()))) {
+		internalCloseTrade(player, false);
+		return false;
+	}
+
+	sendTradeOffers(player, tradePartner);
 	return true;
+}
+
+void Game::playerRequestTradeInvite(uint32_t playerId, uint32_t tradePlayerId)
+{
+	Player* player = getPlayerByID(playerId);
+	Player* tradePartner = getPlayerByID(tradePlayerId);
+	if (!player || !tradePartner || player == tradePartner) {
+		if (player) {
+			player->sendCancelMessage("Select a player to trade with.");
+		}
+		return;
+	}
+
+	if (!Position::areInRange<2, 2, 0>(tradePartner->getPosition(), player->getPosition())) {
+		player->sendCancelMessage(RETURNVALUE_DESTINATIONOUTOFREACH);
+		return;
+	}
+	if (!canThrowObjectTo(tradePartner->getPosition(), player->getPosition(), true, true)) {
+		player->sendCancelMessage(RETURNVALUE_CANNOTTHROW);
+		return;
+	}
+	if (player->tradeSessionActive) {
+		player->sendCancelMessage(RETURNVALUE_YOUAREALREADYTRADING);
+		return;
+	}
+	if (tradePartner->tradeSessionActive) {
+		player->sendCancelMessage(RETURNVALUE_THISPLAYERISALREADYTRADING);
+		return;
+	}
+
+	if (player->tradeState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner &&
+			tradePartner->tradeState == TRADE_INITIATED && tradePartner->tradePartner == player) {
+		activateTradeSession(player, tradePartner);
+		return;
+	}
+
+	if (player->tradeState != TRADE_NONE) {
+		player->sendCancelMessage(RETURNVALUE_YOUAREALREADYTRADING);
+		return;
+	}
+	if (tradePartner->tradeState != TRADE_NONE) {
+		player->sendCancelMessage(RETURNVALUE_THISPLAYERISALREADYTRADING);
+		return;
+	}
+
+	player->tradePartner = tradePartner;
+	player->tradeState = TRADE_INITIATED;
+	tradePartner->tradePartner = player;
+	tradePartner->tradeState = TRADE_ACKNOWLEDGE;
+
+	player->sendTextMessage(MESSAGE_STATUS_SMALL, fmt::format("Trade invitation sent to {:s}.", tradePartner->getName()));
+	tradePartner->sendTradeExtendedMessage(fmt::format("Q;{:d};{:s}", player->getID(), player->getName()));
+}
+
+void Game::playerAnswerTradeInvite(uint32_t playerId, uint32_t tradePlayerId, bool accept)
+{
+	Player* player = getPlayerByID(playerId);
+	Player* tradePartner = getPlayerByID(tradePlayerId);
+	if (!player || !tradePartner || player->tradeState != TRADE_ACKNOWLEDGE ||
+			player->tradePartner != tradePartner || tradePartner->tradePartner != player ||
+			tradePartner->tradeState != TRADE_INITIATED || player->tradeSessionActive ||
+			tradePartner->tradeSessionActive) {
+		return;
+	}
+
+	if (!accept) {
+		internalCloseTrade(player);
+		return;
+	}
+
+	activateTradeSession(player, tradePartner);
+}
+
+bool Game::activateTradeSession(Player* player, Player* tradePartner)
+{
+	if (!player || !tradePartner || player->tradePartner != tradePartner || tradePartner->tradePartner != player) {
+		return false;
+	}
+	if (player->tradeSessionActive || tradePartner->tradeSessionActive) {
+		return player->tradeSessionActive && tradePartner->tradeSessionActive;
+	}
+	if (!Position::areInRange<2, 2, 0>(tradePartner->getPosition(), player->getPosition()) ||
+			!canThrowObjectTo(tradePartner->getPosition(), player->getPosition(), true, true)) {
+		player->sendCancelMessage(RETURNVALUE_DESTINATIONOUTOFREACH);
+		internalCloseTrade(player, false);
+		return false;
+	}
+
+	player->tradeSessionActive = true;
+	tradePartner->tradeSessionActive = true;
+	sendTradeOffers(player, tradePartner);
+	return true;
+}
+
+bool Game::addTradeItem(Player* player, Item* item, uint8_t count)
+{
+	if (!player || !item || !player->tradePartner || !player->tradeSessionActive ||
+			player->tradeConfirmed || player->tradeAccepted) {
+		return false;
+	}
+
+	if (!ownsTradeItem(player, item) || !item->isPickupable() || item->hasAttribute(ITEM_ATTRIBUTE_UNIQUEID)) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return false;
+	}
+
+	if (item->getPokeball()) {
+		player->sendCancelMessage("Pokemon cannot be traded in this window.");
+		return false;
+	}
+	if (count == 0 || (item->isStackable() && count > item->getItemCount())) {
+		player->sendCancelMessage("Invalid item amount for this trade.");
+		return false;
+	}
+	if (!item->isStackable()) {
+		count = static_cast<uint8_t>(item->getItemCount());
+	}
+
+	if (player->tradeOfferItems.size() >= 50) {
+		player->sendCancelMessage("You can offer at most 50 items.");
+		return false;
+	}
+
+	if (const Container* container = item->getContainer()) {
+		if (container->getItemHoldingCount() + 1 > 100) {
+			player->sendCancelMessage("A traded container may hold at most 100 objects.");
+			return false;
+		}
+
+		for (ContainerIterator it = container->iterator(); it.hasNext(); it.advance()) {
+			if ((*it)->getPokeball()) {
+				player->sendCancelMessage("Containers holding Pokemon cannot be traded in this window.");
+				return false;
+			}
+		}
+	}
+
+	for (const auto& entry : tradeItems) {
+		Item* offeredItem = entry.first;
+		if (item == offeredItem) {
+			player->sendCancelMessage("This item is already being traded.");
+			return false;
+		}
+
+		const Container* itemContainer = item->getContainer();
+		const Container* offeredContainer = offeredItem->getContainer();
+		if ((itemContainer && itemContainer->isHoldingItem(offeredItem)) ||
+				(offeredContainer && offeredContainer->isHoldingItem(item))) {
+			player->sendCancelMessage("A container and one of its contents cannot be offered separately.");
+			return false;
+		}
+	}
+
+	if (!g_events->eventPlayerOnTradeRequest(player, player->tradePartner, item)) {
+		return false;
+	}
+
+	item->incrementReferenceCounter();
+	tradeItems[item] = player->getID();
+	player->tradeOfferItems.push_back(item);
+	player->tradeOfferCounts.push_back(count);
+	player->tradeItem = player->tradeOfferItems.front();
+	player->tradeAccepted = false;
+	if (player->tradePartner) {
+		player->tradePartner->tradeConfirmed = false;
+		player->tradePartner->tradeAccepted = false;
+	}
+	return true;
+}
+
+bool Game::ownsTradeItem(const Player* player, const Item* item) const
+{
+	if (!player || !item) {
+		return false;
+	}
+	if (item->getTopParent() == player) {
+		return true;
+	}
+
+	for (const auto& entry : player->depotChests) {
+		const DepotChest* depotChest = entry.second;
+		if (depotChest && (item->getParent() == depotChest || depotChest->isHoldingItem(item))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Game::validateTradeOffer(const Player* player) const
+{
+	if (!player || player->tradeMoney > player->getBankBalance() ||
+			player->tradeOfferItems.size() != player->tradeOfferCounts.size()) {
+		return false;
+	}
+
+	for (size_t index = 0; index < player->tradeOfferItems.size(); ++index) {
+		const Item* item = player->tradeOfferItems[index];
+		if (!item || !ownsTradeItem(player, item) || item->getPokeball()) {
+			return false;
+		}
+		const uint8_t count = player->tradeOfferCounts[index];
+		if (count == 0 || (item->isStackable() && count > item->getItemCount())) {
+			return false;
+		}
+
+		auto it = tradeItems.find(const_cast<Item*>(item));
+		if (it == tradeItems.end() || it->second != player->getID()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void Game::sendTradeOffers(Player* first, Player* second) const
+{
+	if (!first || !second) {
+		return;
+	}
+
+	first->sendTradeOffer(first->getName(), first->tradeOfferItems, first->tradeOfferCounts, true);
+	first->sendTradeOffer(second->getName(), second->tradeOfferItems, second->tradeOfferCounts, false);
+	second->sendTradeOffer(second->getName(), second->tradeOfferItems, second->tradeOfferCounts, true);
+	second->sendTradeOffer(first->getName(), first->tradeOfferItems, first->tradeOfferCounts, false);
+	sendTradeState(first);
+	sendTradeState(second);
+}
+
+void Game::sendTradeState(Player* player) const
+{
+	if (!player || !player->tradePartner || !player->tradeSessionActive) {
+		return;
+	}
+
+	Player* partner = player->tradePartner;
+	player->sendTradeState(player->tradeConfirmed, partner->tradeConfirmed,
+			player->tradeAccepted, partner->tradeAccepted, player->tradeMoney, partner->tradeMoney,
+			player->getBankBalance());
+}
+
+void Game::playerAddTradeItem(uint32_t playerId, const Position& pos, uint8_t stackPos, uint16_t spriteId, uint8_t count)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player || !player->tradePartner || !player->tradeSessionActive || player->tradeState == TRADE_TRANSFER) {
+		return;
+	}
+
+	Thing* thing = internalGetThing(player, pos, stackPos, spriteId, STACKPOS_TOPDOWN_ITEM);
+	Item* item = thing ? thing->getItem() : nullptr;
+	if (!item || item->getClientID() != spriteId || !addTradeItem(player, item, count)) {
+		return;
+	}
+
+	sendTradeOffers(player, player->tradePartner);
+}
+
+void Game::playerRemoveTradeItem(uint32_t playerId, uint8_t index)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player || !player->tradePartner || !player->tradeSessionActive || player->tradeConfirmed || player->tradeAccepted ||
+			index >= player->tradeOfferItems.size()) {
+		return;
+	}
+
+	Item* item = player->tradeOfferItems[index];
+	auto mapIt = tradeItems.find(item);
+	if (mapIt != tradeItems.end()) {
+		ReleaseItem(mapIt->first);
+		tradeItems.erase(mapIt);
+	}
+	item->onTradeEvent(ON_TRADE_CANCEL, player);
+	player->tradeOfferItems.erase(player->tradeOfferItems.begin() + index);
+	player->tradeOfferCounts.erase(player->tradeOfferCounts.begin() + index);
+	player->tradeItem = player->tradeOfferItems.empty() ? nullptr : player->tradeOfferItems.front();
+	player->tradeAccepted = false;
+	player->tradePartner->tradeConfirmed = false;
+	player->tradePartner->tradeAccepted = false;
+	sendTradeOffers(player, player->tradePartner);
+}
+
+void Game::playerSetTradeMoney(uint32_t playerId, uint64_t amount)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player || !player->tradePartner || !player->tradeSessionActive || player->tradeConfirmed || player->tradeAccepted) {
+		return;
+	}
+
+	if (amount > player->getBankBalance()) {
+		player->sendCancelMessage("The offered amount exceeds your balance.");
+		sendTradeState(player);
+		return;
+	}
+
+	if (player->tradeMoney == amount) {
+		return;
+	}
+
+	player->tradeMoney = amount;
+	player->tradeAccepted = false;
+	player->tradePartner->tradeConfirmed = false;
+	player->tradePartner->tradeAccepted = false;
+	sendTradeState(player);
+	sendTradeState(player->tradePartner);
+}
+
+void Game::playerConfirmTrade(uint32_t playerId)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player || !player->tradePartner || !player->tradeSessionActive || player->tradeConfirmed || !validateTradeOffer(player)) {
+		if (player) {
+			player->sendCancelMessage("Your trade offer is no longer valid.");
+		}
+		return;
+	}
+
+	player->tradeConfirmed = true;
+	player->tradeAccepted = false;
+	sendTradeState(player);
+	sendTradeState(player->tradePartner);
 }
 
 void Game::playerAcceptTrade(uint32_t playerId)
@@ -2776,18 +3090,28 @@ void Game::playerAcceptTrade(uint32_t playerId)
 		return;
 	}
 
-	if (!(player->getTradeState() == TRADE_ACKNOWLEDGE || player->getTradeState() == TRADE_INITIATED)) {
+	if (!(player->getTradeState() == TRADE_ACKNOWLEDGE || player->getTradeState() == TRADE_INITIATED ||
+			player->getTradeState() == TRADE_ACCEPT)) {
 		return;
 	}
 
 	Player* tradePartner = player->tradePartner;
-	if (!tradePartner) {
+	if (!tradePartner || !player->tradeSessionActive || !tradePartner->tradeSessionActive) {
 		return;
 	}
 
-	player->setTradeState(TRADE_ACCEPT);
+	if (!player->tradeConfirmed || !tradePartner->tradeConfirmed ||
+			!validateTradeOffer(player) || !validateTradeOffer(tradePartner)) {
+		player->sendCancelMessage("Both trade offers must be confirmed before accepting.");
+		return;
+	}
 
-	if (tradePartner->getTradeState() == TRADE_ACCEPT) {
+	player->tradeAccepted = true;
+	player->setTradeState(TRADE_ACCEPT);
+	sendTradeState(player);
+	sendTradeState(tradePartner);
+
+	if (tradePartner->tradeAccepted) {
 		if (!canThrowObjectTo(tradePartner->getPosition(), player->getPosition(), true, true)) {
 			internalCloseTrade(player, false);
 			player->sendCancelMessage(RETURNVALUE_CANNOTTHROW);
@@ -2798,91 +3122,151 @@ void Game::playerAcceptTrade(uint32_t playerId)
 		Item* playerTradeItem = player->tradeItem;
 		Item* partnerTradeItem = tradePartner->tradeItem;
 
-		if (!g_events->eventPlayerOnTradeAccept(player, tradePartner, playerTradeItem, partnerTradeItem)) {
+		if (playerTradeItem && partnerTradeItem &&
+				!g_events->eventPlayerOnTradeAccept(player, tradePartner, playerTradeItem, partnerTradeItem)) {
 			internalCloseTrade(player, false);
+			return;
+		}
+
+		const uint64_t playerBalanceAfterDebit = player->getBankBalance() - player->tradeMoney;
+		const uint64_t partnerBalanceAfterDebit = tradePartner->getBankBalance() - tradePartner->tradeMoney;
+		if (tradePartner->tradeMoney > std::numeric_limits<uint64_t>::max() - playerBalanceAfterDebit ||
+				player->tradeMoney > std::numeric_limits<uint64_t>::max() - partnerBalanceAfterDebit) {
+			internalCloseTrade(player, false);
+			player->sendCancelMessage("Trade money would exceed the balance limit.");
+			tradePartner->sendCancelMessage("Trade money would exceed the balance limit.");
 			return;
 		}
 
 		player->setTradeState(TRADE_TRANSFER);
 		tradePartner->setTradeState(TRADE_TRANSFER);
 
-		auto it = tradeItems.find(playerTradeItem);
-		if (it != tradeItems.end()) {
-			ReleaseItem(it->first);
-			tradeItems.erase(it);
+		std::vector<Item*> playerItems = player->tradeOfferItems;
+		std::vector<Item*> partnerItems = tradePartner->tradeOfferItems;
+		std::vector<uint8_t> playerCounts = player->tradeOfferCounts;
+		std::vector<uint8_t> partnerCounts = tradePartner->tradeOfferCounts;
+		std::vector<Item*> stagedPlayerItems;
+		std::vector<Item*> stagedPartnerItems;
+		Container playerStaging(ITEM_BAG, 100);
+		Container partnerStaging(ITEM_BAG, 100);
+		bool isSuccess = true;
+
+		const auto stageItems = [this](Container& staging, const std::vector<Item*>& items,
+				const std::vector<uint8_t>& counts, std::vector<Item*>& stagedItems) {
+			if (items.size() != counts.size()) {
+				return false;
+			}
+			for (size_t index = 0; index < items.size(); ++index) {
+				Item* movedItem = nullptr;
+				if (internalMoveItem(items[index]->getParent(), &staging, INDEX_WHEREEVER, items[index],
+						counts[index], &movedItem, FLAG_NOLIMIT | FLAG_IGNOREAUTOSTACK) != RETURNVALUE_NOERROR ||
+						!movedItem) {
+					return false;
+				}
+				stagedItems.push_back(movedItem);
+			}
+			return true;
+		};
+
+		isSuccess = stageItems(playerStaging, playerItems, playerCounts, stagedPlayerItems) &&
+				stageItems(partnerStaging, partnerItems, partnerCounts, stagedPartnerItems);
+		if (isSuccess) {
+			for (Item* item : stagedPlayerItems) {
+				if (!deliverTradeItem(tradePartner, item)) {
+					isSuccess = false;
+					break;
+				}
+				item->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
+			}
+		}
+		if (isSuccess) {
+			for (Item* item : stagedPartnerItems) {
+				if (!deliverTradeItem(player, item)) {
+					isSuccess = false;
+					break;
+				}
+				item->onTradeEvent(ON_TRADE_TRANSFER, player);
+			}
 		}
 
-		it = tradeItems.find(partnerTradeItem);
-		if (it != tradeItems.end()) {
-			ReleaseItem(it->first);
-			tradeItems.erase(it);
-		}
-
-		bool isSuccess = false;
-
-		ReturnValue tradePartnerRet = RETURNVALUE_NOERROR;
-		ReturnValue playerRet = RETURNVALUE_NOERROR;
-
-		// if player is trying to trade its own backpack
-		if (tradePartner->getInventoryItem(CONST_SLOT_BACKPACK) == partnerTradeItem) {
-			tradePartnerRet = (tradePartner->getInventoryItem(getSlotType(Item::items[playerTradeItem->getID()])) ? RETURNVALUE_NOTENOUGHROOM : RETURNVALUE_NOERROR);
-		}
-
-		if (player->getInventoryItem(CONST_SLOT_BACKPACK) == playerTradeItem) {
-			playerRet = (player->getInventoryItem(getSlotType(Item::items[partnerTradeItem->getID()])) ? RETURNVALUE_NOTENOUGHROOM : RETURNVALUE_NOERROR);
-		}
-
-		// both players try to trade equipped backpacks
-		if (player->getInventoryItem(CONST_SLOT_BACKPACK) == playerTradeItem && tradePartner->getInventoryItem(CONST_SLOT_BACKPACK) == partnerTradeItem) {
-			playerRet = RETURNVALUE_NOTENOUGHROOM;
-		}
-		
-		if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
-			tradePartnerRet = internalAddItem(tradePartner, playerTradeItem, INDEX_WHEREEVER, 0, true);
-			playerRet = internalAddItem(player, partnerTradeItem, INDEX_WHEREEVER, 0, true);
-			if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
-				playerRet = internalRemoveItem(playerTradeItem, playerTradeItem->getItemCount(), true);
-				tradePartnerRet = internalRemoveItem(partnerTradeItem, partnerTradeItem->getItemCount(), true);
-				if (tradePartnerRet == RETURNVALUE_NOERROR && playerRet == RETURNVALUE_NOERROR) {
-					tradePartnerRet = internalMoveItem(playerTradeItem->getParent(), tradePartner, INDEX_WHEREEVER, playerTradeItem, playerTradeItem->getItemCount(), nullptr, FLAG_IGNOREAUTOSTACK, nullptr, partnerTradeItem);
-					if (tradePartnerRet == RETURNVALUE_NOERROR) {
-						internalMoveItem(partnerTradeItem->getParent(), player, INDEX_WHEREEVER, partnerTradeItem, partnerTradeItem->getItemCount(), nullptr, FLAG_IGNOREAUTOSTACK);
-						playerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
-						partnerTradeItem->onTradeEvent(ON_TRADE_TRANSFER, player);
-						isSuccess = true;
-					}
+		if (isSuccess) {
+			const uint64_t playerMoney = player->tradeMoney;
+			const uint64_t partnerMoney = tradePartner->tradeMoney;
+			player->setBankBalance(player->getBankBalance() - playerMoney + partnerMoney);
+			tradePartner->setBankBalance(tradePartner->getBankBalance() - partnerMoney + playerMoney);
+			player->sendStats();
+			tradePartner->sendStats();
+		} else {
+			for (Item* item : stagedPlayerItems) {
+				if (item->getParent() == &playerStaging) {
+					deliverTradeItem(player, item);
 				}
 			}
+			for (Item* item : stagedPartnerItems) {
+				if (item->getParent() == &partnerStaging) {
+					deliverTradeItem(tradePartner, item);
+				}
+			}
+			player->sendTextMessage(MESSAGE_EVENT_ADVANCE, "Trade could not be completed. Offered items were kept in their owners' boxes.");
+			tradePartner->sendTextMessage(MESSAGE_EVENT_ADVANCE, "Trade could not be completed. Offered items were kept in their owners' boxes.");
 		}
 
-		if (!isSuccess) {
-			std::string errorDescription;
-
-			if (tradePartner->tradeItem) {
-				errorDescription = getTradeErrorDescription(tradePartnerRet, playerTradeItem);
-				tradePartner->sendTextMessage(MESSAGE_EVENT_ADVANCE, errorDescription);
-				tradePartner->tradeItem->onTradeEvent(ON_TRADE_CANCEL, tradePartner);
-			}
-
-			if (player->tradeItem) {
-				errorDescription = getTradeErrorDescription(playerRet, partnerTradeItem);
-				player->sendTextMessage(MESSAGE_EVENT_ADVANCE, errorDescription);
-				player->tradeItem->onTradeEvent(ON_TRADE_CANCEL, player);
-			}
+		if (playerTradeItem && partnerTradeItem) {
+			g_events->eventPlayerOnTradeCompleted(player, tradePartner, playerTradeItem, partnerTradeItem, isSuccess);
 		}
 
-		g_events->eventPlayerOnTradeCompleted(player, tradePartner, playerTradeItem, partnerTradeItem, isSuccess);
+		releaseTradeOffer(player, !isSuccess);
+		releaseTradeOffer(tradePartner, !isSuccess);
 
 		player->setTradeState(TRADE_NONE);
-		player->tradeItem = nullptr;
 		player->tradePartner = nullptr;
 		player->sendTradeClose();
 
 		tradePartner->setTradeState(TRADE_NONE);
-		tradePartner->tradeItem = nullptr;
 		tradePartner->tradePartner = nullptr;
 		tradePartner->sendTradeClose();
 	}
+}
+
+bool Game::deliverTradeItem(Player* recipient, Item* item)
+{
+	if (!recipient || !item) {
+		return false;
+	}
+
+	if (internalMoveItem(item->getParent(), recipient, INDEX_WHEREEVER, item, item->getItemCount(),
+			nullptr, FLAG_IGNOREAUTOSTACK) == RETURNVALUE_NOERROR) {
+		return true;
+	}
+
+	DepotChest* itemBox = recipient->getDepotChest(0, true);
+	return itemBox && internalMoveItem(item->getParent(), itemBox, INDEX_WHEREEVER, item,
+			item->getItemCount(), nullptr, FLAG_NOLIMIT | FLAG_IGNOREAUTOSTACK) == RETURNVALUE_NOERROR;
+}
+
+void Game::releaseTradeOffer(Player* player, bool cancelled)
+{
+	if (!player) {
+		return;
+	}
+
+	for (Item* item : player->tradeOfferItems) {
+		auto it = tradeItems.find(item);
+		if (it != tradeItems.end()) {
+			ReleaseItem(it->first);
+			tradeItems.erase(it);
+		}
+		if (cancelled) {
+			item->onTradeEvent(ON_TRADE_CANCEL, player);
+		}
+	}
+	player->tradeOfferItems.clear();
+	player->tradeOfferCounts.clear();
+	player->tradeItem = nullptr;
+	player->tradeMoney = 0;
+	player->tradeConfirmed = false;
+	player->tradeAccepted = false;
+	player->tradeSessionActive = false;
 }
 
 std::string Game::getTradeErrorDescription(ReturnValue ret, Item* item)
@@ -2909,48 +3293,18 @@ void Game::playerLookInTrade(uint32_t playerId, bool lookAtCounterOffer, uint8_t
 		return;
 	}
 
-	Item* tradeItem;
-	if (lookAtCounterOffer) {
-		tradeItem = tradePartner->getTradeItem();
-	} else {
-		tradeItem = player->getTradeItem();
-	}
-
-	if (!tradeItem) {
+	const std::vector<Item*>& offer = lookAtCounterOffer ? tradePartner->getTradeItems() : player->getTradeItems();
+	if (index >= offer.size()) {
 		return;
 	}
+	Item* tradeItem = offer[index];
 
 	const Position& playerPosition = player->getPosition();
 	const Position& tradeItemPosition = tradeItem->getPosition();
 
 	int32_t lookDistance = std::max<int32_t>(Position::getDistanceX(playerPosition, tradeItemPosition),
 	                                         Position::getDistanceY(playerPosition, tradeItemPosition));
-	if (index == 0) {
-		g_events->eventPlayerOnLookInTrade(player, tradePartner, tradeItem, lookDistance);
-		return;
-	}
-
-	Container* tradeContainer = tradeItem->getContainer();
-	if (!tradeContainer) {
-		return;
-	}
-
-	std::vector<const Container*> containers {tradeContainer};
-	size_t i = 0;
-	while (i < containers.size()) {
-		const Container* container = containers[i++];
-		for (Item* item : container->getItemList()) {
-			Container* tmpContainer = item->getContainer();
-			if (tmpContainer) {
-				containers.push_back(tmpContainer);
-			}
-
-			if (--index == 0) {
-				g_events->eventPlayerOnLookInTrade(player, tradePartner, item, lookDistance);
-				return;
-			}
-		}
-	}
+	g_events->eventPlayerOnLookInTrade(player, tradePartner, tradeItem, lookDistance);
 }
 
 void Game::playerCloseTrade(uint32_t playerId)
@@ -2970,16 +3324,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 		return;
 	}
 
-	if (player->getTradeItem()) {
-		auto it = tradeItems.find(player->getTradeItem());
-		if (it != tradeItems.end()) {
-			ReleaseItem(it->first);
-			tradeItems.erase(it);
-		}
-
-		player->tradeItem->onTradeEvent(ON_TRADE_CANCEL, player);
-		player->tradeItem = nullptr;
-	}
+	releaseTradeOffer(player, true);
 
 	player->setTradeState(TRADE_NONE);
 	player->tradePartner = nullptr;
@@ -2990,16 +3335,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 	player->sendTradeClose();
 
 	if (tradePartner) {
-		if (tradePartner->getTradeItem()) {
-			auto it = tradeItems.find(tradePartner->getTradeItem());
-			if (it != tradeItems.end()) {
-				ReleaseItem(it->first);
-				tradeItems.erase(it);
-			}
-
-			tradePartner->tradeItem->onTradeEvent(ON_TRADE_CANCEL, tradePartner);
-			tradePartner->tradeItem = nullptr;
-		}
+		releaseTradeOffer(tradePartner, true);
 
 		tradePartner->setTradeState(TRADE_NONE);
 		tradePartner->tradePartner = nullptr;
@@ -5470,6 +5806,7 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	}
 
 	static constexpr uint8_t BOX_EXTENDED_OPCODE = 73;
+	static constexpr uint8_t PLAYER_TRADE_EXTENDED_OPCODE = 74;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
 
@@ -5491,6 +5828,102 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		}
 
 		player->openDepotBox(depotId, BOX_CONTAINER_ID);
+		return;
+	}
+
+	if (opcode == PLAYER_TRADE_EXTENDED_OPCODE) {
+		if (buffer == "X") {
+			playerCloseTrade(playerId);
+			return;
+		}
+		if (buffer == "C") {
+			playerConfirmTrade(playerId);
+			return;
+		}
+		if (buffer == "T") {
+			playerAcceptTrade(playerId);
+			return;
+		}
+
+		std::vector<std::string> parts;
+		size_t start = 0;
+		while (start <= buffer.size()) {
+			const size_t separator = buffer.find(';', start);
+			parts.emplace_back(buffer.substr(start, separator == std::string::npos ? std::string::npos : separator - start));
+			if (separator == std::string::npos) {
+				break;
+			}
+			start = separator + 1;
+		}
+
+		const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
+			if (value.empty()) {
+				return false;
+			}
+			result = 0;
+			for (const char character : value) {
+				if (character < '0' || character > '9') {
+					return false;
+				}
+				const uint64_t digit = static_cast<uint64_t>(character - '0');
+				if (result > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
+					return false;
+				}
+				result = result * 10 + digit;
+			}
+			return true;
+		};
+
+		uint64_t value = 0;
+		if (parts.size() == 2 && parts[0] == "C" && parseUnsigned(parts[1], value)) {
+			if (!player->tradePartner || !player->tradeSessionActive || player->tradeConfirmed ||
+					value > player->getBankBalance()) {
+				if (value > player->getBankBalance()) {
+					player->sendCancelMessage("The offered amount exceeds your balance.");
+					sendTradeState(player);
+				}
+				return;
+			}
+			playerSetTradeMoney(playerId, value);
+			playerConfirmTrade(playerId);
+			return;
+		}
+		if (parts.size() == 2 && parts[0] == "I" && parseUnsigned(parts[1], value) && value <= UINT32_MAX) {
+			playerRequestTradeInvite(playerId, static_cast<uint32_t>(value));
+			return;
+		}
+		if (parts.size() == 2 && (parts[0] == "Y" || parts[0] == "N") &&
+				parseUnsigned(parts[1], value) && value <= UINT32_MAX) {
+			playerAnswerTradeInvite(playerId, static_cast<uint32_t>(value), parts[0] == "Y");
+			return;
+		}
+		if (parts.size() == 2 && parts[0] == "R" && parseUnsigned(parts[1], value) && value <= UINT8_MAX) {
+			playerRemoveTradeItem(playerId, static_cast<uint8_t>(value));
+			return;
+		}
+		if (parts.size() == 2 && parts[0] == "M" && parseUnsigned(parts[1], value)) {
+			playerSetTradeMoney(playerId, value);
+			return;
+		}
+		if (parts.size() == 7 && parts[0] == "A") {
+			uint64_t x = 0;
+			uint64_t y = 0;
+			uint64_t z = 0;
+			uint64_t stackPos = 0;
+			uint64_t spriteId = 0;
+			if (parseUnsigned(parts[1], x) && x <= UINT16_MAX &&
+					parseUnsigned(parts[2], y) && y <= UINT16_MAX &&
+					parseUnsigned(parts[3], z) && z <= UINT8_MAX &&
+					parseUnsigned(parts[4], stackPos) && stackPos <= UINT8_MAX &&
+					parseUnsigned(parts[5], spriteId) && spriteId <= UINT16_MAX) {
+				// The final field is reserved for a future explicit stack count.
+				uint64_t count = 0;
+				if (parseUnsigned(parts[6], count) && count > 0 && count <= UINT8_MAX) {
+					playerAddTradeItem(playerId, Position(static_cast<uint16_t>(x), static_cast<uint16_t>(y), static_cast<uint8_t>(z)),
+							static_cast<uint8_t>(stackPos), static_cast<uint16_t>(spriteId), static_cast<uint8_t>(count));
+				}
+			}
+		}
 		return;
 	}
 

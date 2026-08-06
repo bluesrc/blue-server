@@ -518,6 +518,27 @@ class Player final : public Creature, public Cylinder
 		Item* getTradeItem() {
 			return tradeItem;
 		}
+		const std::vector<Item*>& getTradeItems() const {
+			return tradeOfferItems;
+		}
+		const std::vector<uint8_t>& getTradeItemCounts() const {
+			return tradeOfferCounts;
+		}
+		bool isTradeItem(const Item* item) const {
+			return std::find(tradeOfferItems.begin(), tradeOfferItems.end(), item) != tradeOfferItems.end();
+		}
+		uint64_t getTradeMoney() const {
+			return tradeMoney;
+		}
+		bool isTradeConfirmed() const {
+			return tradeConfirmed;
+		}
+		bool isTradeAccepted() const {
+			return tradeAccepted;
+		}
+		bool isTradeSessionActive() const {
+			return tradeSessionActive;
+		}
 
 		//shop functions
 		void setShopOwner(Npc* owner, int32_t onBuy, int32_t onSell) {
@@ -1038,6 +1059,24 @@ class Player final : public Creature, public Cylinder
 				client->sendTradeItemRequest(traderName, item, ack);
 			}
 		}
+		void sendTradeOffer(const std::string& traderName, const std::vector<Item*>& items,
+				const std::vector<uint8_t>& counts, bool ownOffer) const {
+			if (client) {
+				client->sendTradeOffer(traderName, items, counts, ownOffer);
+			}
+		}
+		void sendTradeState(bool ownConfirmed, bool counterConfirmed, bool ownAccepted, bool counterAccepted,
+				uint64_t ownMoney, uint64_t counterMoney, uint64_t bankBalance) const {
+			if (client) {
+				client->sendTradeState(ownConfirmed, counterConfirmed, ownAccepted, counterAccepted,
+						ownMoney, counterMoney, bankBalance);
+			}
+		}
+		void sendTradeExtendedMessage(const std::string& buffer) const {
+			if (client) {
+				client->sendTradeExtendedMessage(buffer);
+			}
+		}
 		void sendTradeClose() const {
 			if (client) {
 				client->sendCloseTrade();
@@ -1266,6 +1305,12 @@ class Player final : public Creature, public Cylinder
 		Group* group = nullptr;
 		Inbox* inbox;
 		Item* tradeItem = nullptr;
+		std::vector<Item*> tradeOfferItems;
+		std::vector<uint8_t> tradeOfferCounts;
+		uint64_t tradeMoney = 0;
+		bool tradeConfirmed = false;
+		bool tradeAccepted = false;
+		bool tradeSessionActive = false;
  		Item* inventory[CONST_SLOT_LAST + 1] = {};
 		Item* writeItem = nullptr;
 		House* editHouse = nullptr;
