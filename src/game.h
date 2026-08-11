@@ -313,6 +313,12 @@ class Game
 		void playerReportRuleViolation(uint32_t playerId, const std::string& targetName, uint8_t reportType, uint8_t reportReason, const std::string& comment, const std::string& translation);
 
 		bool internalStartTrade(Player* player, Player* tradePartner, Item* tradeItem);
+		void playerRequestTradeInvite(uint32_t playerId, uint32_t tradePlayerId);
+		void playerAnswerTradeInvite(uint32_t playerId, uint32_t tradePlayerId, bool accept);
+		void playerAddTradeItem(uint32_t playerId, const Position& pos, uint8_t stackPos, uint16_t spriteId, uint8_t count);
+		void playerRemoveTradeItem(uint32_t playerId, uint8_t index);
+		void playerSetTradeMoney(uint32_t playerId, uint64_t amount);
+		void playerConfirmTrade(uint32_t playerId);
 		void internalCloseTrade(Player* player, bool sendCancel = true);
 		bool playerBroadcastMessage(Player* player, const std::string& text) const;
 		void broadcastMessage(const std::string& text, MessageClasses type) const;
@@ -570,6 +576,15 @@ class Game
 
 		//list of items that are in trading state, mapped to the player
 		std::map<Item*, uint32_t> tradeItems;
+
+		bool addTradeItem(Player* player, Item* item, uint8_t count);
+		bool activateTradeSession(Player* player, Player* tradePartner);
+		bool ownsTradeItem(const Player* player, const Item* item) const;
+		bool validateTradeOffer(const Player* player) const;
+		void sendTradeOffers(Player* first, Player* second) const;
+		void sendTradeState(Player* player) const;
+		void releaseTradeOffer(Player* player, bool cancelled);
+		bool deliverTradeItem(Player* recipient, Item* item);
 
 		std::map<uint32_t, BedItem*> bedSleepersMap;
 

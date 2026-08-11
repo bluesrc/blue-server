@@ -2171,6 +2171,46 @@ void ProtocolGame::sendTradeItemRequest(const std::string& traderName, const Ite
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::sendTradeOffer(const std::string& traderName, const std::vector<Item*>& items,
+		const std::vector<uint8_t>& counts, bool ownOffer)
+{
+	NetworkMessage msg;
+	msg.addByte(ownOffer ? 0x7D : 0x7E);
+	msg.addString(traderName);
+	msg.addByte(static_cast<uint8_t>(std::min<size_t>(items.size(), std::numeric_limits<uint8_t>::max())));
+
+	for (size_t index = 0; index < items.size(); ++index) {
+		const Item* item = items[index];
+		if (item->isStackable() && index < counts.size()) {
+			msg.addItem(item->getID(), counts[index]);
+		} else {
+			msg.addItem(item);
+		}
+	}
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendTradeState(bool ownConfirmed, bool counterConfirmed, bool ownAccepted,
+		bool counterAccepted, uint64_t ownMoney, uint64_t counterMoney, uint64_t bankBalance)
+{
+	sendTradeExtendedMessage(fmt::format("S;{:d};{:d};{:d};{:d};{:d};{:d};{:d}",
+			static_cast<uint8_t>(ownConfirmed), static_cast<uint8_t>(counterConfirmed),
+			static_cast<uint8_t>(ownAccepted), static_cast<uint8_t>(counterAccepted), ownMoney, counterMoney,
+			bankBalance));
+}
+
+void ProtocolGame::sendTradeExtendedMessage(const std::string& buffer)
+{
+	static constexpr uint8_t PLAYER_TRADE_EXTENDED_OPCODE = 74;
+
+	NetworkMessage msg;
+	msg.addByte(0x32);
+	msg.addByte(PLAYER_TRADE_EXTENDED_OPCODE);
+	msg.addString(buffer);
+	writeToOutputBuffer(msg);
+}
+
 void ProtocolGame::sendCloseTrade()
 {
 	NetworkMessage msg;

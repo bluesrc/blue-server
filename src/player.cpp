@@ -875,6 +875,41 @@ bool Player::openDepotBox(uint32_t depotId, uint8_t containerId)
 	return true;
 }
 
+bool Player::openTradeBackpack(uint8_t containerId)
+{
+	Item* backpackItem = getInventoryItem(CONST_SLOT_BACKPACK);
+	Container* backpack = backpackItem ? backpackItem->getContainer() : nullptr;
+	if (!backpack) {
+		return false;
+	}
+
+	const int8_t currentContainerId = getContainerID(backpack);
+	if (currentContainerId >= 0 && currentContainerId != containerId) {
+		onCloseContainer(backpack);
+		closeContainer(static_cast<uint8_t>(currentContainerId));
+	}
+
+	if (Container* previousContainer = getContainerByID(containerId); previousContainer && previousContainer != backpack) {
+		onCloseContainer(previousContainer);
+		closeContainer(containerId);
+	}
+
+	addContainer(containerId, backpack);
+	sendContainer(containerId, backpack, false, 0);
+	return true;
+}
+
+void Player::closeTradeBackpack(uint8_t containerId)
+{
+	Container* backpack = getContainerByID(containerId);
+	if (!backpack) {
+		return;
+	}
+
+	onCloseContainer(backpack);
+	closeContainer(containerId);
+}
+
 DepotLocker& Player::getDepotLocker()
 {
 	if (!depotLocker) {
@@ -1092,9 +1127,7 @@ void Player::onUpdateTileItem(const Tile* tile, const Position& pos, const Item*
 	}
 
 	if (tradeState != TRADE_TRANSFER) {
-		if (tradeItem && oldItem == tradeItem) {
-			g_game.internalCloseTrade(this);
-		}
+		checkTradeState(oldItem);
 	}
 }
 
@@ -1106,12 +1139,6 @@ void Player::onRemoveTileItem(const Tile* tile, const Position& pos, const ItemT
 	if (tradeState != TRADE_TRANSFER) {
 		checkTradeState(item);
 
-		if (tradeItem) {
-			const Container* container = item->getContainer();
-			if (container && container->isHoldingItem(tradeItem)) {
-				g_game.internalCloseTrade(this);
-			}
-		}
 	}
 }
 
@@ -1358,10 +1385,6 @@ void Player::onCreatureMove(Creature* creature, const Tile* newTile, const Posit
 
 	if (tradeState != TRADE_TRANSFER) {
 		//check if we should close trade
-		if (tradeItem && !Position::areInRange<1, 1, 0>(tradeItem->getPosition(), getPosition())) {
-			g_game.internalCloseTrade(this);
-		}
-
 		if (tradePartner && !Position::areInRange<2, 2, 0>(tradePartner->getPosition(), getPosition())) {
 			g_game.internalCloseTrade(this);
 		}
@@ -1415,16 +1438,11 @@ void Player::onUpdateContainerItem(const Container* container, const Item* oldIt
 	}
 }
 
-void Player::onRemoveContainerItem(const Container* container, const Item* item)
+void Player::onRemoveContainerItem(const Container* /*container*/, const Item* item)
 {
 	if (tradeState != TRADE_TRANSFER) {
 		checkTradeState(item);
 
-		if (tradeItem) {
-			if (tradeItem->getParent() != container && container->isHoldingItem(tradeItem)) {
-				g_game.internalCloseTrade(this);
-			}
-		}
 	}
 }
 
@@ -1473,32 +1491,35 @@ void Player::onRemoveInventoryItem(Item* item)
 	if (tradeState != TRADE_TRANSFER) {
 		checkTradeState(item);
 
-		if (tradeItem) {
-			const Container* container = item->getContainer();
-			if (container && container->isHoldingItem(tradeItem)) {
-				g_game.internalCloseTrade(this);
-			}
-		}
 	}
 }
 
 void Player::checkTradeState(const Item* item)
 {
-	if (!tradeItem || tradeState == TRADE_TRANSFER) {
+	if (!item || tradeOfferItems.empty() || tradeState == TRADE_TRANSFER) {
 		return;
 	}
 
-	if (tradeItem == item) {
-		g_game.internalCloseTrade(this);
-	} else {
-		const Container* container = dynamic_cast<const Container*>(item->getParent());
-		while (container) {
-			if (container == tradeItem) {
-				g_game.internalCloseTrade(this);
-				break;
-			}
+	for (const Item* offeredItem : tradeOfferItems) {
+		if (offeredItem == item) {
+			g_game.internalCloseTrade(this);
+			return;
+		}
 
-			container = dynamic_cast<const Container*>(container->getParent());
+		if (const Container* changedContainer = item->getContainer()) {
+			if (changedContainer->isHoldingItem(offeredItem)) {
+				g_game.internalCloseTrade(this);
+				return;
+			}
+		}
+
+		const Container* parent = dynamic_cast<const Container*>(item->getParent());
+		while (parent) {
+			if (parent == offeredItem) {
+				g_game.internalCloseTrade(this);
+				return;
+			}
+			parent = dynamic_cast<const Container*>(parent->getParent());
 		}
 	}
 }
@@ -2746,7 +2767,7 @@ Cylinder* Player::queryDestination(int32_t& index, const Thing& thing, Item** de
 		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex) {
 			Item* inventoryItem = inventory[slotIndex];
 			if (inventoryItem) {
-				if (inventoryItem == tradeItem) {
+				if (isTradeItem(inventoryItem)) {
 					continue;
 				}
 
@@ -2805,7 +2826,7 @@ Cylinder* Player::queryDestination(int32_t& index, const Thing& thing, Item** de
 			uint32_t n = 0;
 
 			for (Item* tmpItem : tmpContainer->getItemList()) {
-				if (tmpItem == tradeItem) {
+				if (isTradeItem(tmpItem)) {
 					continue;
 				}
 
