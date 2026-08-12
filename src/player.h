@@ -99,6 +99,9 @@ static constexpr int32_t PLAYER_MIN_SPEED = 10;
 class Player final : public Creature, public Cylinder
 {
 	public:
+		static constexpr uint16_t BACKPACK_CAPACITY = 30;
+		static constexpr int32_t BACKPACK_DB_PID = 63;
+
 		explicit Player(ProtocolGame_ptr p);
 		~Player();
 
@@ -234,6 +237,10 @@ class Player final : public Creature, public Cylinder
 
 		Inbox* getInbox() const {
 			return inbox;
+		}
+
+		Container* getBackpack() const {
+			return backpack;
 		}
 
 		StoreInbox* getStoreInbox() const {
@@ -492,8 +499,9 @@ class Player final : public Creature, public Cylinder
 
 		DepotChest* getDepotChest(uint32_t depotId, bool autoCreate);
 		bool openDepotBox(uint32_t depotId, uint8_t containerId);
-		bool openTradeBackpack(uint8_t containerId);
-		void closeTradeBackpack(uint8_t containerId);
+		bool openBackpack(uint8_t containerId);
+		bool toggleBackpack(uint8_t containerId);
+		void closeBackpack(uint8_t containerId);
 		DepotLocker& getDepotLocker();
 		void onReceiveMail() const;
 		bool isNearDepotBox() const;
@@ -1306,6 +1314,7 @@ class Player final : public Creature, public Cylinder
 		GuildRank_ptr guildRank = nullptr;
 		Group* group = nullptr;
 		Inbox* inbox;
+		Container* backpack;
 		Item* tradeItem = nullptr;
 		std::vector<Item*> tradeOfferItems;
 		std::vector<uint8_t> tradeOfferCounts;
