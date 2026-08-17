@@ -43,7 +43,6 @@ extern MoveEvents* g_moveEvents;
 extern Weapons* g_weapons;
 extern Scripts* g_scripts;
 
-static constexpr uint8_t PLAYER_BACKPACK_CONTAINER_ID = 0x0D;
 static constexpr uint8_t TRADE_BACKPACK_CONTAINER_ID = 0x0E;
 
 Game::Game()
@@ -1465,12 +1464,6 @@ Item* Game::findItemOfType(Cylinder* cylinder, uint16_t itemId,
 	}
 
 	std::vector<Container*> containers;
-	if (depthSearch) {
-		if (Player* player = dynamic_cast<Player*>(cylinder)) {
-			containers.push_back(player->getBackpack());
-		}
-	}
-
 	for (size_t i = cylinder->getFirstIndex(), j = cylinder->getLastIndex(); i < j; ++i) {
 		Thing* thing = cylinder->getThing(i);
 		if (!thing) {
@@ -1522,9 +1515,6 @@ bool Game::removeMoney(Cylinder* cylinder, uint64_t money, uint32_t flags /*= 0*
 	}
 
 	std::vector<Container*> containers;
-	if (Player* player = dynamic_cast<Player*>(cylinder)) {
-		containers.push_back(player->getBackpack());
-	}
 
 	std::multimap<uint32_t, Item*> moneyMap;
 	uint64_t moneyCount = 0;
@@ -1852,7 +1842,12 @@ void Game::playerEquipItem(uint32_t playerId, uint16_t spriteId)
 		return;
 	}
 
-	Container* backpack = player->getBackpack();
+	Item* item = player->getInventoryItem(CONST_SLOT_BACKPACK);
+	if (!item) {
+		return;
+	}
+
+	Container* backpack = item->getContainer();
 	if (!backpack) {
 		return;
 	}
@@ -2769,8 +2764,8 @@ bool Game::internalStartTrade(Player* player, Player* tradePartner, Item* tradeI
 	}
 
 	sendTradeOffers(player, tradePartner);
-	player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
-	tradePartner->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	player->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	tradePartner->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 	return true;
 }
 
@@ -2863,8 +2858,8 @@ bool Game::activateTradeSession(Player* player, Player* tradePartner)
 	player->tradeSessionActive = true;
 	tradePartner->tradeSessionActive = true;
 	sendTradeOffers(player, tradePartner);
-	player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
-	tradePartner->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	player->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	tradePartner->openTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 	return true;
 }
 
@@ -3231,12 +3226,12 @@ void Game::playerAcceptTrade(uint32_t playerId)
 
 		player->setTradeState(TRADE_NONE);
 		player->tradePartner = nullptr;
-		player->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		player->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 		player->sendTradeClose();
 
 		tradePartner->setTradeState(TRADE_NONE);
 		tradePartner->tradePartner = nullptr;
-		tradePartner->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		tradePartner->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 		tradePartner->sendTradeClose();
 	}
 }
@@ -3345,7 +3340,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 	if (sendCancel) {
 		player->sendTextMessage(MESSAGE_STATUS_SMALL, "Trade cancelled.");
 	}
-	player->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	player->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 	player->sendTradeClose();
 
 	if (tradePartner) {
@@ -3357,7 +3352,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 		if (sendCancel) {
 			tradePartner->sendTextMessage(MESSAGE_STATUS_SMALL, "Trade cancelled.");
 		}
-		tradePartner->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		tradePartner->closeTradeBackpack(TRADE_BACKPACK_CONTAINER_ID);
 		tradePartner->sendTradeClose();
 	}
 }
@@ -5822,7 +5817,6 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 
 	static constexpr uint8_t BOX_EXTENDED_OPCODE = 73;
 	static constexpr uint8_t PLAYER_TRADE_EXTENDED_OPCODE = 74;
-	static constexpr uint8_t PLAYER_BACKPACK_EXTENDED_OPCODE = 75;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
 
@@ -5844,15 +5838,6 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		}
 
 		player->openDepotBox(depotId, BOX_CONTAINER_ID);
-		return;
-	}
-
-	if (opcode == PLAYER_BACKPACK_EXTENDED_OPCODE) {
-		if (buffer == "T" && !player->isTradeSessionActive()) {
-			player->toggleBackpack(PLAYER_BACKPACK_CONTAINER_ID);
-		} else if (buffer == "O" && player->isTradeSessionActive()) {
-			player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
-		}
 		return;
 	}
 

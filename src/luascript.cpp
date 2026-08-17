@@ -2584,7 +2584,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Player", "getDepotChest", LuaScriptInterface::luaPlayerGetDepotChest);
 	registerMethod("Player", "getInbox", LuaScriptInterface::luaPlayerGetInbox);
-	registerMethod("Player", "getBackpack", LuaScriptInterface::luaPlayerGetBackpack);
 
 	registerMethod("Player", "getSkullTime", LuaScriptInterface::luaPlayerGetSkullTime);
 	registerMethod("Player", "setSkullTime", LuaScriptInterface::luaPlayerSetSkullTime);
@@ -8763,21 +8762,6 @@ int LuaScriptInterface::luaPlayerGetInbox(lua_State* L)
 	} else {
 		pushBoolean(L, false);
 	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetBackpack(lua_State* L)
-{
-	// player:getBackpack()
-	Player* player = getUserdata<Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	Container* backpack = player->getBackpack();
-	pushUserdata<Item>(L, backpack);
-	setItemMetatable(L, -1, backpack);
 	return 1;
 }
 

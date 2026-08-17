@@ -36,13 +36,9 @@ MuteCountMap Player::muteCountMap;
 uint32_t Player::playerAutoID = 0x10000000;
 
 Player::Player(ProtocolGame_ptr p) :
-	Creature(), lastPing(OTSYS_TIME()), lastPong(lastPing), inbox(new Inbox(ITEM_INBOX)),
-	backpack(new Container(ITEM_BACKPACK, BACKPACK_CAPACITY)), storeInbox(new StoreInbox(ITEM_STORE_INBOX)), client(std::move(p))
+	Creature(), lastPing(OTSYS_TIME()), lastPong(lastPing), inbox(new Inbox(ITEM_INBOX)), storeInbox(new StoreInbox(ITEM_STORE_INBOX)), client(std::move(p))
 {
 	inbox->incrementReferenceCounter();
-
-	backpack->setParent(this);
-	backpack->incrementReferenceCounter();
 
 	storeInbox->setParent(this);
 	storeInbox->incrementReferenceCounter();
@@ -62,9 +58,6 @@ Player::~Player()
 	}
 
 	inbox->decrementReferenceCounter();
-
-	backpack->setParent(nullptr);
-	backpack->decrementReferenceCounter();
 
 	storeInbox->setParent(nullptr);
 	storeInbox->decrementReferenceCounter();
@@ -434,8 +427,6 @@ void Player::updateInventoryWeight()
 			inventoryWeight += item->getWeight();
 		}
 	}
-
-	inventoryWeight += backpack->getWeight() - backpack->getBaseWeight();
 
 	if (StoreInbox* storeInbox = getStoreInbox()) {
 		inventoryWeight += storeInbox->getWeight();
@@ -884,8 +875,10 @@ bool Player::openDepotBox(uint32_t depotId, uint8_t containerId)
 	return true;
 }
 
-bool Player::openBackpack(uint8_t containerId)
+bool Player::openTradeBackpack(uint8_t containerId)
 {
+	Item* backpackItem = getInventoryItem(CONST_SLOT_BACKPACK);
+	Container* backpack = backpackItem ? backpackItem->getContainer() : nullptr;
 	if (!backpack) {
 		return false;
 	}
@@ -906,27 +899,14 @@ bool Player::openBackpack(uint8_t containerId)
 	return true;
 }
 
-bool Player::toggleBackpack(uint8_t containerId)
+void Player::closeTradeBackpack(uint8_t containerId)
 {
-	if (Container* openContainer = getContainerByID(containerId)) {
-		if (openContainer == backpack || backpack->isHoldingItem(openContainer)) {
-			onCloseContainer(openContainer);
-			closeContainer(containerId);
-			return true;
-		}
-	}
-
-	return openBackpack(containerId);
-}
-
-void Player::closeBackpack(uint8_t containerId)
-{
-	Container* container = getContainerByID(containerId);
-	if (!container) {
+	Container* backpack = getContainerByID(containerId);
+	if (!backpack) {
 		return;
 	}
 
-	onCloseContainer(container);
+	onCloseContainer(backpack);
 	closeContainer(containerId);
 }
 
@@ -1176,7 +1156,6 @@ void Player::onCreatureAppear(Creature* creature, bool isLogin)
 				g_moveEvents->onPlayerEquip(this, item, static_cast<slots_t>(slot), false);
 			}
 		}
-		backpack->startDecaying();
 
 		for (Condition* condition : storedConditionList) {
 			addCondition(condition);
@@ -2487,7 +2466,9 @@ ReturnValue Player::queryAdd(int32_t index, const Thing& thing, uint32_t count, 
 		}
 
 		case CONST_SLOT_BACKPACK: {
-			// The backpack is intrinsic to the player and is not an equipment item.
+			if (slotPosition & SLOTP_BACKPACK) {
+				ret = RETURNVALUE_NOERROR;
+			}
 			break;
 		}
 
@@ -2679,17 +2660,6 @@ ReturnValue Player::queryMaxCount(int32_t index, const Thing& thing, uint32_t co
 
 	if (index == INDEX_WHEREEVER) {
 		uint32_t n = 0;
-		uint32_t queryCount = 0;
-		backpack->queryMaxCount(INDEX_WHEREEVER, *item, item->getItemCount(), queryCount, flags);
-		n += queryCount;
-		for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-			if (Container* tmpContainer = (*it)->getContainer()) {
-				queryCount = 0;
-				tmpContainer->queryMaxCount(INDEX_WHEREEVER, *item, item->getItemCount(), queryCount, flags);
-				n += queryCount;
-			}
-		}
-
 		for (int32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex) {
 			Item* inventoryItem = inventory[slotIndex];
 			if (inventoryItem) {
@@ -2793,7 +2763,6 @@ Cylinder* Player::queryDestination(int32_t& index, const Thing& thing, Item** de
 		bool isStackable = item->isStackable();
 
 		std::vector<Container*> containers;
-		containers.push_back(backpack);
 
 		for (uint32_t slotIndex = CONST_SLOT_FIRST; slotIndex <= CONST_SLOT_LAST; ++slotIndex) {
 			Item* inventoryItem = inventory[slotIndex];
@@ -3046,12 +3015,6 @@ size_t Player::getLastIndex() const
 uint32_t Player::getItemTypeCount(uint16_t itemId, int32_t subType /*= -1*/) const
 {
 	uint32_t count = 0;
-	for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-		if ((*it)->getID() == itemId) {
-			count += Item::countByType(*it, subType);
-		}
-	}
-
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; i++) {
 		Item* item = inventory[i];
 		if (!item) {
@@ -3082,25 +3045,6 @@ bool Player::removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType,
 	std::vector<Item*> itemList;
 
 	uint32_t count = 0;
-	for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-		Item* backpackItem = *it;
-		if (backpackItem->getID() != itemId) {
-			continue;
-		}
-
-		uint32_t itemCount = Item::countByType(backpackItem, subType);
-		if (itemCount == 0) {
-			continue;
-		}
-
-		itemList.push_back(backpackItem);
-		count += itemCount;
-		if (count >= amount) {
-			g_game.internalRemoveItems(std::move(itemList), amount, Item::items[itemId].stackable);
-			return true;
-		}
-	}
-
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; i++) {
 		Item* item = inventory[i];
 		if (!item) {
@@ -3145,10 +3089,6 @@ bool Player::removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType,
 
 std::map<uint32_t, uint32_t>& Player::getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const
 {
-	for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-		countMap[(*it)->getID()] += Item::countByType(*it, -1);
-	}
-
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; i++) {
 		Item* item = inventory[i];
 		if (!item) {
@@ -4691,7 +4631,7 @@ void Player::sendClosePrivate(uint16_t channelId)
 
 uint64_t Player::getMoney() const
 {
-	std::vector<const Container*> containers{backpack};
+	std::vector<const Container*> containers;
 	uint64_t moneyCount = 0;
 
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; ++i) {

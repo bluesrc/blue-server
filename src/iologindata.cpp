@@ -431,21 +431,7 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 			const std::pair<Item*, int32_t>& pair = it->second;
 			Item* item = pair.first;
 			int32_t pid = pair.second;
-			if (pid == Player::BACKPACK_DB_PID) {
-				player->getBackpack()->internalAddThing(item);
-			} else if (pid == CONST_SLOT_BACKPACK) {
-				// Migrate the legacy equipped backpack without keeping its item shell.
-				if (Container* legacyBackpack = item->getContainer()) {
-					while (!legacyBackpack->empty()) {
-						Item* legacyItem = legacyBackpack->getItemByIndex(legacyBackpack->size() - 1);
-						legacyBackpack->removeThing(legacyItem, legacyItem->getItemCount());
-						player->getBackpack()->internalAddThing(legacyItem);
-					}
-					item->decrementReferenceCounter();
-				} else {
-					player->getBackpack()->internalAddThing(item);
-				}
-			} else if (pid >= CONST_SLOT_FIRST && pid <= CONST_SLOT_LAST) {
+			if (pid >= CONST_SLOT_FIRST && pid <= CONST_SLOT_LAST) {
 				player->internalAddThing(pid, item);
 			} else {
 				ItemMap::const_iterator it2 = itemMap.find(pid);
@@ -774,10 +760,6 @@ bool IOLoginData::savePlayer(Player* player)
 	DBInsert itemsQuery("INSERT INTO `player_items` (`player_id`, `pid`, `sid`, `itemtype`, `count`, `attributes`) VALUES ");
 
 	ItemBlockList itemList;
-	for (Item* item : player->getBackpack()->getItemList()) {
-		itemList.emplace_back(Player::BACKPACK_DB_PID, item);
-	}
-
 	for (int32_t slotId = CONST_SLOT_FIRST; slotId <= CONST_SLOT_LAST; ++slotId) {
 		Item* item = player->inventory[slotId];
 		if (item) {
