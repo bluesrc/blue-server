@@ -183,6 +183,7 @@ class Pokemon final : public Creature
 		bool isShiny() const { return shiny; }
 		PokemonStats_t getIvs() { return ivs; }
 		PokemonStats_t getEvs() { return evs; }
+		PokemonNatures_t getNature() const { return nature; }
 		uint8_t getFriendship() { return friendship;  }
 		uint16_t getNumber() { return mType->info.number; }
 
@@ -221,6 +222,7 @@ class Pokemon final : public Creature
 		PokemonStats_t ivs = {};
 		PokemonStats_t evs = {};
 		PokemonGenders_t gender = GENDER_NONE;
+		PokemonNatures_t nature = NATURE_NONE;
 		uint8_t friendship {0};
 		uint8_t evasion {100};
 		uint8_t accuracy {100};

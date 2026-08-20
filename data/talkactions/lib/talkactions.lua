@@ -11,7 +11,37 @@ function logCommand(player, words, param)
 	io.close(file)
 end
 
-local pokemonOptionUsage = "Options: level=1-100, shiny=true/false, happiness=0-255, ivs=0-31, evs=0-252, gender=male/female, iv_hp/iv_attack/iv_defense/iv_sp_attack/iv_sp_defense/iv_speed, ev_hp/ev_attack/ev_defense/ev_sp_attack/ev_sp_defense/ev_speed."
+local pokemonNatureNames = "none, hardy, lonely, brave, adamant, naughty, bold, docile, relaxed, impish, lax, timid, hasty, serious, jolly, naive, modest, mild, quiet, bashful, rash, calm, gentle, sassy, careful or quirky"
+local pokemonOptionUsage = "Options: level=1-100, shiny=true/false, happiness=0-255, nature=<name>, ivs=0-31, evs=0-252, gender=male/female, iv_hp/iv_attack/iv_defense/iv_sp_attack/iv_sp_defense/iv_speed, ev_hp/ev_attack/ev_defense/ev_sp_attack/ev_sp_defense/ev_speed. Valid natures: " .. pokemonNatureNames .. "."
+
+local pokemonNatures = {
+	none = NATURE_NONE,
+	hardy = NATURE_HARDY,
+	lonely = NATURE_LONELY,
+	brave = NATURE_BRAVE,
+	adamant = NATURE_ADAMANT,
+	naughty = NATURE_NAUGHTY,
+	bold = NATURE_BOLD,
+	docile = NATURE_DOCILE,
+	relaxed = NATURE_RELAXED,
+	impish = NATURE_IMPISH,
+	lax = NATURE_LAX,
+	timid = NATURE_TIMID,
+	hasty = NATURE_HASTY,
+	serious = NATURE_SERIOUS,
+	jolly = NATURE_JOLLY,
+	naive = NATURE_NAIVE,
+	modest = NATURE_MODEST,
+	mild = NATURE_MILD,
+	quiet = NATURE_QUIET,
+	bashful = NATURE_BASHFUL,
+	rash = NATURE_RASH,
+	calm = NATURE_CALM,
+	gentle = NATURE_GENTLE,
+	sassy = NATURE_SASSY,
+	careful = NATURE_CAREFUL,
+	quirky = NATURE_QUIRKY
+}
 
 local pokemonStatAliases = {
 	hp = "hp",
@@ -107,6 +137,13 @@ function parsePokemonCreateOptions(split, startIndex)
 						return nil, "Pokemon happiness must be an integer between 0 and 255."
 					end
 					options.friendship = happiness
+				elseif key == "nature" then
+					local natureName = value:lower()
+					local nature = pokemonNatures[natureName]
+					if nature == nil then
+						return nil, "Invalid Pokemon nature: " .. value .. ". Valid natures: " .. pokemonNatureNames .. "."
+					end
+					options.nature = nature
 				elseif key == "ivs" or key == "iv" then
 					local iv = parsePokemonInteger(value, 0, 31)
 					if not iv then
