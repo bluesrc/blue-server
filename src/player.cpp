@@ -4785,6 +4785,10 @@ void Player::setGuild(Guild* guild)
 	if (oldGuild) {
 		oldGuild->removeMember(this);
 	}
+
+	if (client) {
+		client->sendTrainerInfo();
+	}
 }
 
 void Player::updateRegeneration()

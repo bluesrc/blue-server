@@ -10,6 +10,7 @@
 #include "outputmessage.h"
 
 #include "player.h"
+#include "guild.h"
 
 #include "configmanager.h"
 #include "actions.h"
@@ -1390,6 +1391,18 @@ void ProtocolGame::sendStats()
 {
 	NetworkMessage msg;
 	AddPlayerStats(msg);
+	writeToOutputBuffer(msg);
+	sendTrainerInfo();
+}
+
+void ProtocolGame::sendTrainerInfo()
+{
+	NetworkMessage msg;
+	msg.addByte(0x3A);
+	msg.addString(player->getTown() ? player->getTown()->getName() : std::string());
+	msg.addByte(static_cast<uint8_t>(player->getSex()));
+	msg.add<uint64_t>(player->getMoney() + player->getBankBalance());
+	msg.addString(player->getGuild() ? player->getGuild()->getName() : std::string());
 	writeToOutputBuffer(msg);
 }
 
