@@ -28,6 +28,7 @@ extern ConfigManager g_config;
 extern Actions actions;
 extern CreatureEvents* g_creatureEvents;
 extern Chat* g_chat;
+extern Pokemons g_pokemons;
 
 namespace {
 
@@ -3332,5 +3333,49 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 
 	msg.add<bool>(info.fainted);
 	msg.add<bool>(active);
+
+	// Detailed Pokebag data. Keep the original fields above in the same order so
+	// existing consumers (such as game_pokebar) can continue using the callback.
+	PokemonTypes_t primaryType = TYPE_NONE;
+	PokemonTypes_t secondaryType = TYPE_NONE;
+	uint64_t currentLevelExperience = info.experience;
+	uint64_t nextLevelExperience = info.experience;
+	if (const PokemonType* pokemonType = g_pokemons.getPokemonType(info.name)) {
+		primaryType = pokemonType->info.types[0];
+		secondaryType = pokemonType->info.types[1];
+		// Pokemon loaded from persistence only store IVs/EVs/nature. Recalculate
+		// their derived stats before serializing the Pokebag payload.
+		info.stats = calculatePokemonStats(pokemonType->info.base_stats, info.level, info.ivs, info.evs, info.nature);
+		currentLevelExperience = Pokemon::getExperienceForLevel(pokemonType->info.level_rate, info.level);
+		nextLevelExperience = info.level < 100
+			? Pokemon::getExperienceForLevel(pokemonType->info.level_rate, info.level + 1)
+			: currentLevelExperience;
+	}
+
+	msg.addString(info.name);
+	msg.add<uint64_t>(info.experience);
+	msg.add<uint64_t>(currentLevelExperience);
+	msg.add<uint64_t>(nextLevelExperience);
+	msg.add<uint32_t>(std::max<int32_t>(0, info.health));
+	msg.add<uint32_t>(std::max<int32_t>(0, info.maxHealth));
+	msg.add<uint8_t>(info.nature);
+	msg.add<uint8_t>(info.friendship);
+	msg.add<uint8_t>(primaryType);
+	msg.add<uint8_t>(secondaryType);
+	msg.add<uint8_t>(info.gender);
+	msg.add<bool>(info.shiny);
+
+	const auto addStats = [&msg](const PokemonStats_t& stats) {
+		msg.add<uint16_t>(stats.hp);
+		msg.add<uint16_t>(stats.attack);
+		msg.add<uint16_t>(stats.defense);
+		msg.add<uint16_t>(stats.sp_attack);
+		msg.add<uint16_t>(stats.sp_defense);
+		msg.add<uint16_t>(stats.speed);
+	};
+	addStats(info.stats);
+	addStats(info.ivs);
+	addStats(info.evs);
+
 	writeToOutputBuffer(msg);
 }
