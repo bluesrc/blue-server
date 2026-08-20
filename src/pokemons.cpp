@@ -18,6 +18,59 @@ extern Moves* g_moves;
 extern Pokemons g_pokemons;
 extern ConfigManager g_config;
 
+PokemonNatureModifiers_t getPokemonNatureModifiers(PokemonNatures_t nature)
+{
+	switch (nature) {
+		case NATURE_LONELY: return {10, -10, 0, 0, 0};
+		case NATURE_BRAVE: return {10, 0, 0, 0, -10};
+		case NATURE_ADAMANT: return {10, 0, -10, 0, 0};
+		case NATURE_NAUGHTY: return {10, 0, 0, -10, 0};
+		case NATURE_BOLD: return {-10, 10, 0, 0, 0};
+		case NATURE_RELAXED: return {0, 10, 0, 0, -10};
+		case NATURE_IMPISH: return {0, 10, -10, 0, 0};
+		case NATURE_LAX: return {0, 10, 0, -10, 0};
+		case NATURE_TIMID: return {-10, 0, 0, 0, 10};
+		case NATURE_HASTY: return {0, -10, 0, 0, 10};
+		case NATURE_JOLLY: return {0, 0, -10, 0, 10};
+		case NATURE_NAIVE: return {0, 0, 0, -10, 10};
+		case NATURE_MODEST: return {-10, 0, 10, 0, 0};
+		case NATURE_MILD: return {0, -10, 10, 0, 0};
+		case NATURE_QUIET: return {0, 0, 10, 0, -10};
+		case NATURE_RASH: return {0, 0, 10, -10, 0};
+		case NATURE_CALM: return {-10, 0, 0, 10, 0};
+		case NATURE_GENTLE: return {0, -10, 0, 10, 0};
+		case NATURE_SASSY: return {0, 0, 0, 10, -10};
+		case NATURE_CAREFUL: return {0, 0, -10, 10, 0};
+		case NATURE_NONE:
+		case NATURE_HARDY:
+		case NATURE_DOCILE:
+		case NATURE_SERIOUS:
+		case NATURE_BASHFUL:
+		case NATURE_QUIRKY:
+		default:
+			return {};
+	}
+}
+
+PokemonStats_t calculatePokemonStats(const PokemonStats_t& baseStats, uint8_t level,
+	const PokemonStats_t& ivs, const PokemonStats_t& evs, PokemonNatures_t nature)
+{
+	const PokemonNatureModifiers_t modifiers = getPokemonNatureModifiers(nature);
+	auto calculateStat = [level](uint8_t baseStat, uint8_t iv, uint8_t ev, int8_t modifier) -> uint8_t {
+		const uint16_t stat = (((2 * baseStat) + iv + (ev / 4)) * level) / 100 + 5;
+		return static_cast<uint8_t>((stat * (100 + modifier)) / 100);
+	};
+
+	PokemonStats_t stats;
+	stats.hp = static_cast<uint8_t>((((2 * baseStats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100 + level + 10);
+	stats.attack = calculateStat(baseStats.attack, ivs.attack, evs.attack, modifiers.attack);
+	stats.defense = calculateStat(baseStats.defense, ivs.defense, evs.defense, modifiers.defense);
+	stats.sp_attack = calculateStat(baseStats.sp_attack, ivs.sp_attack, evs.sp_attack, modifiers.sp_attack);
+	stats.sp_defense = calculateStat(baseStats.sp_defense, ivs.sp_defense, evs.sp_defense, modifiers.sp_defense);
+	stats.speed = calculateStat(baseStats.speed, ivs.speed, evs.speed, modifiers.speed);
+	return stats;
+}
+
 moveBlock_t::~moveBlock_t()
 {
 	if (combatMove) {

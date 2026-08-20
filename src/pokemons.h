@@ -287,6 +287,7 @@ struct PokemonInfo_t
 	uint8_t level;
 	uint64_t experience;
 	PokemonGenders_t gender;
+	PokemonNatures_t nature;
 	uint8_t friendship;
 	bool shiny;
 
@@ -304,11 +305,26 @@ struct PokemonInfo_t
 		level(0),
 		experience(0),
 		gender(GENDER_UNDEFINED),
+		nature(NATURE_NONE),
 		friendship(0),
 		shiny(false)
 	{
 	}
 };
+
+struct PokemonNatureModifiers_t
+{
+	// Percentage adjustments. HP is not affected by nature.
+	int8_t attack = 0;
+	int8_t defense = 0;
+	int8_t sp_attack = 0;
+	int8_t sp_defense = 0;
+	int8_t speed = 0;
+};
+
+PokemonNatureModifiers_t getPokemonNatureModifiers(PokemonNatures_t nature);
+PokemonStats_t calculatePokemonStats(const PokemonStats_t& baseStats, uint8_t level,
+	const PokemonStats_t& ivs, const PokemonStats_t& evs, PokemonNatures_t nature);
 
 struct PokemonStatOptions_t
 {
@@ -331,6 +347,7 @@ struct PokemonCreateOptions_t
 	int16_t friendship = -1;
 	int8_t shiny = -1;
 	int8_t gender = -1;
+	int8_t nature = -1;
 	PokemonStatOptions_t ivs;
 	PokemonStatOptions_t evs;
 };

@@ -60,6 +60,7 @@ Pokemon::Pokemon(PokemonType* mType) :
 	ivs.sp_attack = distribution(generator);
 	ivs.sp_defense = distribution(generator);
 	ivs.speed = distribution(generator);
+	nature = static_cast<PokemonNatures_t>(uniform_random(NATURE_HARDY, NATURE_QUIRKY));
 
 	experience = getExperienceForLevel(mType->info.level_rate, level);
 	updateStats();
@@ -122,6 +123,7 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	evs.sp_attack = pInfo.evs.sp_attack;
 	evs.sp_defense = pInfo.evs.sp_defense;
 	evs.speed = pInfo.evs.speed;
+	nature = pInfo.nature;
 
 	updateStats();
 	health = std::clamp(pInfo.health, 0, healthMax);
@@ -240,6 +242,11 @@ void Pokemon::applyCreateOptions(const PokemonCreateOptions_t& options, bool ful
 		gender = static_cast<PokemonGenders_t>(std::clamp<int16_t>(options.gender, GENDER_NONE, GENDER_UNDEFINED));
 	}
 
+	if (options.nature >= 0) {
+		nature = static_cast<PokemonNatures_t>(std::clamp<int16_t>(options.nature, NATURE_NONE, NATURE_QUIRKY));
+		statsChanged = true;
+	}
+
 	if (statsChanged) {
 		updateStats(!fullHealth);
 		if (fullHealth) {
@@ -259,13 +266,7 @@ void Pokemon::updateStats(bool preserveHealth)
 {
 	const int32_t previousMaxHealth = healthMax;
 
-	// Nature modifiers are intentionally left for the existing nature implementation TODO.
-	stats.hp = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
-	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
-	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5;
-	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
-	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5;
-	stats.speed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5;
+	stats = calculatePokemonStats(mType->info.base_stats, level, ivs, evs, nature);
 
 	healthMax = stats.hp;
 	setBaseSpeed(stats.speed + 100); // Adaptation for the server movement-speed scale.
@@ -290,6 +291,7 @@ void Pokemon::syncPokeball()
 	info.stats = stats;
 	info.ivs = ivs;
 	info.evs = evs;
+	info.nature = nature;
 	info.friendship = friendship;
 	info.gender = gender;
 	info.shiny = shiny;

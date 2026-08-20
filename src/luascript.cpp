@@ -1007,6 +1007,11 @@ PokemonCreateOptions_t LuaScriptInterface::getPokemonCreateOptions(lua_State* L,
 		}
 	}
 
+	const int16_t nature = getIntegerField("nature");
+	if (nature >= 0) {
+		options.nature = static_cast<int8_t>(std::clamp<int16_t>(nature, NATURE_NONE, NATURE_QUIRKY));
+	}
+
 	readStats("ivs", options.ivs);
 	readStats("evs", options.evs);
 	auto applyIntegerField = [&getIntegerField](int16_t& target, const char* key) {
@@ -2112,6 +2117,33 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(GENDER_MALE)
 	registerEnum(GENDER_FEMALE)
 	registerEnum(GENDER_UNDEFINED)
+
+	registerEnum(NATURE_NONE)
+	registerEnum(NATURE_HARDY)
+	registerEnum(NATURE_LONELY)
+	registerEnum(NATURE_BRAVE)
+	registerEnum(NATURE_ADAMANT)
+	registerEnum(NATURE_NAUGHTY)
+	registerEnum(NATURE_BOLD)
+	registerEnum(NATURE_DOCILE)
+	registerEnum(NATURE_RELAXED)
+	registerEnum(NATURE_IMPISH)
+	registerEnum(NATURE_LAX)
+	registerEnum(NATURE_TIMID)
+	registerEnum(NATURE_HASTY)
+	registerEnum(NATURE_SERIOUS)
+	registerEnum(NATURE_JOLLY)
+	registerEnum(NATURE_NAIVE)
+	registerEnum(NATURE_MODEST)
+	registerEnum(NATURE_MILD)
+	registerEnum(NATURE_QUIET)
+	registerEnum(NATURE_BASHFUL)
+	registerEnum(NATURE_RASH)
+	registerEnum(NATURE_CALM)
+	registerEnum(NATURE_GENTLE)
+	registerEnum(NATURE_SASSY)
+	registerEnum(NATURE_CAREFUL)
+	registerEnum(NATURE_QUIRKY)
 
 	registerEnum(EVOLVE_NONE)
 	registerEnum(EVOLVE_LEVEL)

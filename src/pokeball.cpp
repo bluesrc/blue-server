@@ -17,18 +17,6 @@ uint8_t getPokemonStatOption(uint8_t current, int16_t option, uint8_t maxValue)
 	return static_cast<uint8_t>(std::clamp<int16_t>(option, 0, maxValue));
 }
 
-PokemonStats_t calculatePokemonStats(PokemonType* mType, uint8_t level, const PokemonStats_t& ivs, const PokemonStats_t& evs)
-{
-	PokemonStats_t stats;
-	stats.hp = std::floor((((2 * mType->info.base_stats.hp) + ivs.hp + (evs.hp / 4)) * level) / 100) + level + 10;
-	stats.attack = std::floor((((2 * mType->info.base_stats.attack) + ivs.attack + (evs.attack / 4)) * level) / 100) + 5;
-	stats.defense = std::floor((((2 * mType->info.base_stats.defense) + ivs.defense + (evs.defense / 4)) * level) / 100) + 5;
-	stats.sp_attack = std::floor((((2 * mType->info.base_stats.sp_attack) + ivs.sp_attack + (evs.sp_attack / 4)) * level) / 100) + 5;
-	stats.sp_defense = std::floor((((2 * mType->info.base_stats.sp_defense) + ivs.sp_defense + (evs.sp_defense / 4)) * level) / 100) + 5;
-	stats.speed = std::floor((((2 * mType->info.base_stats.speed) + ivs.speed + (evs.speed / 4)) * level) / 100) + 5;
-	return stats;
-}
-
 void applyPokemonStatOptions(PokemonStats_t& stats, const PokemonStatOptions_t& options, uint8_t maxValue)
 {
 	stats.hp = getPokemonStatOption(stats.hp, options.hp, maxValue);
@@ -79,6 +67,7 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, const PokemonCreat
 	pInfo.ivs.sp_attack = distribution(generator);
 	pInfo.ivs.sp_defense = distribution(generator);
 	pInfo.ivs.speed = distribution(generator);
+	pInfo.nature = static_cast<PokemonNatures_t>(uniform_random(NATURE_HARDY, NATURE_QUIRKY));
 
 	auto mType = g_pokemons.getPokemonType(pokemon);
 	pInfo.level = static_cast<uint8_t>(std::clamp<int16_t>(options.level >= 0 ? options.level : 1, 1, 100));
@@ -88,9 +77,12 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, const PokemonCreat
 	if (options.evs.hasAny()) {
 		applyPokemonStatOptions(pInfo.evs, options.evs, 252);
 	}
+	if (options.nature >= 0) {
+		pInfo.nature = static_cast<PokemonNatures_t>(std::clamp<int16_t>(options.nature, NATURE_NONE, NATURE_QUIRKY));
+	}
 
 	pInfo.experience = Pokemon::getExperienceForLevel(mType->info.level_rate, pInfo.level);
-	pInfo.stats = calculatePokemonStats(mType, pInfo.level, pInfo.ivs, pInfo.evs);
+	pInfo.stats = calculatePokemonStats(mType->info.base_stats, pInfo.level, pInfo.ivs, pInfo.evs, pInfo.nature);
 	pInfo.maxHealth = pInfo.stats.hp;
 	pInfo.health = pInfo.maxHealth;
 	pInfo.number = mType->info.number;
@@ -135,6 +127,7 @@ PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
 	pInfo.evs = pokemon->getEvs();
 	pInfo.level = pokemon->getLevel();
 	pInfo.experience = pokemon->getExperience();
+	pInfo.nature = pokemon->getNature();
 
 	pInfo.maxHealth = pokemon->getMaxHealth();
 	pInfo.health = pokemon->getHealth();
