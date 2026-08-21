@@ -13,10 +13,46 @@
 
 #include "pugicast.h"
 
+#include <unordered_set>
+
 extern Game g_game;
 extern Moves* g_moves;
 extern Pokemons g_pokemons;
 extern ConfigManager g_config;
+
+namespace {
+PokemonTypes_t getPokemonTypeByName(const std::string& value)
+{
+	const std::string type = asLowerCaseString(value);
+	if (type == "bug") return TYPE_BUG;
+	if (type == "dark") return TYPE_DARK;
+	if (type == "dragon") return TYPE_DRAGON;
+	if (type == "electric") return TYPE_ELECTRIC;
+	if (type == "fairy") return TYPE_FAIRY;
+	if (type == "fighting") return TYPE_FIGHTING;
+	if (type == "fire") return TYPE_FIRE;
+	if (type == "flying") return TYPE_FLYING;
+	if (type == "ghost") return TYPE_GHOST;
+	if (type == "grass") return TYPE_GRASS;
+	if (type == "ground") return TYPE_GROUND;
+	if (type == "ice") return TYPE_ICE;
+	if (type == "normal") return TYPE_NORMAL;
+	if (type == "poison") return TYPE_POISON;
+	if (type == "psychic") return TYPE_PSYCHIC;
+	if (type == "rock") return TYPE_ROCK;
+	if (type == "steel") return TYPE_STEEL;
+	if (type == "water") return TYPE_WATER;
+	return TYPE_NONE;
+}
+
+PokemonMoveCategory_t getPokemonMoveCategoryByName(const std::string& value)
+{
+	const std::string category = asLowerCaseString(value);
+	if (category == "physical") return POKEMON_MOVE_CATEGORY_PHYSICAL;
+	if (category == "special") return POKEMON_MOVE_CATEGORY_SPECIAL;
+	return POKEMON_MOVE_CATEGORY_STATUS;
+}
+}
 
 PokemonNatureModifiers_t getPokemonNatureModifiers(PokemonNatures_t nature)
 {
@@ -95,6 +131,10 @@ void PokemonType::loadLoot(PokemonType* pokemonType, LootBlock lootBlock)
 
 bool Pokemons::loadFromXml(bool reloading /*= false*/)
 {
+	if (!loadMoves()) {
+		return false;
+	}
+
 	unloadedPokemons = {};
 	pugi::xml_document doc;
 	pugi::xml_parse_result result = doc.load_file("data/pokemon/pokemons.xml");
@@ -120,6 +160,240 @@ bool Pokemons::loadFromXml(bool reloading /*= false*/)
 	}
 
 	return true;
+}
+
+bool Pokemons::loadMoves()
+{
+	pugi::xml_document doc;
+	pugi::xml_parse_result result = doc.load_file("data/moves/moves.xml");
+	if (!result) {
+		printXMLError("Error - Pokemons::loadMoves", "data/moves/moves.xml", result);
+		return false;
+	}
+
+	std::map<uint16_t, PokemonMoveType> loadedMoves;
+	std::map<std::string, uint16_t> loadedNames;
+	for (const pugi::xml_node& node : doc.child("moves").children("instant")) {
+		if (!node.attribute("pokemonmoveid")) {
+			continue;
+		}
+
+		PokemonMoveType move;
+		move.id = node.attribute("pokemonmoveid").as_uint();
+		move.key = asLowerCaseString(node.attribute("key").as_string());
+		move.name = node.attribute("name").as_string();
+		move.effect = move.name;
+		move.type = getPokemonTypeByName(node.attribute("type").as_string());
+		move.category = getPokemonMoveCategoryByName(node.attribute("category").as_string());
+		move.power = node.attribute("power").as_uint();
+		move.pp = node.attribute("pp").as_uint();
+		move.accuracy = static_cast<uint8_t>(std::min<uint32_t>(100, node.attribute("accuracy").as_uint(100)));
+		move.range = static_cast<uint8_t>(std::min<uint32_t>(Map::maxViewportX * 2, node.attribute("range").as_uint(1)));
+		move.cooldown = std::max<uint32_t>(1, node.attribute("cooldown").as_uint(2000));
+
+		if (move.id == 0 || move.key.empty() || move.name.empty() || move.type == TYPE_NONE) {
+			std::cout << "[Error - Pokemons::loadMoves] Invalid Pokemon move definition." << std::endl;
+			return false;
+		}
+
+		if (move.category != POKEMON_MOVE_CATEGORY_STATUS && (move.power == 0 || move.effect.empty())) {
+			std::cout << "[Error - Pokemons::loadMoves] Damaging move " << move.name << " requires power and effect." << std::endl;
+			return false;
+		}
+
+		if (!move.effect.empty() && !g_moves->getMoveByName(move.effect)) {
+			std::cout << "[Error - Pokemons::loadMoves] Unknown effect move " << move.effect << " for " << move.name << '.' << std::endl;
+			return false;
+		}
+
+		if (!loadedMoves.emplace(move.id, move).second || !loadedNames.emplace(move.key, move.id).second) {
+			std::cout << "[Error - Pokemons::loadMoves] Duplicate Pokemon move id or key for " << move.name << '.' << std::endl;
+			return false;
+		}
+
+		const std::string displayName = asLowerCaseString(move.name);
+		if (displayName != move.key && !loadedNames.emplace(displayName, move.id).second) {
+			std::cout << "[Error - Pokemons::loadMoves] Duplicate Pokemon move name for " << move.name << '.' << std::endl;
+			return false;
+		}
+	}
+
+	moves.swap(loadedMoves);
+	moveNames.swap(loadedNames);
+	return true;
+}
+
+const PokemonMoveType* Pokemons::getMoveById(uint16_t id) const
+{
+	const auto it = moves.find(id);
+	return it != moves.end() ? &it->second : nullptr;
+}
+
+const PokemonMoveType* Pokemons::getMoveByName(const std::string& name) const
+{
+	const auto nameIt = moveNames.find(asLowerCaseString(name));
+	return nameIt != moveNames.end() ? getMoveById(nameIt->second) : nullptr;
+}
+
+bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level)
+{
+	if (!pokemonType) {
+		return false;
+	}
+
+	const PokemonMoveType* move = getMoveByName(moveName);
+	if (!move) {
+		std::cout << "[Warning - Pokemons::addLearnMove] Unknown move " << moveName << " for " << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	auto& learnset = pokemonType->info.learnset;
+	const auto duplicate = std::find_if(learnset.begin(), learnset.end(), [move](const PokemonLearnMove& entry) {
+		return entry.moveId == move->id;
+	});
+	if (duplicate != learnset.end()) {
+		std::cout << "[Warning - Pokemons::addLearnMove] Duplicate move " << move->name << " for " << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	learnset.push_back({move->id, static_cast<uint8_t>(std::clamp<uint16_t>(level, 1, 100))});
+	std::sort(learnset.begin(), learnset.end(), [](const PokemonLearnMove& lhs, const PokemonLearnMove& rhs) {
+		return lhs.level != rhs.level ? lhs.level < rhs.level : lhs.moveId < rhs.moveId;
+	});
+	return true;
+}
+
+std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& pokemonType)
+{
+	std::vector<uint16_t> learned;
+	std::unordered_set<uint16_t> known;
+	std::array<bool, 5> occupiedSlots = {};
+
+	auto stateIt = info.moves.begin();
+	while (stateIt != info.moves.end()) {
+		if (!g_pokemons.getMoveById(stateIt->moveId) || !known.emplace(stateIt->moveId).second) {
+			stateIt = info.moves.erase(stateIt);
+			continue;
+		}
+
+		if (stateIt->activeSlot > 4 || (stateIt->activeSlot != 0 && occupiedSlots[stateIt->activeSlot])) {
+			stateIt->activeSlot = 0;
+		}
+		if (stateIt->activeSlot != 0) {
+			occupiedSlots[stateIt->activeSlot] = true;
+		}
+		++stateIt;
+	}
+
+	for (const PokemonLearnMove& learnMove : pokemonType.info.learnset) {
+		if (learnMove.level > info.level || known.find(learnMove.moveId) != known.end()) {
+			continue;
+		}
+
+		uint8_t activeSlot = 0;
+		for (uint8_t slot = 1; slot <= 4; ++slot) {
+			if (!occupiedSlots[slot]) {
+				activeSlot = slot;
+				occupiedSlots[slot] = true;
+				break;
+			}
+		}
+
+		info.moves.push_back({learnMove.moveId, activeSlot});
+		known.emplace(learnMove.moveId);
+		learned.push_back(learnMove.moveId);
+	}
+	return learned;
+}
+
+double getPokemonTypeEffectiveness(PokemonTypes_t attackingType, PokemonTypes_t defendingType)
+{
+	if (defendingType == TYPE_NONE) return 1.0;
+	switch (attackingType) {
+		case TYPE_NORMAL:
+			if (defendingType == TYPE_GHOST) return 0.0;
+			if (defendingType == TYPE_ROCK || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_FIRE:
+			if (defendingType == TYPE_GRASS || defendingType == TYPE_ICE || defendingType == TYPE_BUG || defendingType == TYPE_STEEL) return 2.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_WATER || defendingType == TYPE_ROCK || defendingType == TYPE_DRAGON) return 0.5;
+			break;
+		case TYPE_WATER:
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_GROUND || defendingType == TYPE_ROCK) return 2.0;
+			if (defendingType == TYPE_WATER || defendingType == TYPE_GRASS || defendingType == TYPE_DRAGON) return 0.5;
+			break;
+		case TYPE_ELECTRIC:
+			if (defendingType == TYPE_GROUND) return 0.0;
+			if (defendingType == TYPE_WATER || defendingType == TYPE_FLYING) return 2.0;
+			if (defendingType == TYPE_ELECTRIC || defendingType == TYPE_GRASS || defendingType == TYPE_DRAGON) return 0.5;
+			break;
+		case TYPE_GRASS:
+			if (defendingType == TYPE_WATER || defendingType == TYPE_GROUND || defendingType == TYPE_ROCK) return 2.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_GRASS || defendingType == TYPE_POISON || defendingType == TYPE_FLYING || defendingType == TYPE_BUG || defendingType == TYPE_DRAGON || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_ICE:
+			if (defendingType == TYPE_GRASS || defendingType == TYPE_GROUND || defendingType == TYPE_FLYING || defendingType == TYPE_DRAGON) return 2.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_WATER || defendingType == TYPE_ICE || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_FIGHTING:
+			if (defendingType == TYPE_GHOST) return 0.0;
+			if (defendingType == TYPE_NORMAL || defendingType == TYPE_ICE || defendingType == TYPE_ROCK || defendingType == TYPE_DARK || defendingType == TYPE_STEEL) return 2.0;
+			if (defendingType == TYPE_POISON || defendingType == TYPE_FLYING || defendingType == TYPE_PSYCHIC || defendingType == TYPE_BUG || defendingType == TYPE_FAIRY) return 0.5;
+			break;
+		case TYPE_POISON:
+			if (defendingType == TYPE_STEEL) return 0.0;
+			if (defendingType == TYPE_GRASS || defendingType == TYPE_FAIRY) return 2.0;
+			if (defendingType == TYPE_POISON || defendingType == TYPE_GROUND || defendingType == TYPE_ROCK || defendingType == TYPE_GHOST) return 0.5;
+			break;
+		case TYPE_GROUND:
+			if (defendingType == TYPE_FLYING) return 0.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_ELECTRIC || defendingType == TYPE_POISON || defendingType == TYPE_ROCK || defendingType == TYPE_STEEL) return 2.0;
+			if (defendingType == TYPE_GRASS || defendingType == TYPE_BUG) return 0.5;
+			break;
+		case TYPE_FLYING:
+			if (defendingType == TYPE_GRASS || defendingType == TYPE_FIGHTING || defendingType == TYPE_BUG) return 2.0;
+			if (defendingType == TYPE_ELECTRIC || defendingType == TYPE_ROCK || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_PSYCHIC:
+			if (defendingType == TYPE_DARK) return 0.0;
+			if (defendingType == TYPE_FIGHTING || defendingType == TYPE_POISON) return 2.0;
+			if (defendingType == TYPE_PSYCHIC || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_BUG:
+			if (defendingType == TYPE_GRASS || defendingType == TYPE_PSYCHIC || defendingType == TYPE_DARK) return 2.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_FIGHTING || defendingType == TYPE_POISON || defendingType == TYPE_FLYING || defendingType == TYPE_GHOST || defendingType == TYPE_STEEL || defendingType == TYPE_FAIRY) return 0.5;
+			break;
+		case TYPE_ROCK:
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_ICE || defendingType == TYPE_FLYING || defendingType == TYPE_BUG) return 2.0;
+			if (defendingType == TYPE_FIGHTING || defendingType == TYPE_GROUND || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_GHOST:
+			if (defendingType == TYPE_NORMAL) return 0.0;
+			if (defendingType == TYPE_PSYCHIC || defendingType == TYPE_GHOST) return 2.0;
+			if (defendingType == TYPE_DARK) return 0.5;
+			break;
+		case TYPE_DRAGON:
+			if (defendingType == TYPE_FAIRY) return 0.0;
+			if (defendingType == TYPE_DRAGON) return 2.0;
+			if (defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_DARK:
+			if (defendingType == TYPE_PSYCHIC || defendingType == TYPE_GHOST) return 2.0;
+			if (defendingType == TYPE_FIGHTING || defendingType == TYPE_DARK || defendingType == TYPE_FAIRY) return 0.5;
+			break;
+		case TYPE_STEEL:
+			if (defendingType == TYPE_ICE || defendingType == TYPE_ROCK || defendingType == TYPE_FAIRY) return 2.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_WATER || defendingType == TYPE_ELECTRIC || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_FAIRY:
+			if (defendingType == TYPE_FIGHTING || defendingType == TYPE_DRAGON || defendingType == TYPE_DARK) return 2.0;
+			if (defendingType == TYPE_FIRE || defendingType == TYPE_POISON || defendingType == TYPE_STEEL) return 0.5;
+			break;
+		case TYPE_NONE:
+		default:
+			break;
+	}
+	return 1.0;
 }
 
 bool Pokemons::reload()

@@ -29,6 +29,11 @@ pokemon.base_stats = {
     speed = 45
 }
 
+pokemon.learnset = {
+	{move = "tackle", level = 1},
+	{move = "vine_whip", level = 7},
+}
+
 pokemon.evolution = {
     type= EVOLVE_LEVEL,
     level= 25

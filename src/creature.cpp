@@ -829,11 +829,11 @@ void Creature::drainHealth(Creature* attacker, int32_t damage)
 }
 
 BlockType_t Creature::blockHit(Creature* attacker, CombatType_t combatType, int32_t& damage,
-                               bool checkDefense /* = false */, bool checkArmor /* = false */, bool /* field = false */, bool /* ignoreResistances = false */)
+                               bool checkDefense /* = false */, bool checkArmor /* = false */, bool /* field = false */, bool ignoreResistances /* = false */)
 {
 	BlockType_t blockType = BLOCK_NONE;
 
-	if (isImmune(combatType)) {
+	if (!ignoreResistances && isImmune(combatType)) {
 		damage = 0;
 		blockType = BLOCK_IMMUNITY;
 	} else if (checkDefense || checkArmor) {

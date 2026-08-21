@@ -3860,12 +3860,14 @@ bool Game::playerSayMove(Player* player, SpeakClasses type, const std::string& t
 	std::string words = text;
 
 	TalkActionResult_t result = g_talkActions->playerSayMove(player, type, words);
-	if (result == TALKACTION_BREAK) {
+	if (result == TALKACTION_BREAK || result == TALKACTION_SILENT_BREAK) {
 		return true;
 	}
 
 	result = g_moves->playerSayMove(player, words);
-	if (result == TALKACTION_BREAK) {
+	if (result == TALKACTION_SILENT_BREAK) {
+		return true;
+	} else if (result == TALKACTION_BREAK) {
 		if (!g_config.getBoolean(ConfigManager::EMOTE_MOVES)) {
 			return internalCreatureSay(player, TALKTYPE_SAY, words, false);
 		} else {

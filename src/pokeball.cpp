@@ -86,6 +86,7 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, const PokemonCreat
 	pInfo.maxHealth = pInfo.stats.hp;
 	pInfo.health = pInfo.maxHealth;
 	pInfo.number = mType->info.number;
+	learnPokemonMoves(pInfo, *mType);
 
 
 	pInfo.friendship = options.friendship >= 0 ? static_cast<uint8_t>(std::clamp<int16_t>(options.friendship, 0, 255)) : mType->info.base_friendship;
@@ -135,6 +136,7 @@ PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
 	pInfo.friendship = pokemon->getFriendship();
 	pInfo.gender = (PokemonGenders_t)pokemon->getGender();
 	pInfo.shiny = pokemon->isShiny();
+	pInfo.moves = pokemon->getMoves();
 
 	return pInfo;
 }

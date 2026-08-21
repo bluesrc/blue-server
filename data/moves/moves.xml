@@ -801,4 +801,21 @@
 	<instant name="pirate corsair skill reducer" words="###49" direction="1" aggressive="1" blockwalls="1" needtarget="0" needlearn="1" script="pokemon/pirate_corsair_skill_reducer.lua" />
 	<instant name="pokemon soulfire" words="###50" aggressive="1" blockwalls="1" range="7" needtarget="1" needlearn="1" script="pokemon/pokemon_soulfire.lua" />
 	<instant name="dipthrah skill reducer" words="###51" aggressive="1" blockwalls="1" needtarget="0" needlearn="1" script="pokemon/dipthrah_skill_reducer.lua" />
+
+	<!-- Pokemon Moves. PP is metadata only and is not consumed by the current battle system. -->
+	<instant name="Tackle" words="###pokemon_tackle" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="1" key="tackle" type="normal" category="physical" power="40" pp="35" accuracy="100" range="1" cooldown="2000"
+		script="pokemon_moves/tackle.lua" />
+	<instant name="Scratch" words="###pokemon_scratch" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="2" key="scratch" type="normal" category="physical" power="40" pp="35" accuracy="100" range="1" cooldown="2000"
+		script="pokemon_moves/scratch.lua" />
+	<instant name="Vine Whip" words="###pokemon_vine_whip" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="0" direction="1"
+		pokemonmoveid="3" key="vine_whip" type="grass" category="physical" power="45" pp="25" accuracy="100" range="3" cooldown="2500"
+		script="pokemon_moves/vine_whip.lua" />
+	<instant name="Ember" words="###pokemon_ember" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="4" key="ember" type="fire" category="special" power="40" pp="25" accuracy="100" range="4" cooldown="2500"
+		script="pokemon_moves/ember.lua" />
+	<instant name="Water Gun" words="###pokemon_water_gun" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="0" direction="1"
+		pokemonmoveid="5" key="water_gun" type="water" category="special" power="40" pp="25" accuracy="100" range="3" cooldown="2500"
+		script="pokemon_moves/water_gun.lua" />
 </moves>

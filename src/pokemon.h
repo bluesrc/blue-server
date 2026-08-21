@@ -186,6 +186,13 @@ class Pokemon final : public Creature
 		PokemonNatures_t getNature() const { return nature; }
 		uint8_t getFriendship() { return friendship;  }
 		uint16_t getNumber() { return mType->info.number; }
+		const PokemonStats_t& getPokemonStats() const { return stats; }
+		const PokemonType* getPokemonTypeData() const { return mType; }
+		const std::vector<PokemonMoveState>& getMoves() const { return knownMoves; }
+		bool refreshAvailableMoves();
+		bool setMoveSlot(uint16_t moveId, uint8_t slot);
+		bool useMove(uint8_t slot, Creature* target);
+		bool isExecutingPokemonMove() const { return executingPokemonMove; }
 
 	private:
 		CreatureHashSet friendList;
@@ -230,9 +237,15 @@ class Pokemon final : public Creature
 		uint8_t level = 1;
 		uint64_t experience = 0;
 		bool shiny = false;
+		bool executingPokemonMove = false;
+
+		std::vector<PokemonMoveState> knownMoves;
+		std::unordered_map<uint16_t, int64_t> moveCooldowns;
 
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
+		void learnAvailableMoves(bool notify = false);
+		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;
 
 		void onCreatureEnter(Creature* creature);
 		void onCreatureLeave(Creature* creature);

@@ -29,6 +29,11 @@ pokemon.base_stats = {
     speed = 65
 }
 
+pokemon.learnset = {
+	{move = "scratch", level = 1},
+	{move = "ember", level = 7},
+}
+
 pokemon.evolution = {
     type= EVOLVE_LEVEL,
     level= 25

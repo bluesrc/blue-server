@@ -3392,5 +3392,27 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	addStats(info.ivs);
 	addStats(info.evs);
 
+	std::array<const PokemonMoveType*, 4> activeMoves = {};
+	for (const PokemonMoveState& state : info.moves) {
+		if (state.activeSlot >= 1 && state.activeSlot <= activeMoves.size()) {
+			activeMoves[state.activeSlot - 1] = g_pokemons.getMoveById(state.moveId);
+		}
+	}
+
+	for (const PokemonMoveType* move : activeMoves) {
+		msg.addString(move ? move->name : "");
+		msg.add<uint32_t>(move ? move->cooldown : 0);
+	}
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration)
+{
+	NetworkMessage msg;
+	msg.addByte(0x3B);
+	msg.add<uint32_t>(pokemonId);
+	msg.add<uint8_t>(slot);
+	msg.add<uint32_t>(duration);
 	writeToOutputBuffer(msg);
 }

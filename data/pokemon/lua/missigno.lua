@@ -14,6 +14,10 @@ pokemon.base_stats = {
     speed = 255
 }
 
+pokemon.learnset = {
+	{move = "tackle", level = 1},
+}
+
 pokemon.changeTarget = {
 	interval = 4*1000,
 	chance = 20

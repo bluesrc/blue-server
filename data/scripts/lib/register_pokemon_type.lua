@@ -91,6 +91,16 @@ registerPokemonType.base_stats = function(mtype, mask)
 	end
 end
 
+registerPokemonType.learnset = function(mtype, mask)
+	if type(mask.learnset) == "table" then
+		for _, entry in ipairs(mask.learnset) do
+			if entry.move and entry.level then
+				mtype:addLearnMove(entry.move, entry.level)
+			end
+		end
+	end
+end
+
 registerPokemonType.evolution = function(mtype, mask)
 	if mask.evolution then
 		mtype:evolution(mask.evolution)

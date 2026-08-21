@@ -13,6 +13,7 @@
 #include <numeric>
 
 extern Game g_game;
+extern Moves* g_moves;
 extern Pokemons g_pokemons;
 extern Events* g_events;
 extern ConfigManager g_config;
@@ -63,6 +64,7 @@ Pokemon::Pokemon(PokemonType* mType) :
 	nature = static_cast<PokemonNatures_t>(uniform_random(NATURE_HARDY, NATURE_QUIRKY));
 
 	experience = getExperienceForLevel(mType->info.level_rate, level);
+	learnAvailableMoves();
 	updateStats();
 	health = healthMax;
 
@@ -124,6 +126,8 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	evs.sp_defense = pInfo.evs.sp_defense;
 	evs.speed = pInfo.evs.speed;
 	nature = pInfo.nature;
+	knownMoves = std::move(pInfo.moves);
+	learnAvailableMoves();
 
 	updateStats();
 	health = std::clamp(pInfo.health, 0, healthMax);
@@ -203,6 +207,7 @@ uint8_t getPokemonStatOption(uint8_t current, int16_t option, uint8_t maxValue)
 
 void Pokemon::applyCreateOptions(const PokemonCreateOptions_t& options, bool fullHealth)
 {
+	const uint8_t previousLevel = level;
 	bool statsChanged = false;
 	if (options.level >= 0) {
 		level = static_cast<uint8_t>(std::clamp<int16_t>(options.level, 1, 100));
@@ -259,7 +264,47 @@ void Pokemon::applyCreateOptions(const PokemonCreateOptions_t& options, bool ful
 		}
 	}
 
+	if (level != previousLevel) {
+		learnAvailableMoves();
+	}
+
 	syncPokeball();
+}
+
+void Pokemon::learnAvailableMoves(bool notify)
+{
+	PokemonInfo_t info;
+	info.level = level;
+	info.moves = knownMoves;
+	const std::vector<uint16_t> learned = learnPokemonMoves(info, *mType);
+	knownMoves = std::move(info.moves);
+
+	if (!notify || learned.empty()) {
+		return;
+	}
+
+	Player* player = master ? master->getPlayer() : nullptr;
+	if (!player) {
+		return;
+	}
+
+	for (uint16_t moveId : learned) {
+		if (const PokemonMoveType* move = g_pokemons.getMoveById(moveId)) {
+			player->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Your {} learned {}.", getName(), move->name));
+		}
+	}
+}
+
+bool Pokemon::refreshAvailableMoves()
+{
+	const size_t previousMoveCount = knownMoves.size();
+	learnAvailableMoves();
+	if (knownMoves.size() == previousMoveCount) {
+		return false;
+	}
+
+	syncPokeball();
+	return true;
 }
 
 void Pokemon::updateStats(bool preserveHealth)
@@ -295,6 +340,7 @@ void Pokemon::syncPokeball()
 	info.friendship = friendship;
 	info.gender = gender;
 	info.shiny = shiny;
+	info.moves = knownMoves;
 	pokeball->setPokemonInfo(info);
 	player->updatePokemonInfo(pokeball);
 }
@@ -319,6 +365,7 @@ uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 	}
 
 	if (level != previousLevel) {
+		learnAvailableMoves(true);
 		updateStats(true);
 		g_game.changeSpeed(this, 0);
 		g_game.addCreatureHealth(this);
@@ -365,6 +412,7 @@ bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
 
 	level = newLevel;
 	experience = getExperienceForLevel(mType->info.level_rate, level);
+	learnAvailableMoves();
 	updateStats(!fullHealth);
 	if (fullHealth) {
 		health = healthMax;
@@ -969,11 +1017,15 @@ void Pokemon::onFollowCreatureComplete(const Creature* creature)
 }
 
 BlockType_t Pokemon::blockHit(Creature* attacker, CombatType_t combatType, int32_t& damage,
-                              bool checkDefense /* = false*/, bool checkArmor /* = false*/, bool /* field = false */, bool /* ignoreResistances = false */)
+                              bool checkDefense /* = false*/, bool checkArmor /* = false*/, bool field /* = false */, bool ignoreResistances /* = false */)
 {
-	BlockType_t blockType = Creature::blockHit(attacker, combatType, damage, checkDefense, checkArmor);
+	const Pokemon* attackingPokemon = attacker ? attacker->getPokemon() : nullptr;
+	const bool pokemonFormulaDamage = attackingPokemon && attackingPokemon->isExecutingPokemonMove();
+	BlockType_t blockType = Creature::blockHit(attacker, combatType, damage,
+		pokemonFormulaDamage ? false : checkDefense, pokemonFormulaDamage ? false : checkArmor,
+		field, pokemonFormulaDamage || ignoreResistances);
 
-	if (damage != 0) {
+	if (!pokemonFormulaDamage && damage != 0) {
 		int32_t elementMod = 0;
 		auto it = mType->info.elementMap.find(combatType);
 		if (it != mType->info.elementMap.end()) {
@@ -1149,55 +1201,28 @@ void Pokemon::onThink(uint32_t interval)
 	}
 }
 
-void Pokemon::doAttacking(uint32_t interval)
+void Pokemon::doAttacking(uint32_t)
 {
 	if (!attackedCreature || (isSummon() && attackedCreature == this)) {
 		return;
 	}
 
-	bool updateLook = true;
-	bool resetTicks = interval != 0;
-	attackTicks += interval;
+	if (isSummon() && master && master->getPlayer()) {
+		updateLookDirection();
+		return;
+	}
 
-	const Position& myPos = getPosition();
-	const Position& targetPos = attackedCreature->getPosition();
-
-	for (const moveBlock_t& moveBlock : mType->info.attackMoves) {
-		bool inRange = false;
-
-		if (attackedCreature == nullptr) {
-			break;
-		}
-
-		if (canUseMove(myPos, targetPos, moveBlock, interval, inRange, resetTicks)) {
-			if (moveBlock.chance >= static_cast<uint32_t>(uniform_random(1, 100))) {
-				if (updateLook) {
-					updateLookDirection();
-					updateLook = false;
-				}
-
-				minCombatValue = moveBlock.minCombatValue;
-				maxCombatValue = moveBlock.maxCombatValue;
-				moveBlock.move->castMove(this, attackedCreature);
-
-				if (moveBlock.isMelee) {
-					lastMeleeAttack = OTSYS_TIME();
-				}
+	if (!knownMoves.empty()) {
+		updateLookDirection();
+		const uint8_t firstSlot = static_cast<uint8_t>(uniform_random(1, 4));
+		for (uint8_t offset = 0; offset < 4; ++offset) {
+			const uint8_t slot = static_cast<uint8_t>(((firstSlot - 1 + offset) % 4) + 1);
+			if (useMove(slot, attackedCreature)) {
+				break;
 			}
 		}
-
-		if (!inRange && moveBlock.isMelee) {
-			//melee swing out of reach
-			lastMeleeAttack = 0;
-		}
-	}
-
-	if (updateLook) {
+	} else {
 		updateLookDirection();
-	}
-
-	if (resetTicks) {
-		attackTicks = 0;
 	}
 }
 
@@ -1206,14 +1231,147 @@ bool Pokemon::canUseAttack(const Position& pos, const Creature* target) const
 	if (isHostile()) {
 		const Position& targetPos = target->getPosition();
 		uint32_t distance = std::max<uint32_t>(Position::getDistanceX(pos, targetPos), Position::getDistanceY(pos, targetPos));
-		for (const moveBlock_t& moveBlock : mType->info.attackMoves) {
-			if (moveBlock.range != 0 && distance <= moveBlock.range) {
-				return g_game.isSightClear(pos, targetPos, true);
+		if (!knownMoves.empty()) {
+			for (const PokemonMoveState& state : knownMoves) {
+				const PokemonMoveType* move = state.activeSlot != 0 ? g_pokemons.getMoveById(state.moveId) : nullptr;
+				if (move && distance <= move->range) {
+					return g_game.isSightClear(pos, targetPos, true);
+				}
 			}
+			return false;
 		}
+
 		return false;
 	}
 	return true;
+}
+
+bool Pokemon::setMoveSlot(uint16_t moveId, uint8_t slot)
+{
+	if (slot > 4) {
+		return false;
+	}
+
+	auto moveIt = std::find_if(knownMoves.begin(), knownMoves.end(), [moveId](const PokemonMoveState& state) {
+		return state.moveId == moveId;
+	});
+	if (moveIt == knownMoves.end()) {
+		return false;
+	}
+
+	if (slot != 0) {
+		for (PokemonMoveState& state : knownMoves) {
+			if (state.activeSlot == slot) {
+				state.activeSlot = 0;
+			}
+		}
+	}
+	moveIt->activeSlot = slot;
+	syncPokeball();
+	return true;
+}
+
+int32_t Pokemon::calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const
+{
+	if (move.category == POKEMON_MOVE_CATEGORY_STATUS || move.power == 0) {
+		return 0;
+	}
+
+	const Pokemon* targetPokemon = target ? target->getPokemon() : nullptr;
+	const uint32_t attackStat = move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ? stats.attack : stats.sp_attack;
+	uint32_t defenseStat = 50;
+	if (targetPokemon) {
+		const PokemonStats_t& targetStats = targetPokemon->getPokemonStats();
+		defenseStat = move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ? targetStats.defense : targetStats.sp_defense;
+	}
+	defenseStat = std::max<uint32_t>(1, defenseStat);
+
+	const double baseDamage = (((2.0 * level / 5.0 + 2.0) * move.power * attackStat / defenseStat) / 50.0) + 2.0;
+	double modifier = uniform_random(85, 100) / 100.0;
+	if (mType->info.types[0] == move.type || mType->info.types[1] == move.type) {
+		modifier *= 1.5;
+	}
+
+	if (targetPokemon) {
+		const PokemonType* targetType = targetPokemon->getPokemonTypeData();
+		modifier *= getPokemonTypeEffectiveness(move.type, targetType->info.types[0]);
+		modifier *= getPokemonTypeEffectiveness(move.type, targetType->info.types[1]);
+	}
+
+	if (modifier == 0.0) {
+		return 0;
+	}
+	return std::max<int32_t>(1, static_cast<int32_t>(std::floor(baseDamage * modifier)));
+}
+
+bool Pokemon::useMove(uint8_t slot, Creature* target)
+{
+	if (slot == 0 || slot > 4) {
+		return false;
+	}
+
+	const auto stateIt = std::find_if(knownMoves.begin(), knownMoves.end(), [slot](const PokemonMoveState& state) {
+		return state.activeSlot == slot;
+	});
+	if (stateIt == knownMoves.end()) {
+		return false;
+	}
+
+	const PokemonMoveType* move = g_pokemons.getMoveById(stateIt->moveId);
+	Move* effect = move && !move->effect.empty() ? g_moves->getMoveByName(move->effect) : nullptr;
+	if (!move || !effect) {
+		return false;
+	}
+
+	const bool needTarget = effect->getNeedTarget();
+	if (needTarget && (!target || target->getHealth() <= 0 || !isTarget(target))) {
+		return false;
+	}
+
+	const int64_t now = OTSYS_TIME();
+	const auto cooldownIt = moveCooldowns.find(move->id);
+	if (cooldownIt != moveCooldowns.end() && cooldownIt->second > now) {
+		return false;
+	}
+	const auto startCooldown = [this, move, slot, now]() {
+		moveCooldowns[move->id] = now + move->cooldown;
+		if (Player* player = master ? master->getPlayer() : nullptr) {
+			player->sendPokemonMoveCooldown(getID(), slot, move->cooldown);
+		}
+	};
+
+	updateLookDirection();
+
+	if (needTarget) {
+		const Position& fromPosition = getPosition();
+		const Position& targetPosition = target->getPosition();
+		const uint32_t distance = std::max<uint32_t>(Position::getDistanceX(fromPosition, targetPosition), Position::getDistanceY(fromPosition, targetPosition));
+		if (fromPosition.z != targetPosition.z || distance > move->range || !g_game.isSightClear(fromPosition, targetPosition, true)) {
+			return false;
+		}
+
+		const Pokemon* targetPokemon = target->getPokemon();
+		const uint32_t targetEvasion = targetPokemon ? targetPokemon->evasion : 100;
+		const uint32_t hitChance = std::clamp<uint32_t>((move->accuracy * accuracy) / std::max<uint32_t>(1, targetEvasion), 1, 100);
+		if (static_cast<uint32_t>(uniform_random(1, 100)) > hitChance) {
+			startCooldown();
+			g_game.addMagicEffect(targetPosition, CONST_ME_POFF);
+			return true;
+		}
+	}
+
+	const int32_t damage = calculateMoveDamage(*move, target);
+	minCombatValue = -damage;
+	maxCombatValue = -damage;
+	executingPokemonMove = true;
+	const bool result = needTarget ? effect->castMove(this, target) : effect->castMove(this);
+	executingPokemonMove = false;
+	minCombatValue = 0;
+	maxCombatValue = 0;
+	if (result) {
+		startCooldown();
+	}
+	return result;
 }
 
 bool Pokemon::canUseMove(const Position& pos, const Position& targetPos,
@@ -2256,7 +2414,7 @@ bool Pokemon::isInSpawnRange(const Position& pos) const
 
 bool Pokemon::getCombatValues(int32_t& min, int32_t& max)
 {
-	if (minCombatValue == 0 && maxCombatValue == 0) {
+	if (!executingPokemonMove && minCombatValue == 0 && maxCombatValue == 0) {
 		return false;
 	}
 

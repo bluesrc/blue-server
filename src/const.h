@@ -587,6 +587,12 @@ enum PokemonTypes_t : uint8_t {
 	TYPE_WATER,
 };
 
+enum PokemonMoveCategory_t : uint8_t {
+	POKEMON_MOVE_CATEGORY_PHYSICAL,
+	POKEMON_MOVE_CATEGORY_SPECIAL,
+	POKEMON_MOVE_CATEGORY_STATUS,
+};
+
 enum EggGroups_t : uint8_t {
 	EGG_AMORPHOUS,
 	EGG_BUG,

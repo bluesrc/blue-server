@@ -2097,6 +2097,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(TYPE_ROCK)
 	registerEnum(TYPE_STEEL)
 	registerEnum(TYPE_WATER)
+	registerEnum(POKEMON_MOVE_CATEGORY_PHYSICAL)
+	registerEnum(POKEMON_MOVE_CATEGORY_SPECIAL)
+	registerEnum(POKEMON_MOVE_CATEGORY_STATUS)
 
 	registerEnum(EGG_AMORPHOUS)
 	registerEnum(EGG_BUG)
@@ -2783,6 +2786,9 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "setLevel", LuaScriptInterface::luaPokemonSetLevel);
 	registerMethod("Pokemon", "addExperience", LuaScriptInterface::luaPokemonAddExperience);
 	registerMethod("Pokemon", "addLevel", LuaScriptInterface::luaPokemonAddLevel);
+	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
+	registerMethod("Pokemon", "setMoveSlot", LuaScriptInterface::luaPokemonSetMoveSlot);
+	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
 
 	registerMethod("Pokemon", "rename", LuaScriptInterface::luaPokemonRename);
 
@@ -3080,6 +3086,7 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("PokemonType", "getAttackList", LuaScriptInterface::luaPokemonTypeGetAttackList);
 	registerMethod("PokemonType", "addAttack", LuaScriptInterface::luaPokemonTypeAddAttack);
+	registerMethod("PokemonType", "addLearnMove", LuaScriptInterface::luaPokemonTypeAddLearnMove);
 
 	registerMethod("PokemonType", "getDefenseList", LuaScriptInterface::luaPokemonTypeGetDefenseList);
 	registerMethod("PokemonType", "addDefense", LuaScriptInterface::luaPokemonTypeAddDefense);
@@ -4877,6 +4884,7 @@ int LuaScriptInterface::luaGameCreatePokemonType(lua_State* L)
 		pokemonType->nameDescription = "a " + name;
 	} else {
 		pokemonType->info.lootItems.clear();
+		pokemonType->info.learnset.clear();
 		pokemonType->info.attackMoves.clear();
 		pokemonType->info.defenseMoves.clear();
 		pokemonType->info.scripts.clear();
@@ -14499,6 +14507,90 @@ int LuaScriptInterface::luaPokemonTypeAddAttack(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeAddLearnMove(lua_State* L)
+{
+	// pokemonType:addLearnMove(moveName, level)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (!pokemonType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const std::string moveName = getString(L, 2);
+	const uint8_t level = getNumber<uint8_t>(L, 3, 1);
+	pushBoolean(L, g_pokemons.addLearnMove(pokemonType, moveName, level));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
+{
+	// pokemon:getMoves()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const auto& moves = pokemon->getMoves();
+	lua_createtable(L, moves.size(), 0);
+	int index = 0;
+	for (const PokemonMoveState& state : moves) {
+		const PokemonMoveType* move = g_pokemons.getMoveById(state.moveId);
+		if (!move) {
+			continue;
+		}
+
+		lua_createtable(L, 0, 11);
+		setField(L, "id", move->id);
+		setField(L, "key", move->key);
+		setField(L, "name", move->name);
+		setField(L, "type", move->type);
+		setField(L, "category", move->category);
+		setField(L, "power", move->power);
+		setField(L, "pp", move->pp);
+		setField(L, "accuracy", move->accuracy);
+		setField(L, "range", move->range);
+		setField(L, "cooldown", move->cooldown);
+		setField(L, "activeSlot", state.activeSlot);
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonSetMoveSlot(lua_State* L)
+{
+	// pokemon:setMoveSlot(moveIdOrName, slot)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	uint16_t moveId = 0;
+	if (lua_isnumber(L, 2)) {
+		moveId = getNumber<uint16_t>(L, 2);
+	} else if (const PokemonMoveType* move = g_pokemons.getMoveByName(getString(L, 2))) {
+		moveId = move->id;
+	}
+
+	pushBoolean(L, moveId != 0 && pokemon->setMoveSlot(moveId, getNumber<uint8_t>(L, 3)));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonUseMove(lua_State* L)
+{
+	// pokemon:useMove(slot, target)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	Creature* target = getCreature(L, 3);
+	if (!pokemon || !target) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	pushBoolean(L, pokemon->useMove(getNumber<uint8_t>(L, 2), target));
 	return 1;
 }
 
