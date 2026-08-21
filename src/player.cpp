@@ -965,6 +965,18 @@ void Player::sendStats()
 	}
 }
 
+void Player::setBankBalance(uint64_t balance)
+{
+	if (bankBalance == balance) {
+		return;
+	}
+
+	bankBalance = balance;
+	if (client) {
+		client->sendTrainerInfo();
+	}
+}
+
 void Player::sendPing()
 {
 	int64_t timeNow = OTSYS_TIME();
@@ -5079,8 +5091,18 @@ bool Player::registerPokemonCatch(uint16_t pokemonNumber)
 
 bool Player::sendPokemonToBox(Item* item)
 {
-	if (g_game.internalAddItem(getInbox(), item, INDEX_WHEREEVER, FLAG_NOLIMIT) == RETURNVALUE_NOERROR) {
-		return true;
+	static constexpr uint32_t FIRST_POKEMON_BOX = 5;
+	static constexpr uint32_t LAST_POKEMON_BOX = 16;
+
+	for (uint32_t depotId = FIRST_POKEMON_BOX; depotId <= LAST_POKEMON_BOX; ++depotId) {
+		DepotChest* pokemonBox = getDepotChest(depotId, true);
+		if (!pokemonBox || pokemonBox->size() >= pokemonBox->capacity()) {
+			continue;
+		}
+
+		if (g_game.internalAddItem(pokemonBox, item, INDEX_WHEREEVER) == RETURNVALUE_NOERROR) {
+			return true;
+		}
 	}
 
 	sendCancelMessage(RETURNVALUE_FULLPOKEMONBAG);

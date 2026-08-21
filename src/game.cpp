@@ -5556,7 +5556,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 		const auto debitCash = std::min(player->getMoney(), fee);
 		const auto debitBank = fee - debitCash;
 		removeMoney(player, debitCash);
-		player->bankBalance -= debitBank;
+		player->setBankBalance(player->getBankBalance() - debitBank);
 	} else {
 		uint64_t totalPrice = static_cast<uint64_t>(price) * amount;
 		totalPrice += fee;
@@ -5567,7 +5567,7 @@ void Game::playerCreateMarketOffer(uint32_t playerId, uint8_t type, uint16_t spr
 		const auto debitCash = std::min(player->getMoney(), totalPrice);
 		const auto debitBank = totalPrice - debitCash;
 		removeMoney(player, debitCash);
-		player->bankBalance -= debitBank;
+		player->setBankBalance(player->getBankBalance() - debitBank);
 	}
 
 	IOMarket::createOffer(player->getGUID(), static_cast<MarketAction_t>(type), it.id, amount, price, anonymous);
@@ -5595,7 +5595,7 @@ void Game::playerCancelMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 	}
 
 	if (offer.type == MARKETACTION_BUY) {
-		player->bankBalance += static_cast<uint64_t>(offer.price) * offer.amount;
+		player->setBankBalance(player->getBankBalance() + static_cast<uint64_t>(offer.price) * offer.amount);
 		player->sendMarketEnter();
 	} else {
 		const ItemType& it = Item::items[offer.itemId];
@@ -5708,7 +5708,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 			}
 		}
 
-		player->bankBalance += totalPrice;
+		player->setBankBalance(player->getBankBalance() + totalPrice);
 
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
@@ -5753,7 +5753,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 		const auto debitCash = std::min(player->getMoney(), totalPrice);
 		const auto debitBank = totalPrice - debitCash;
 		removeMoney(player, debitCash);
-		player->bankBalance -= debitBank;
+		player->setBankBalance(player->getBankBalance() - debitBank);
 
 		if (it.stackable) {
 			uint16_t tmpAmount = amount;
@@ -5786,7 +5786,7 @@ void Game::playerAcceptMarketOffer(uint32_t playerId, uint32_t timestamp, uint16
 
 		Player* sellerPlayer = getPlayerByGUID(offer.playerId);
 		if (sellerPlayer) {
-			sellerPlayer->bankBalance += totalPrice;
+			sellerPlayer->setBankBalance(sellerPlayer->getBankBalance() + totalPrice);
 		} else {
 			IOLoginData::increaseBankBalance(offer.playerId, totalPrice);
 		}

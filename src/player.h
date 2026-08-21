@@ -201,9 +201,7 @@ class Player final : public Creature, public Cylinder
 		uint64_t getBankBalance() const {
 			return bankBalance;
 		}
-		void setBankBalance(uint64_t balance) {
-			bankBalance = balance;
-		}
+		void setBankBalance(uint64_t balance);
 
 		Guild* getGuild() const {
 			return guild;
