@@ -1059,6 +1059,7 @@ class LuaScriptInterface
 		static int luaPokemonGetMoves(lua_State* L);
 		static int luaPokemonSetMoveSlot(lua_State* L);
 		static int luaPokemonUseMove(lua_State* L);
+		static int luaPokemonModifyBattleStatStage(lua_State* L);
 
 		static int luaPokemonRename(lua_State* L);
 

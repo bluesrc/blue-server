@@ -4841,6 +4841,72 @@ void Player::updatePokemonInfo(Pokeball* pokeball)
 	client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
 }
 
+bool Player::setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16_t, 4>& moveIds)
+{
+	if (inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
+		return false;
+	}
+
+	Item* item = getInventoryItem(static_cast<slots_t>(inventorySlot));
+	Pokeball* pokeball = item ? item->getPokeball() : nullptr;
+	if (!pokeball) {
+		return false;
+	}
+	if (activePokemon == pokeball) {
+		sendCancelMessage("Return this Pokemon before changing its active moves.");
+		return false;
+	}
+	if (hasCondition(CONDITION_INFIGHT)) {
+		sendCancelMessage("You cannot change Pokemon moves while in combat.");
+		return false;
+	}
+
+	PokemonInfo_t info = pokeball->getPokemonInfo();
+	const PokemonType* pokemonType = g_pokemons.getPokemonType(info.name);
+	if (!pokemonType) {
+		return false;
+	}
+	learnPokemonMoves(info, *pokemonType);
+
+	std::unordered_set<uint16_t> assignedMoves;
+	for (const uint16_t moveId : moveIds) {
+		if (moveId == 0) {
+			continue;
+		}
+		if (!assignedMoves.emplace(moveId).second) {
+			return false;
+		}
+
+		const auto moveIt = std::find_if(info.moves.begin(), info.moves.end(), [moveId](const PokemonMoveState& state) {
+			return state.moveId == moveId;
+		});
+		if (moveIt == info.moves.end()) {
+			return false;
+		}
+	}
+
+	for (PokemonMoveState& state : info.moves) {
+		state.activeSlot = 0;
+	}
+	uint8_t activeSlot = 1;
+	for (const uint16_t moveId : moveIds) {
+		if (moveId == 0) {
+			continue;
+		}
+
+		auto moveIt = std::find_if(info.moves.begin(), info.moves.end(), [moveId](const PokemonMoveState& state) {
+			return state.moveId == moveId;
+		});
+		moveIt->activeSlot = activeSlot++;
+	}
+
+	pokeball->setPokemonInfo(info);
+	if (client) {
+		client->sendPokemonInfo(inventorySlot, info, activePokemon == pokeball);
+	}
+	return true;
+}
+
 void Player::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration)
 {
 	if (client) {

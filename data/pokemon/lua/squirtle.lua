@@ -31,7 +31,9 @@ pokemon.base_stats = {
 
 pokemon.learnset = {
 	{move = "tackle", level = 1},
+	{move = "tail_whip", level = 4},
 	{move = "water_gun", level = 7},
+	{move = "withdraw", level = 10},
 }
 
 pokemon.evolution = {

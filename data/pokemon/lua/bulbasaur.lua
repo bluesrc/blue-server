@@ -31,7 +31,9 @@ pokemon.base_stats = {
 
 pokemon.learnset = {
 	{move = "tackle", level = 1},
+	{move = "growl", level = 3},
 	{move = "vine_whip", level = 7},
+	{move = "growth", level = 10},
 }
 
 pokemon.evolution = {

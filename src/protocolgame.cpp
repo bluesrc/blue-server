@@ -3366,6 +3366,13 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 			? Pokemon::getExperienceForLevel(pokemonType->info.level_rate, info.level + 1)
 			: currentLevelExperience;
 	}
+	if (active && player) {
+		Pokeball* activePokeball = player->getActivePokemon();
+		Pokemon* activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
+		if (activePokemon && activePokemon->getID() == info.p_id) {
+			info.stats = activePokemon->getEffectivePokemonStats();
+		}
+	}
 
 	msg.addString(info.name);
 	msg.add<uint64_t>(info.experience);
@@ -3402,6 +3409,52 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	for (const PokemonMoveType* move : activeMoves) {
 		msg.addString(move ? move->name : "");
 		msg.add<uint32_t>(move ? move->cooldown : 0);
+	}
+
+	struct LearnedMoveInfo {
+		const PokemonMoveType* move;
+		uint8_t activeSlot;
+		uint8_t learnLevel;
+	};
+	std::vector<LearnedMoveInfo> learnedMoves;
+	if (const PokemonType* pokemonType = g_pokemons.getPokemonType(info.name)) {
+		for (const PokemonMoveState& state : info.moves) {
+			const PokemonMoveType* move = g_pokemons.getMoveById(state.moveId);
+			if (!move) {
+				continue;
+			}
+
+			uint8_t learnLevel = 1;
+			const auto learnIt = std::find_if(pokemonType->info.learnset.begin(), pokemonType->info.learnset.end(), [&state](const PokemonLearnMove& entry) {
+				return entry.moveId == state.moveId;
+			});
+			if (learnIt != pokemonType->info.learnset.end()) {
+				learnLevel = learnIt->level;
+			}
+			learnedMoves.push_back({move, state.activeSlot, learnLevel});
+		}
+	}
+
+	std::sort(learnedMoves.begin(), learnedMoves.end(), [](const LearnedMoveInfo& lhs, const LearnedMoveInfo& rhs) {
+		return lhs.learnLevel != rhs.learnLevel ? lhs.learnLevel < rhs.learnLevel : lhs.move->id < rhs.move->id;
+	});
+	const uint16_t learnedMoveCount = static_cast<uint16_t>(std::min<size_t>(learnedMoves.size(), std::numeric_limits<uint16_t>::max()));
+	msg.add<uint16_t>(learnedMoveCount);
+	for (uint16_t index = 0; index < learnedMoveCount; ++index) {
+		const LearnedMoveInfo& learned = learnedMoves[index];
+		const PokemonMoveType& move = *learned.move;
+		msg.add<uint16_t>(move.id);
+		msg.addString(move.name);
+		msg.add<uint8_t>(move.type);
+		msg.add<uint8_t>(move.category);
+		msg.add<uint16_t>(move.power);
+		msg.add<uint16_t>(move.pp);
+		msg.add<uint8_t>(move.accuracy);
+		msg.add<uint8_t>(move.range);
+		msg.add<uint32_t>(move.cooldown);
+		msg.add<uint8_t>(learned.activeSlot);
+		msg.add<uint8_t>(learned.learnLevel);
+		msg.add<uint8_t>(move.target);
 	}
 
 	writeToOutputBuffer(msg);

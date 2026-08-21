@@ -190,6 +190,15 @@ bool Pokemons::loadMoves()
 		move.accuracy = static_cast<uint8_t>(std::min<uint32_t>(100, node.attribute("accuracy").as_uint(100)));
 		move.range = static_cast<uint8_t>(std::min<uint32_t>(Map::maxViewportX * 2, node.attribute("range").as_uint(1)));
 		move.cooldown = std::max<uint32_t>(1, node.attribute("cooldown").as_uint(2000));
+		const std::string targetMode = asLowerCaseString(node.attribute("targetmode").as_string());
+		if (targetMode == "target" || node.attribute("needtarget").as_bool() || node.attribute("target").as_bool()) {
+			move.target = POKEMON_MOVE_TARGET_TARGET;
+		} else if (targetMode == "area" || node.attribute("direction").as_bool() ||
+				node.attribute("radius") || node.attribute("length")) {
+			move.target = POKEMON_MOVE_TARGET_AREA;
+		} else if (targetMode == "self" || node.attribute("selftarget").as_bool()) {
+			move.target = POKEMON_MOVE_TARGET_SELF;
+		}
 
 		if (move.id == 0 || move.key.empty() || move.name.empty() || move.type == TYPE_NONE) {
 			std::cout << "[Error - Pokemons::loadMoves] Invalid Pokemon move definition." << std::endl;
@@ -283,6 +292,22 @@ std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& 
 			occupiedSlots[stateIt->activeSlot] = true;
 		}
 		++stateIt;
+	}
+
+	std::vector<PokemonMoveState*> activeMoves;
+	for (PokemonMoveState& state : info.moves) {
+		if (state.activeSlot != 0) {
+			activeMoves.push_back(&state);
+		}
+	}
+	std::sort(activeMoves.begin(), activeMoves.end(), [](const PokemonMoveState* lhs, const PokemonMoveState* rhs) {
+		return lhs->activeSlot < rhs->activeSlot;
+	});
+	occupiedSlots.fill(false);
+	uint8_t compactSlot = 1;
+	for (PokemonMoveState* state : activeMoves) {
+		state->activeSlot = compactSlot;
+		occupiedSlots[compactSlot++] = true;
 	}
 
 	for (const PokemonLearnMove& learnMove : pokemonType.info.learnset) {

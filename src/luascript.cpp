@@ -2789,6 +2789,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
 	registerMethod("Pokemon", "setMoveSlot", LuaScriptInterface::luaPokemonSetMoveSlot);
 	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
+	registerMethod("Pokemon", "modifyBattleStatStage", LuaScriptInterface::luaPokemonModifyBattleStatStage);
 
 	registerMethod("Pokemon", "rename", LuaScriptInterface::luaPokemonRename);
 
@@ -14582,15 +14583,48 @@ int LuaScriptInterface::luaPokemonSetMoveSlot(lua_State* L)
 
 int LuaScriptInterface::luaPokemonUseMove(lua_State* L)
 {
-	// pokemon:useMove(slot, target)
+	// pokemon:useMove(slot[, target])
 	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
-	Creature* target = getCreature(L, 3);
-	if (!pokemon || !target) {
+	if (!pokemon) {
 		pushBoolean(L, false);
 		return 1;
 	}
 
+	Creature* target = lua_gettop(L) >= 3 ? getCreature(L, 3) : nullptr;
 	pushBoolean(L, pokemon->useMove(getNumber<uint8_t>(L, 2), target));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonModifyBattleStatStage(lua_State* L)
+{
+	// pokemon:modifyBattleStatStage(stat, amount)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const std::string statName = asLowerCaseString(getString(L, 2));
+	PokemonBattleStat_t stat;
+	if (statName == "attack") {
+		stat = POKEMON_BATTLE_STAT_ATTACK;
+	} else if (statName == "defense") {
+		stat = POKEMON_BATTLE_STAT_DEFENSE;
+	} else if (statName == "special_attack" || statName == "sp_attack") {
+		stat = POKEMON_BATTLE_STAT_SPECIAL_ATTACK;
+	} else if (statName == "special_defense" || statName == "sp_defense") {
+		stat = POKEMON_BATTLE_STAT_SPECIAL_DEFENSE;
+	} else if (statName == "speed") {
+		stat = POKEMON_BATTLE_STAT_SPEED;
+	} else if (statName == "accuracy") {
+		stat = POKEMON_BATTLE_STAT_ACCURACY;
+	} else {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const int32_t amount = std::clamp<int32_t>(getNumber<int32_t>(L, 3), -6, 6);
+	pushBoolean(L, pokemon->modifyBattleStatStage(stat, static_cast<int8_t>(amount)));
 	return 1;
 }
 

@@ -7,6 +7,8 @@
 #include "tile.h"
 #include "pokemons.h"
 
+#include <array>
+
 class Creature;
 class Game;
 class Spawn;
@@ -19,6 +21,16 @@ enum TargetSearchType_t {
 	TARGETSEARCH_RANDOM,
 	TARGETSEARCH_ATTACKRANGE,
 	TARGETSEARCH_NEAREST,
+};
+
+enum PokemonBattleStat_t : uint8_t {
+	POKEMON_BATTLE_STAT_ATTACK,
+	POKEMON_BATTLE_STAT_DEFENSE,
+	POKEMON_BATTLE_STAT_SPECIAL_ATTACK,
+	POKEMON_BATTLE_STAT_SPECIAL_DEFENSE,
+	POKEMON_BATTLE_STAT_SPEED,
+	POKEMON_BATTLE_STAT_ACCURACY,
+	POKEMON_BATTLE_STAT_COUNT,
 };
 
 class Pokemon final : public Creature
@@ -187,11 +199,13 @@ class Pokemon final : public Creature
 		uint8_t getFriendship() { return friendship;  }
 		uint16_t getNumber() { return mType->info.number; }
 		const PokemonStats_t& getPokemonStats() const { return stats; }
+		PokemonStats_t getEffectivePokemonStats() const;
 		const PokemonType* getPokemonTypeData() const { return mType; }
 		const std::vector<PokemonMoveState>& getMoves() const { return knownMoves; }
 		bool refreshAvailableMoves();
 		bool setMoveSlot(uint16_t moveId, uint8_t slot);
 		bool useMove(uint8_t slot, Creature* target);
+		bool modifyBattleStatStage(PokemonBattleStat_t stat, int8_t amount);
 		bool isExecutingPokemonMove() const { return executingPokemonMove; }
 
 	private:
@@ -241,11 +255,13 @@ class Pokemon final : public Creature
 
 		std::vector<PokemonMoveState> knownMoves;
 		std::unordered_map<uint16_t, int64_t> moveCooldowns;
+		std::array<int8_t, POKEMON_BATTLE_STAT_COUNT> battleStatStages = {};
 
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;
+		double getBattleStatMultiplier(PokemonBattleStat_t stat) const;
 
 		void onCreatureEnter(Creature* creature);
 		void onCreatureLeave(Creature* creature);

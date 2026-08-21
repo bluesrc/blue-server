@@ -5825,8 +5825,26 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	static constexpr uint8_t BOX_EXTENDED_OPCODE = 73;
 	static constexpr uint8_t PLAYER_TRADE_EXTENDED_OPCODE = 74;
 	static constexpr uint8_t PLAYER_BACKPACK_EXTENDED_OPCODE = 75;
+	static constexpr uint8_t POKEMON_MOVE_SLOTS_EXTENDED_OPCODE = 76;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
+	const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
+		if (value.empty()) {
+			return false;
+		}
+		result = 0;
+		for (const char character : value) {
+			if (character < '0' || character > '9') {
+				return false;
+			}
+			const uint64_t digit = static_cast<uint64_t>(character - '0');
+			if (result > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
+				return false;
+			}
+			result = result * 10 + digit;
+		}
+		return true;
+	};
 
 	if (opcode == BOX_EXTENDED_OPCODE) {
 		if (buffer.empty()) {
@@ -5858,6 +5876,31 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		return;
 	}
 
+	if (opcode == POKEMON_MOVE_SLOTS_EXTENDED_OPCODE) {
+		std::array<uint64_t, 5> values = {};
+		size_t start = 0;
+		for (size_t index = 0; index < values.size(); ++index) {
+			const size_t separator = buffer.find(';', start);
+			if ((index + 1 < values.size() && separator == std::string::npos) ||
+					(index + 1 == values.size() && separator != std::string::npos)) {
+				return;
+			}
+
+			const std::string part = buffer.substr(start, separator == std::string::npos ? std::string::npos : separator - start);
+			if (!parseUnsigned(part, values[index]) || values[index] > UINT16_MAX) {
+				return;
+			}
+			start = separator == std::string::npos ? buffer.size() : separator + 1;
+		}
+
+		const std::array<uint16_t, 4> moveIds = {
+			static_cast<uint16_t>(values[1]), static_cast<uint16_t>(values[2]),
+			static_cast<uint16_t>(values[3]), static_cast<uint16_t>(values[4])
+		};
+		player->setPokemonMoveSlots(static_cast<uint16_t>(values[0]), moveIds);
+		return;
+	}
+
 	if (opcode == PLAYER_TRADE_EXTENDED_OPCODE) {
 		if (buffer == "X") {
 			playerCloseTrade(playerId);
@@ -5882,24 +5925,6 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 			}
 			start = separator + 1;
 		}
-
-		const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
-			if (value.empty()) {
-				return false;
-			}
-			result = 0;
-			for (const char character : value) {
-				if (character < '0' || character > '9') {
-					return false;
-				}
-				const uint64_t digit = static_cast<uint64_t>(character - '0');
-				if (result > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
-					return false;
-				}
-				result = result * 10 + digit;
-			}
-			return true;
-		};
 
 		uint64_t value = 0;
 		if (parts.size() == 2 && parts[0] == "C" && parseUnsigned(parts[1], value)) {

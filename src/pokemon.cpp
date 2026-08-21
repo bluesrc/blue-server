@@ -1271,6 +1271,60 @@ bool Pokemon::setMoveSlot(uint16_t moveId, uint8_t slot)
 	return true;
 }
 
+bool Pokemon::modifyBattleStatStage(PokemonBattleStat_t stat, int8_t amount)
+{
+	if (stat >= POKEMON_BATTLE_STAT_COUNT || amount == 0) {
+		return false;
+	}
+
+	int8_t& stage = battleStatStages[stat];
+	const int8_t previousStage = stage;
+	stage = static_cast<int8_t>(std::clamp<int16_t>(static_cast<int16_t>(stage) + amount, -6, 6));
+
+	if (stage != previousStage && stat == POKEMON_BATTLE_STAT_SPEED) {
+		const int32_t stagedSpeed = static_cast<int32_t>(std::floor(stats.speed * getBattleStatMultiplier(stat))) + 100;
+		setBaseSpeed(std::max<int32_t>(1, stagedSpeed));
+		g_game.changeSpeed(this, 0);
+	}
+	if (stage != previousStage) {
+		if (Player* player = master ? master->getPlayer() : nullptr) {
+			Pokeball* pokeball = player->getActivePokemon();
+			if (pokeball && pokeball->getPokemon() == this) {
+				player->updatePokemonInfo(pokeball);
+			}
+		}
+	}
+
+	return stage != previousStage;
+}
+
+PokemonStats_t Pokemon::getEffectivePokemonStats() const
+{
+	PokemonStats_t effectiveStats = stats;
+	const auto applyStage = [this](uint8_t value, PokemonBattleStat_t stat) {
+		return static_cast<uint8_t>(std::clamp<int32_t>(
+			static_cast<int32_t>(std::floor(value * getBattleStatMultiplier(stat))), 1, 255));
+	};
+
+	effectiveStats.attack = applyStage(stats.attack, POKEMON_BATTLE_STAT_ATTACK);
+	effectiveStats.defense = applyStage(stats.defense, POKEMON_BATTLE_STAT_DEFENSE);
+	effectiveStats.sp_attack = applyStage(stats.sp_attack, POKEMON_BATTLE_STAT_SPECIAL_ATTACK);
+	effectiveStats.sp_defense = applyStage(stats.sp_defense, POKEMON_BATTLE_STAT_SPECIAL_DEFENSE);
+	effectiveStats.speed = applyStage(stats.speed, POKEMON_BATTLE_STAT_SPEED);
+	return effectiveStats;
+}
+
+double Pokemon::getBattleStatMultiplier(PokemonBattleStat_t stat) const
+{
+	if (stat >= POKEMON_BATTLE_STAT_COUNT) {
+		return 1.0;
+	}
+
+	const int8_t stage = battleStatStages[stat];
+	const double base = stat == POKEMON_BATTLE_STAT_ACCURACY ? 3.0 : 2.0;
+	return stage >= 0 ? (base + stage) / base : base / (base - stage);
+}
+
 int32_t Pokemon::calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const
 {
 	if (move.category == POKEMON_MOVE_CATEGORY_STATUS || move.power == 0) {
@@ -1278,13 +1332,19 @@ int32_t Pokemon::calculateMoveDamage(const PokemonMoveType& move, const Creature
 	}
 
 	const Pokemon* targetPokemon = target ? target->getPokemon() : nullptr;
-	const uint32_t attackStat = move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ? stats.attack : stats.sp_attack;
-	uint32_t defenseStat = 50;
+	const PokemonBattleStat_t attackStage = move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ?
+		POKEMON_BATTLE_STAT_ATTACK : POKEMON_BATTLE_STAT_SPECIAL_ATTACK;
+	const double attackStat = (move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ? stats.attack : stats.sp_attack) *
+		getBattleStatMultiplier(attackStage);
+	double defenseStat = 50;
 	if (targetPokemon) {
 		const PokemonStats_t& targetStats = targetPokemon->getPokemonStats();
-		defenseStat = move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ? targetStats.defense : targetStats.sp_defense;
+		const PokemonBattleStat_t defenseStage = move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ?
+			POKEMON_BATTLE_STAT_DEFENSE : POKEMON_BATTLE_STAT_SPECIAL_DEFENSE;
+		defenseStat = (move.category == POKEMON_MOVE_CATEGORY_PHYSICAL ? targetStats.defense : targetStats.sp_defense) *
+			targetPokemon->getBattleStatMultiplier(defenseStage);
 	}
-	defenseStat = std::max<uint32_t>(1, defenseStat);
+	defenseStat = std::max(1.0, defenseStat);
 
 	const double baseDamage = (((2.0 * level / 5.0 + 2.0) * move.power * attackStat / defenseStat) / 50.0) + 2.0;
 	double modifier = uniform_random(85, 100) / 100.0;
@@ -1352,7 +1412,9 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 
 		const Pokemon* targetPokemon = target->getPokemon();
 		const uint32_t targetEvasion = targetPokemon ? targetPokemon->evasion : 100;
-		const uint32_t hitChance = std::clamp<uint32_t>((move->accuracy * accuracy) / std::max<uint32_t>(1, targetEvasion), 1, 100);
+		const double stagedAccuracy = (move->accuracy * accuracy * getBattleStatMultiplier(POKEMON_BATTLE_STAT_ACCURACY)) /
+			std::max<uint32_t>(1, targetEvasion);
+		const uint32_t hitChance = std::clamp<uint32_t>(static_cast<uint32_t>(std::floor(stagedAccuracy)), 1, 100);
 		if (static_cast<uint32_t>(uniform_random(1, 100)) > hitChance) {
 			startCooldown();
 			g_game.addMagicEffect(targetPosition, CONST_ME_POFF);

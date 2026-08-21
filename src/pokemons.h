@@ -49,6 +49,12 @@ struct summonBlock_t {
 };
 
 class BaseMove;
+enum PokemonMoveTarget_t : uint8_t {
+	POKEMON_MOVE_TARGET_TARGET = 0,
+	POKEMON_MOVE_TARGET_SELF = 1,
+	POKEMON_MOVE_TARGET_AREA = 2
+};
+
 struct PokemonMoveType {
 	uint16_t id = 0;
 	std::string key;
@@ -61,6 +67,7 @@ struct PokemonMoveType {
 	uint8_t accuracy = 100;
 	uint8_t range = 1;
 	uint32_t cooldown = 2000;
+	PokemonMoveTarget_t target = POKEMON_MOVE_TARGET_SELF;
 };
 
 struct PokemonLearnMove {

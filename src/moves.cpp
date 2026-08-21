@@ -66,7 +66,9 @@ TalkActionResult_t Moves::playerSayMove(Player* player, std::string& words)
 		}
 
 		if (!pokemon->useMove(stateIt->activeSlot, target)) {
-			player->sendTextMessage(MESSAGE_STATUS_SMALL, "The move is on cooldown or the target is out of range.");
+			player->sendTextMessage(MESSAGE_STATUS_SMALL, effect && effect->getNeedTarget() ?
+				"The move is on cooldown or the target is out of range." :
+				"The move is on cooldown or could not be used.");
 			return TALKACTION_FAILED;
 		}
 

@@ -31,7 +31,9 @@ pokemon.base_stats = {
 
 pokemon.learnset = {
 	{move = "scratch", level = 1},
+	{move = "growl", level = 3},
 	{move = "ember", level = 7},
+	{move = "smokescreen", level = 10},
 }
 
 pokemon.evolution = {
