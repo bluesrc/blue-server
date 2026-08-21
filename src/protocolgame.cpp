@@ -1403,6 +1403,8 @@ void ProtocolGame::sendTrainerInfo()
 	msg.addByte(static_cast<uint8_t>(player->getSex()));
 	msg.add<uint64_t>(player->getMoney() + player->getBankBalance());
 	msg.addString(player->getGuild() ? player->getGuild()->getName() : std::string());
+	msg.add<uint32_t>(player->getPokedexCount());
+	msg.add<uint64_t>(player->getTotalCaught());
 	writeToOutputBuffer(msg);
 }
 

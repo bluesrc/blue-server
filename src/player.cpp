@@ -5014,6 +5014,7 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 		g_game.addDistanceEffect(getPosition(), pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].throwEffect);
 		g_game.removeCreature(pokemon);
 		sendMagicEffect(pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].catchSuccessEffect);
+		registerPokemonCatch(virtualPokemon.number);
 
 		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, pokeball]() {
 			addPokemon(PokeballManager::pokeballData[pokeball->getID()].pokeballId, Pokemon::createPlayerPokemon(virtualPokemon));
@@ -5038,6 +5039,7 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 		g_game.addDistanceEffect(getPosition(), pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].throwEffect);
 		g_game.removeCreature(pokemon);
 		sendMagicEffect(pokemon->getPosition(), PokeballManager::pokeballData[pokeball->getID()].catchSuccessEffect);
+		registerPokemonCatch(virtualPokemon.number);
 
 		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, pokeball]() {
 			addPokemon(PokeballManager::pokeballData[pokeball->getID()].pokeballId, Pokemon::createPlayerPokemon(virtualPokemon));
@@ -5053,6 +5055,26 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 			g_game.placeCreature(Pokemon::createPlayerPokemon(virtualPokemon), pokemonPos);
 		}));
 	}
+}
+
+bool Player::registerPokemonCatch(uint16_t pokemonNumber)
+{
+	if (pokemonNumber == 0 || !IOLoginData::registerPokemonCatch(getGUID(), pokemonNumber)) {
+		std::cout << "[Error - Player::registerPokemonCatch] Failed to register Pokemon "
+		          << pokemonNumber << " for player " << getName() << '.' << std::endl;
+		return false;
+	}
+
+	uint32_t& caughtCount = pokemonCatchCounts[pokemonNumber];
+	if (caughtCount == 0) {
+		++pokedexCount;
+	}
+	++caughtCount;
+	++totalCaught;
+	if (client) {
+		client->sendTrainerInfo();
+	}
+	return true;
 }
 
 bool Player::sendPokemonToBox(Item* item)

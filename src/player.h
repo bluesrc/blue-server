@@ -22,6 +22,7 @@
 #include "storeinbox.h"
 
 #include <bitset>
+#include <unordered_map>
 
 class House;
 class NetworkMessage;
@@ -1217,6 +1218,13 @@ class Player final : public Creature, public Cylinder
 		void addPokemon(uint16_t pokeballId, Pokemon* pokemon);
 		void updatePokemonInfo(Pokeball* pokeball);
 		void healPokebag();
+		bool registerPokemonCatch(uint16_t pokemonNumber);
+		uint32_t getPokedexCount() const { return pokedexCount; }
+		uint64_t getTotalCaught() const { return totalCaught; }
+		uint32_t getPokemonCaughtCount(uint16_t pokemonNumber) const {
+			const auto it = pokemonCatchCounts.find(pokemonNumber);
+			return it != pokemonCatchCounts.end() ? it->second : 0;
+		}
 
 		bool sendPokemonToBox(Item* item);
 
@@ -1431,6 +1439,9 @@ class Player final : public Creature, public Cylinder
 		int64_t tryCatchTicks = 0;
 
 		Pokeball* activePokemon = nullptr;
+		std::unordered_map<uint16_t, uint32_t> pokemonCatchCounts;
+		uint32_t pokedexCount = 0;
+		uint64_t totalCaught = 0;
 
 		friend class Game;
 		friend class Npc;
