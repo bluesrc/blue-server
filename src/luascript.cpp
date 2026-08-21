@@ -1302,6 +1302,24 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(COMBAT_ICEDAMAGE)
 	registerEnum(COMBAT_HOLYDAMAGE)
 	registerEnum(COMBAT_DEATHDAMAGE)
+	registerEnum(COMBAT_POKEMON_BUGDAMAGE)
+	registerEnum(COMBAT_POKEMON_DARKDAMAGE)
+	registerEnum(COMBAT_POKEMON_DRAGONDAMAGE)
+	registerEnum(COMBAT_POKEMON_ELECTRICDAMAGE)
+	registerEnum(COMBAT_POKEMON_FAIRYDAMAGE)
+	registerEnum(COMBAT_POKEMON_FIGHTINGDAMAGE)
+	registerEnum(COMBAT_POKEMON_FIREDAMAGE)
+	registerEnum(COMBAT_POKEMON_FLYINGDAMAGE)
+	registerEnum(COMBAT_POKEMON_GHOSTDAMAGE)
+	registerEnum(COMBAT_POKEMON_GRASSDAMAGE)
+	registerEnum(COMBAT_POKEMON_GROUNDDAMAGE)
+	registerEnum(COMBAT_POKEMON_ICEDAMAGE)
+	registerEnum(COMBAT_POKEMON_NORMALDAMAGE)
+	registerEnum(COMBAT_POKEMON_POISONDAMAGE)
+	registerEnum(COMBAT_POKEMON_PSYCHICDAMAGE)
+	registerEnum(COMBAT_POKEMON_ROCKDAMAGE)
+	registerEnum(COMBAT_POKEMON_STEELDAMAGE)
+	registerEnum(COMBAT_POKEMON_WATERDAMAGE)
 
 	registerEnum(COMBAT_PARAM_TYPE)
 	registerEnum(COMBAT_PARAM_EFFECT)
@@ -2097,6 +2115,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(TYPE_ROCK)
 	registerEnum(TYPE_STEEL)
 	registerEnum(TYPE_WATER)
+	registerEnum(POKEMON_MOVE_CATEGORY_PHYSICAL)
+	registerEnum(POKEMON_MOVE_CATEGORY_SPECIAL)
+	registerEnum(POKEMON_MOVE_CATEGORY_STATUS)
 
 	registerEnum(EGG_AMORPHOUS)
 	registerEnum(EGG_BUG)
@@ -2783,6 +2804,12 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "setLevel", LuaScriptInterface::luaPokemonSetLevel);
 	registerMethod("Pokemon", "addExperience", LuaScriptInterface::luaPokemonAddExperience);
 	registerMethod("Pokemon", "addLevel", LuaScriptInterface::luaPokemonAddLevel);
+	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
+	registerMethod("Pokemon", "setMoveSlot", LuaScriptInterface::luaPokemonSetMoveSlot);
+	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
+	registerMethod("Pokemon", "modifyBattleStatStage", LuaScriptInterface::luaPokemonModifyBattleStatStage);
+	registerMethod("Pokemon", "applyStatusCondition", LuaScriptInterface::luaPokemonApplyStatusCondition);
+	registerMethod("Pokemon", "applyFlinch", LuaScriptInterface::luaPokemonApplyFlinch);
 
 	registerMethod("Pokemon", "rename", LuaScriptInterface::luaPokemonRename);
 
@@ -3078,8 +3105,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "combatImmunities", LuaScriptInterface::luaPokemonTypeCombatImmunities);
 	registerMethod("PokemonType", "conditionImmunities", LuaScriptInterface::luaPokemonTypeConditionImmunities);
 
-	registerMethod("PokemonType", "getAttackList", LuaScriptInterface::luaPokemonTypeGetAttackList);
-	registerMethod("PokemonType", "addAttack", LuaScriptInterface::luaPokemonTypeAddAttack);
+	registerMethod("PokemonType", "addLearnMove", LuaScriptInterface::luaPokemonTypeAddLearnMove);
 
 	registerMethod("PokemonType", "getDefenseList", LuaScriptInterface::luaPokemonTypeGetDefenseList);
 	registerMethod("PokemonType", "addDefense", LuaScriptInterface::luaPokemonTypeAddDefense);
@@ -4877,7 +4903,7 @@ int LuaScriptInterface::luaGameCreatePokemonType(lua_State* L)
 		pokemonType->nameDescription = "a " + name;
 	} else {
 		pokemonType->info.lootItems.clear();
-		pokemonType->info.attackMoves.clear();
+		pokemonType->info.learnset.clear();
 		pokemonType->info.defenseMoves.clear();
 		pokemonType->info.scripts.clear();
 		pokemonType->info.thinkEvent = -1;
@@ -14449,56 +14475,159 @@ int LuaScriptInterface::luaPokemonTypeConditionImmunities(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPokemonTypeGetAttackList(lua_State* L)
+int LuaScriptInterface::luaPokemonTypeAddLearnMove(lua_State* L)
 {
-	// pokemonType:getAttackList()
+	// pokemonType:addLearnMove(moveName, level)
 	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
 	if (!pokemonType) {
 		lua_pushnil(L);
 		return 1;
 	}
 
-	lua_createtable(L, pokemonType->info.attackMoves.size(), 0);
+	const std::string moveName = getString(L, 2);
+	const uint8_t level = getNumber<uint8_t>(L, 3, 1);
+	pushBoolean(L, g_pokemons.addLearnMove(pokemonType, moveName, level));
+	return 1;
+}
 
+int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
+{
+	// pokemon:getMoves()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const auto& moves = pokemon->getMoves();
+	lua_createtable(L, moves.size(), 0);
 	int index = 0;
-	for (const auto& moveBlock : pokemonType->info.attackMoves) {
-		lua_createtable(L, 0, 8);
+	for (const PokemonMoveState& state : moves) {
+		const PokemonMoveType* move = g_pokemons.getMoveById(state.moveId);
+		if (!move) {
+			continue;
+		}
 
-		setField(L, "chance", moveBlock.chance);
-		setField(L, "isCombatMove", moveBlock.combatMove ? 1 : 0);
-		setField(L, "isMelee", moveBlock.isMelee ? 1 : 0);
-		setField(L, "minCombatValue", moveBlock.minCombatValue);
-		setField(L, "maxCombatValue", moveBlock.maxCombatValue);
-		setField(L, "range", moveBlock.range);
-		setField(L, "speed", moveBlock.speed);
-		pushUserdata<CombatMove>(L, static_cast<CombatMove*>(moveBlock.move));
-		lua_setfield(L, -2, "move");
-
+		lua_createtable(L, 0, 11);
+		setField(L, "id", move->id);
+		setField(L, "key", move->key);
+		setField(L, "name", move->name);
+		setField(L, "type", move->type);
+		setField(L, "category", move->category);
+		setField(L, "power", move->power);
+		setField(L, "pp", move->pp);
+		setField(L, "accuracy", move->accuracy);
+		setField(L, "range", move->range);
+		setField(L, "cooldown", move->cooldown);
+		setField(L, "activeSlot", state.activeSlot);
 		lua_rawseti(L, -2, ++index);
 	}
 	return 1;
 }
 
-int LuaScriptInterface::luaPokemonTypeAddAttack(lua_State* L)
+int LuaScriptInterface::luaPokemonSetMoveSlot(lua_State* L)
 {
-	// pokemonType:addAttack(pokemonmove)
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (pokemonType) {
-		PokemonMove* move = getUserdata<PokemonMove>(L, 2);
-		if (move) {
-			moveBlock_t sb;
-			if (g_pokemons.deserializeMove(move, sb, pokemonType->name)) {
-				pokemonType->info.attackMoves.push_back(std::move(sb));
-			} else {
-				std::cout << pokemonType->name << std::endl;
-				std::cout << "[Warning - Pokemons::loadPokemon] Cant load move. " << move->name << std::endl;
-			}
-		} else {
-			lua_pushnil(L);
-		}
-	} else {
+	// pokemon:setMoveSlot(moveIdOrName, slot)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
 		lua_pushnil(L);
+		return 1;
 	}
+
+	uint16_t moveId = 0;
+	if (lua_isnumber(L, 2)) {
+		moveId = getNumber<uint16_t>(L, 2);
+	} else if (const PokemonMoveType* move = g_pokemons.getMoveByName(getString(L, 2))) {
+		moveId = move->id;
+	}
+
+	pushBoolean(L, moveId != 0 && pokemon->setMoveSlot(moveId, getNumber<uint8_t>(L, 3)));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonUseMove(lua_State* L)
+{
+	// pokemon:useMove(slot[, target])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	Creature* target = lua_gettop(L) >= 3 ? getCreature(L, 3) : nullptr;
+	pushBoolean(L, pokemon->useMove(getNumber<uint8_t>(L, 2), target));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonModifyBattleStatStage(lua_State* L)
+{
+	// pokemon:modifyBattleStatStage(stat, amount)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const std::string statName = asLowerCaseString(getString(L, 2));
+	PokemonBattleStat_t stat;
+	if (statName == "attack") {
+		stat = POKEMON_BATTLE_STAT_ATTACK;
+	} else if (statName == "defense") {
+		stat = POKEMON_BATTLE_STAT_DEFENSE;
+	} else if (statName == "special_attack" || statName == "sp_attack") {
+		stat = POKEMON_BATTLE_STAT_SPECIAL_ATTACK;
+	} else if (statName == "special_defense" || statName == "sp_defense") {
+		stat = POKEMON_BATTLE_STAT_SPECIAL_DEFENSE;
+	} else if (statName == "speed") {
+		stat = POKEMON_BATTLE_STAT_SPEED;
+	} else if (statName == "accuracy") {
+		stat = POKEMON_BATTLE_STAT_ACCURACY;
+	} else {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const int32_t amount = std::clamp<int32_t>(getNumber<int32_t>(L, 3), -6, 6);
+	const uint32_t duration = getNumber<uint32_t>(L, 4, 10000);
+	pushBoolean(L, pokemon->modifyBattleStatStage(stat, static_cast<int8_t>(amount), duration));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonApplyStatusCondition(lua_State* L)
+{
+	// pokemon:applyStatusCondition(status, duration[, source])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const std::string statusName = asLowerCaseString(getString(L, 2));
+	PokemonStatusCondition_t status = POKEMON_STATUS_NONE;
+	if (statusName == "burn") {
+		status = POKEMON_STATUS_BURN;
+	} else if (statusName == "freeze") {
+		status = POKEMON_STATUS_FREEZE;
+	} else if (statusName == "paralysis" || statusName == "paralyze") {
+		status = POKEMON_STATUS_PARALYSIS;
+	} else if (statusName == "poison") {
+		status = POKEMON_STATUS_POISON;
+	} else if (statusName == "sleep") {
+		status = POKEMON_STATUS_SLEEP;
+	} else if (statusName == "confusion" || statusName == "confuse") {
+		status = POKEMON_STATUS_CONFUSION;
+	}
+
+	Creature* source = lua_gettop(L) >= 4 ? getCreature(L, 4) : nullptr;
+	pushBoolean(L, pokemon->applyStatusCondition(status, getNumber<uint32_t>(L, 3, 15000), source));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonApplyFlinch(lua_State* L)
+{
+	// pokemon:applyFlinch([duration])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	pushBoolean(L, pokemon && pokemon->applyFlinch(getNumber<uint32_t>(L, 2, 1500)));
 	return 1;
 }
 

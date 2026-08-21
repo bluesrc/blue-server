@@ -14,6 +14,10 @@ pokemon.base_stats = {
     speed = 255
 }
 
+pokemon.learnset = {
+	{move = "tackle", level = 1},
+}
+
 pokemon.changeTarget = {
 	interval = 4*1000,
 	chance = 20
@@ -35,29 +39,6 @@ pokemon.flags = {
 
 pokemon.loot = {
 	{id = "gold coin", chance = 60000, maxCount = 100}
-}
-
-pokemon.attacks = {
-	{name = "melee", attack = 1, skill = 70, effect = CONST_ME_DRAWBLOOD, interval = 2*1000},
-}
-
---todo: maybe calc this when do the damage to target?
-pokemon.elements = {
-	{type = COMBAT_PHYSICALDAMAGE, percent = 30},
-	{type = COMBAT_DEATHDAMAGE, percent = 30},
-	{type = COMBAT_ENERGYDAMAGE, percent = 50},
-	{type = COMBAT_EARTHDAMAGE, percent = 40},
-	{type = COMBAT_ICEDAMAGE, percent = -10},
-	{type = COMBAT_HOLYDAMAGE, percent = -10}
-}
-
---todo: check this in combat?
-pokemon.immunities = {
-	{type = "fire", combat = true, condition = true},
-	{type = "drown", condition = true},
-	{type = "lifedrain", combat = true},
-	{type = "paralyze", condition = true},
-	{type = "invisible", condition = true}
 }
 
 mType.onThink = function(pokemon, interval)

@@ -1093,6 +1093,15 @@ void IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t po
 		));
 
 	pokemonQuery.execute();
+
+	if (!pInfo.moves.empty()) {
+		DBInsert movesQuery("INSERT INTO `pokemon_moves` (`pokemon_uid`, `move_id`, `active_slot`) VALUES ");
+		for (const PokemonMoveState& move : pInfo.moves) {
+			const std::string activeSlot = move.activeSlot == 0 ? "NULL" : std::to_string(move.activeSlot);
+			movesQuery.addRow(fmt::format("{:d}, {:d}, {:s}", pokemonUID, move.moveId, activeSlot));
+		}
+		movesQuery.execute();
+	}
 }
 
 void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
@@ -1134,7 +1143,19 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 		pInfo.evs.sp_defense = p_result->getNumber<uint32_t>("ev_sp_defense");
 		pInfo.evs.speed = p_result->getNumber<uint32_t>("ev_speed");
 
+		if (DBResult_ptr moveResult = db.storeQuery(fmt::format(
+			"SELECT `move_id`, `active_slot` FROM `pokemon_moves` WHERE `pokemon_uid` = {:d} ORDER BY `active_slot`, `move_id`", pokemonUID))) {
+			do {
+				const uint16_t activeSlot = moveResult->getNumber<uint16_t>("active_slot");
+				pInfo.moves.push_back({
+					moveResult->getNumber<uint16_t>("move_id"),
+					activeSlot <= 4 ? static_cast<uint8_t>(activeSlot) : static_cast<uint8_t>(0)
+				});
+			} while (moveResult->next());
+		}
+
 		auto mType = g_pokemons.getPokemonType(pInfo.name);
+		learnPokemonMoves(pInfo, *mType);
 		pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
 		pInfo.number = mType->info.number;
 

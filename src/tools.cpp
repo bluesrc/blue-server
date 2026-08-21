@@ -642,6 +642,24 @@ CombatTypeNames combatTypeNames = {
 	{COMBAT_ICEDAMAGE, 		"ice"},
 	{COMBAT_HOLYDAMAGE, 		"holy"},
 	{COMBAT_DEATHDAMAGE, 		"death"},
+	{COMBAT_POKEMON_BUGDAMAGE, "pokemon bug"},
+	{COMBAT_POKEMON_DARKDAMAGE, "pokemon dark"},
+	{COMBAT_POKEMON_DRAGONDAMAGE, "pokemon dragon"},
+	{COMBAT_POKEMON_ELECTRICDAMAGE, "pokemon electric"},
+	{COMBAT_POKEMON_FAIRYDAMAGE, "pokemon fairy"},
+	{COMBAT_POKEMON_FIGHTINGDAMAGE, "pokemon fighting"},
+	{COMBAT_POKEMON_FIREDAMAGE, "pokemon fire"},
+	{COMBAT_POKEMON_FLYINGDAMAGE, "pokemon flying"},
+	{COMBAT_POKEMON_GHOSTDAMAGE, "pokemon ghost"},
+	{COMBAT_POKEMON_GRASSDAMAGE, "pokemon grass"},
+	{COMBAT_POKEMON_GROUNDDAMAGE, "pokemon ground"},
+	{COMBAT_POKEMON_ICEDAMAGE, "pokemon ice"},
+	{COMBAT_POKEMON_NORMALDAMAGE, "pokemon normal"},
+	{COMBAT_POKEMON_POISONDAMAGE, "pokemon poison"},
+	{COMBAT_POKEMON_PSYCHICDAMAGE, "pokemon psychic"},
+	{COMBAT_POKEMON_ROCKDAMAGE, "pokemon rock"},
+	{COMBAT_POKEMON_STEELDAMAGE, "pokemon steel"},
+	{COMBAT_POKEMON_WATERDAMAGE, "pokemon water"},
 };
 
 AmmoTypeNames ammoTypeNames = {
@@ -905,6 +923,42 @@ size_t combatTypeToIndex(CombatType_t combatType)
 			return 10;
 		case COMBAT_DEATHDAMAGE:
 			return 11;
+		case COMBAT_POKEMON_BUGDAMAGE:
+			return 12;
+		case COMBAT_POKEMON_DARKDAMAGE:
+			return 13;
+		case COMBAT_POKEMON_DRAGONDAMAGE:
+			return 14;
+		case COMBAT_POKEMON_ELECTRICDAMAGE:
+			return 15;
+		case COMBAT_POKEMON_FAIRYDAMAGE:
+			return 16;
+		case COMBAT_POKEMON_FIGHTINGDAMAGE:
+			return 17;
+		case COMBAT_POKEMON_FIREDAMAGE:
+			return 18;
+		case COMBAT_POKEMON_FLYINGDAMAGE:
+			return 19;
+		case COMBAT_POKEMON_GHOSTDAMAGE:
+			return 20;
+		case COMBAT_POKEMON_GRASSDAMAGE:
+			return 21;
+		case COMBAT_POKEMON_GROUNDDAMAGE:
+			return 22;
+		case COMBAT_POKEMON_ICEDAMAGE:
+			return 23;
+		case COMBAT_POKEMON_NORMALDAMAGE:
+			return 24;
+		case COMBAT_POKEMON_POISONDAMAGE:
+			return 25;
+		case COMBAT_POKEMON_PSYCHICDAMAGE:
+			return 26;
+		case COMBAT_POKEMON_ROCKDAMAGE:
+			return 27;
+		case COMBAT_POKEMON_STEELDAMAGE:
+			return 28;
+		case COMBAT_POKEMON_WATERDAMAGE:
+			return 29;
 		default:
 			return 0;
 	}
@@ -912,7 +966,7 @@ size_t combatTypeToIndex(CombatType_t combatType)
 
 CombatType_t indexToCombatType(size_t v)
 {
-	return static_cast<CombatType_t>(1 << v);
+	return static_cast<CombatType_t>(1u << v);
 }
 
 uint8_t serverFluidToClient(uint8_t serverFluid)

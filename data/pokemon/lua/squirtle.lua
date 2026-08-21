@@ -29,6 +29,14 @@ pokemon.base_stats = {
     speed = 43
 }
 
+pokemon.learnset = {
+	{move = "tackle", level = 1},
+	{move = "tail_whip", level = 4},
+	{move = "water_gun", level = 7},
+	{move = "withdraw", level = 10},
+	{move = "ice_beam", level = 13},
+}
+
 pokemon.evolution = {
     type= EVOLVE_LEVEL,
     level= 25
@@ -55,30 +63,6 @@ pokemon.flags = {
 
 pokemon.loot = {
 	{id = "gold coin", chance = 60000, maxCount = 100}
-}
-
-pokemon.attacks = {
-	{name = "melee", attack = 1, skill = 70, effect = CONST_ME_DRAWBLOOD, interval = 2*1000},
-	{name = "ice strike", range = 1, chance = 10, interval = 2*1000, minDamage = -210, maxDamage = -300, target = true},
-}
-
---todo: maybe calc this when do the damage to target?
-pokemon.elements = {
-	{type = COMBAT_PHYSICALDAMAGE, percent = 30},
-	{type = COMBAT_DEATHDAMAGE, percent = 30},
-	{type = COMBAT_ENERGYDAMAGE, percent = 50},
-	{type = COMBAT_EARTHDAMAGE, percent = 40},
-	{type = COMBAT_ICEDAMAGE, percent = -10},
-	{type = COMBAT_HOLYDAMAGE, percent = -10}
-}
-
---todo: check this in combat?
-pokemon.immunities = {
-	{type = "fire", combat = true, condition = true},
-	{type = "drown", condition = true},
-	{type = "lifedrain", combat = true},
-	{type = "paralyze", condition = true},
-	{type = "invisible", condition = true}
 }
 
 mType.onThink = function(pokemon, interval)

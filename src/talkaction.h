@@ -14,6 +14,7 @@ using TalkAction_ptr = std::unique_ptr<TalkAction>;
 enum TalkActionResult_t {
 	TALKACTION_CONTINUE,
 	TALKACTION_BREAK,
+	TALKACTION_SILENT_BREAK,
 	TALKACTION_FAILED,
 };
 

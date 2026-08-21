@@ -22,6 +22,7 @@
 #include "storeinbox.h"
 
 #include <bitset>
+#include <array>
 #include <unordered_map>
 
 class House;
@@ -1215,6 +1216,8 @@ class Player final : public Creature, public Cylinder
 		void addPokemon(std::string pokeballName, std::string pokemon, const PokemonCreateOptions_t& options);
 		void addPokemon(uint16_t pokeballId, Pokemon* pokemon);
 		void updatePokemonInfo(Pokeball* pokeball);
+		bool setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16_t, 4>& moveIds);
+		void sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration);
 		void healPokebag();
 		bool registerPokemonCatch(uint16_t pokemonNumber);
 		uint32_t getPokedexCount() const { return pokedexCount; }

@@ -3860,12 +3860,14 @@ bool Game::playerSayMove(Player* player, SpeakClasses type, const std::string& t
 	std::string words = text;
 
 	TalkActionResult_t result = g_talkActions->playerSayMove(player, type, words);
-	if (result == TALKACTION_BREAK) {
+	if (result == TALKACTION_BREAK || result == TALKACTION_SILENT_BREAK) {
 		return true;
 	}
 
 	result = g_moves->playerSayMove(player, words);
-	if (result == TALKACTION_BREAK) {
+	if (result == TALKACTION_SILENT_BREAK) {
+		return true;
+	} else if (result == TALKACTION_BREAK) {
 		if (!g_config.getBoolean(ConfigManager::EMOTE_MOVES)) {
 			return internalCreatureSay(player, TALKTYPE_SAY, words, false);
 		} else {
@@ -4332,6 +4334,72 @@ void Game::combatGetTypeInfo(CombatType_t combatType, Creature* target, TextColo
 		case COMBAT_DEATHDAMAGE: {
 			color = TEXTCOLOR_DARKRED;
 			effect = CONST_ME_SMALLCLOUDS;
+			break;
+		}
+		case COMBAT_POKEMON_BUGDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREEN;
+			effect = CONST_ME_GREEN_RINGS;
+			break;
+		}
+		case COMBAT_POKEMON_DARKDAMAGE:
+		case COMBAT_POKEMON_GHOSTDAMAGE: {
+			color = TEXTCOLOR_DARKRED;
+			effect = CONST_ME_SMALLCLOUDS;
+			break;
+		}
+		case COMBAT_POKEMON_DRAGONDAMAGE:
+		case COMBAT_POKEMON_PSYCHICDAMAGE: {
+			color = TEXTCOLOR_PURPLE;
+			effect = CONST_ME_ENERGYHIT;
+			break;
+		}
+		case COMBAT_POKEMON_ELECTRICDAMAGE: {
+			color = TEXTCOLOR_ELECTRICPURPLE;
+			effect = CONST_ME_ENERGYHIT;
+			break;
+		}
+		case COMBAT_POKEMON_FAIRYDAMAGE: {
+			color = TEXTCOLOR_PASTELRED;
+			effect = CONST_ME_HEARTS;
+			break;
+		}
+		case COMBAT_POKEMON_FIGHTINGDAMAGE:
+		case COMBAT_POKEMON_NORMALDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREY;
+			effect = CONST_ME_HITAREA;
+			break;
+		}
+		case COMBAT_POKEMON_FIREDAMAGE: {
+			color = TEXTCOLOR_ORANGE;
+			effect = CONST_ME_HITBYFIRE;
+			break;
+		}
+		case COMBAT_POKEMON_FLYINGDAMAGE: {
+			color = TEXTCOLOR_WHITE_EXP;
+			effect = CONST_ME_HITAREA;
+			break;
+		}
+		case COMBAT_POKEMON_GRASSDAMAGE:
+		case COMBAT_POKEMON_POISONDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREEN;
+			effect = CONST_ME_HITBYPOISON;
+			break;
+		}
+		case COMBAT_POKEMON_GROUNDDAMAGE:
+		case COMBAT_POKEMON_ROCKDAMAGE:
+		case COMBAT_POKEMON_STEELDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREY;
+			effect = CONST_ME_BLOCKHIT;
+			break;
+		}
+		case COMBAT_POKEMON_ICEDAMAGE: {
+			color = TEXTCOLOR_SKYBLUE;
+			effect = CONST_ME_ICEATTACK;
+			break;
+		}
+		case COMBAT_POKEMON_WATERDAMAGE: {
+			color = TEXTCOLOR_LIGHTBLUE;
+			effect = CONST_ME_LOSEENERGY;
 			break;
 		}
 		case COMBAT_LIFEDRAIN: {
@@ -5823,8 +5891,26 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	static constexpr uint8_t BOX_EXTENDED_OPCODE = 73;
 	static constexpr uint8_t PLAYER_TRADE_EXTENDED_OPCODE = 74;
 	static constexpr uint8_t PLAYER_BACKPACK_EXTENDED_OPCODE = 75;
+	static constexpr uint8_t POKEMON_MOVE_SLOTS_EXTENDED_OPCODE = 76;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
+	const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
+		if (value.empty()) {
+			return false;
+		}
+		result = 0;
+		for (const char character : value) {
+			if (character < '0' || character > '9') {
+				return false;
+			}
+			const uint64_t digit = static_cast<uint64_t>(character - '0');
+			if (result > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
+				return false;
+			}
+			result = result * 10 + digit;
+		}
+		return true;
+	};
 
 	if (opcode == BOX_EXTENDED_OPCODE) {
 		if (buffer.empty()) {
@@ -5856,6 +5942,31 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		return;
 	}
 
+	if (opcode == POKEMON_MOVE_SLOTS_EXTENDED_OPCODE) {
+		std::array<uint64_t, 5> values = {};
+		size_t start = 0;
+		for (size_t index = 0; index < values.size(); ++index) {
+			const size_t separator = buffer.find(';', start);
+			if ((index + 1 < values.size() && separator == std::string::npos) ||
+					(index + 1 == values.size() && separator != std::string::npos)) {
+				return;
+			}
+
+			const std::string part = buffer.substr(start, separator == std::string::npos ? std::string::npos : separator - start);
+			if (!parseUnsigned(part, values[index]) || values[index] > UINT16_MAX) {
+				return;
+			}
+			start = separator == std::string::npos ? buffer.size() : separator + 1;
+		}
+
+		const std::array<uint16_t, 4> moveIds = {
+			static_cast<uint16_t>(values[1]), static_cast<uint16_t>(values[2]),
+			static_cast<uint16_t>(values[3]), static_cast<uint16_t>(values[4])
+		};
+		player->setPokemonMoveSlots(static_cast<uint16_t>(values[0]), moveIds);
+		return;
+	}
+
 	if (opcode == PLAYER_TRADE_EXTENDED_OPCODE) {
 		if (buffer == "X") {
 			playerCloseTrade(playerId);
@@ -5880,24 +5991,6 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 			}
 			start = separator + 1;
 		}
-
-		const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
-			if (value.empty()) {
-				return false;
-			}
-			result = 0;
-			for (const char character : value) {
-				if (character < '0' || character > '9') {
-					return false;
-				}
-				const uint64_t digit = static_cast<uint64_t>(character - '0');
-				if (result > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
-					return false;
-				}
-				result = result * 10 + digit;
-			}
-			return true;
-		};
 
 		uint64_t value = 0;
 		if (parts.size() == 2 && parts[0] == "C" && parseUnsigned(parts[1], value)) {

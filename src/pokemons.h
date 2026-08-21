@@ -49,6 +49,37 @@ struct summonBlock_t {
 };
 
 class BaseMove;
+enum PokemonMoveTarget_t : uint8_t {
+	POKEMON_MOVE_TARGET_TARGET = 0,
+	POKEMON_MOVE_TARGET_SELF = 1,
+	POKEMON_MOVE_TARGET_AREA = 2
+};
+
+struct PokemonMoveType {
+	uint16_t id = 0;
+	std::string key;
+	std::string name;
+	std::string effect;
+	PokemonTypes_t type = TYPE_NONE;
+	PokemonMoveCategory_t category = POKEMON_MOVE_CATEGORY_STATUS;
+	uint16_t power = 0;
+	uint16_t pp = 0;
+	uint8_t accuracy = 100;
+	uint8_t range = 1;
+	uint32_t cooldown = 2000;
+	PokemonMoveTarget_t target = POKEMON_MOVE_TARGET_SELF;
+};
+
+struct PokemonLearnMove {
+	uint16_t moveId = 0;
+	uint8_t level = 1;
+};
+
+struct PokemonMoveState {
+	uint16_t moveId = 0;
+	uint8_t activeSlot = 0;
+};
+
 struct moveBlock_t {
 	constexpr moveBlock_t() = default;
 	~moveBlock_t();
@@ -92,7 +123,6 @@ class PokemonType
 
 		std::vector<LootBlock> lootItems;
 		std::vector<std::string> scripts;
-		std::vector<moveBlock_t> attackMoves;
 		std::vector<moveBlock_t> defenseMoves;
 		std::vector<summonBlock_t> summons;
 
@@ -148,6 +178,7 @@ class PokemonType
 
 		PokemonStats_t ev_yield = {};
 		PokemonStats_t base_stats = {};
+		std::vector<PokemonLearnMove> learnset;
 
 		uint16_t number {0};
 		std::array<PokemonTypes_t, 2> types = { TYPE_NONE, TYPE_NONE };
@@ -254,12 +285,16 @@ class Pokemons
 		bool reload();
 
 		PokemonType* getPokemonType(const std::string& name, bool loadFromFile = true);
+		const PokemonMoveType* getMoveById(uint16_t id) const;
+		const PokemonMoveType* getMoveByName(const std::string& name) const;
+		bool addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level);
 		bool deserializeMove(PokemonMove* move, moveBlock_t& sb, const std::string& description = "");
 
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
 		std::map<std::string, PokemonType> pokemons;
 
 	private:
+		bool loadMoves();
 		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
 		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
 		bool deserializeMove(const pugi::xml_node& node, moveBlock_t& sb, const std::string& description = "");
@@ -270,6 +305,8 @@ class Pokemons
 		bool loadLootItem(const pugi::xml_node& node, LootBlock&);
 
 		std::map<std::string, std::string> unloadedPokemons;
+		std::map<uint16_t, PokemonMoveType> moves;
+		std::map<std::string, uint16_t> moveNames;
 
 		bool loaded = false;
 };
@@ -294,6 +331,7 @@ struct PokemonInfo_t
 	PokemonStats_t stats;
 	PokemonStats_t ivs;
 	PokemonStats_t evs;
+	std::vector<PokemonMoveState> moves;
 
 	PokemonInfo_t() :
 		p_id(0),
@@ -311,6 +349,9 @@ struct PokemonInfo_t
 	{
 	}
 };
+
+std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& pokemonType);
+double getPokemonTypeEffectiveness(PokemonTypes_t attackingType, PokemonTypes_t defendingType);
 
 struct PokemonNatureModifiers_t
 {

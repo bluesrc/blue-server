@@ -7,6 +7,7 @@
 #include "configmanager.h"
 #include "game.h"
 #include "pokemon.h"
+#include "pokeball.h"
 #include "pugicast.h"
 #include "moves.h"
 
@@ -33,6 +34,46 @@ TalkActionResult_t Moves::playerSayMove(Player* player, std::string& words)
 
 	//strip trailing spaces
 	trimString(str_words);
+
+	if (const PokemonMoveType* pokemonMove = g_pokemons.getMoveByName(str_words)) {
+		Pokeball* pokeball = player->getActivePokemon();
+		Pokemon* pokemon = pokeball ? pokeball->getPokemon() : nullptr;
+		if (!pokemon) {
+			player->sendTextMessage(MESSAGE_STATUS_SMALL, "You need an active Pokemon to use this move.");
+			return TALKACTION_FAILED;
+		}
+
+		pokemon->refreshAvailableMoves();
+		const auto& knownMoves = pokemon->getMoves();
+		const auto stateIt = std::find_if(knownMoves.begin(), knownMoves.end(), [pokemonMove](const PokemonMoveState& state) {
+			return state.moveId == pokemonMove->id;
+		});
+		if (stateIt == knownMoves.end()) {
+			player->sendTextMessage(MESSAGE_STATUS_SMALL, "Your active Pokemon does not know this move.");
+			return TALKACTION_FAILED;
+		}
+
+		if (stateIt->activeSlot == 0) {
+			player->sendTextMessage(MESSAGE_STATUS_SMALL, "This move is not in an active slot.");
+			return TALKACTION_FAILED;
+		}
+
+		Move* effect = g_moves->getMoveByName(pokemonMove->effect);
+		Creature* target = player->getAttackedCreature();
+		if (effect && effect->getNeedTarget() && !target) {
+			player->sendTextMessage(MESSAGE_STATUS_SMALL, "Select a target before using a Pokemon move.");
+			return TALKACTION_FAILED;
+		}
+
+		if (!pokemon->useMove(stateIt->activeSlot, target)) {
+			player->sendTextMessage(MESSAGE_STATUS_SMALL, effect && effect->getNeedTarget() ?
+				"The move is on cooldown or the target is out of range." :
+				"The move is on cooldown or could not be used.");
+			return TALKACTION_FAILED;
+		}
+
+		return TALKACTION_SILENT_BREAK;
+	}
 
 	InstantMove* instantMove = getInstantMove(str_words);
 	if (!instantMove) {

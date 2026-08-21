@@ -14,7 +14,6 @@
 #include "pokemon.h"
 #include "movement.h"
 #include "scheduler.h"
-#include "weapons.h"
 #include "pokeball.h"
 #include "pokeballs.h"
 #include "tools.h"
@@ -26,7 +25,6 @@ extern Game g_game;
 extern Chat* g_chat;
 extern Vocations g_vocations;
 extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
 extern Pokemons g_pokemons;
@@ -3421,45 +3419,8 @@ void Player::getPathSearchParams(const Creature* creature, FindPathParams& fpp) 
 
 void Player::doAttacking(uint32_t)
 {
-	if (lastAttack == 0) {
-		lastAttack = OTSYS_TIME() - getAttackSpeed() - 1;
-	}
-
-	if (hasCondition(CONDITION_PACIFIED)) {
-		return;
-	}
-
-	if ((OTSYS_TIME() - lastAttack) >= getAttackSpeed()) {
-		bool result = false;
-
-		Item* tool = getWeapon();
-		const Weapon* weapon = g_weapons->getWeapon(tool);
-		uint32_t delay = getAttackSpeed();
-		bool classicSpeed = g_config.getBoolean(ConfigManager::CLASSIC_ATTACK_SPEED);
-
-		if (weapon) {
-			if (!weapon->interruptSwing()) {
-				result = weapon->useWeapon(this, tool, attackedCreature);
-			} else if (!classicSpeed && !canDoAction()) {
-				delay = getNextActionTime();
-			} else {
-				result = weapon->useWeapon(this, tool, attackedCreature);
-			}
-		} else {
-			result = Weapon::useFist(this, attackedCreature);
-		}
-
-		SchedulerTask* task = createSchedulerTask(std::max<uint32_t>(SCHEDULER_MINTICKS, delay), std::bind(&Game::checkCreatureAttack, &g_game, getID()));
-		if (!classicSpeed) {
-			setNextActionTask(task, false);
-		} else {
-			g_scheduler.addEvent(task);
-		}
-
-		if (result) {
-			lastAttack = OTSYS_TIME();
-		}
-	}
+	// Players select targets and command Pokemon Moves, but never deal basic
+	// weapon or fist damage through the automatic attack loop.
 }
 
 uint64_t Player::getGainedExperience(Creature* attacker) const
@@ -4880,6 +4841,79 @@ void Player::updatePokemonInfo(Pokeball* pokeball)
 	client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
 }
 
+bool Player::setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16_t, 4>& moveIds)
+{
+	if (inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
+		return false;
+	}
+
+	Item* item = getInventoryItem(static_cast<slots_t>(inventorySlot));
+	Pokeball* pokeball = item ? item->getPokeball() : nullptr;
+	if (!pokeball) {
+		return false;
+	}
+	if (activePokemon == pokeball) {
+		sendCancelMessage("Return this Pokemon before changing its active moves.");
+		return false;
+	}
+	if (hasCondition(CONDITION_INFIGHT)) {
+		sendCancelMessage("You cannot change Pokemon moves while in combat.");
+		return false;
+	}
+
+	PokemonInfo_t info = pokeball->getPokemonInfo();
+	const PokemonType* pokemonType = g_pokemons.getPokemonType(info.name);
+	if (!pokemonType) {
+		return false;
+	}
+	learnPokemonMoves(info, *pokemonType);
+
+	std::unordered_set<uint16_t> assignedMoves;
+	for (const uint16_t moveId : moveIds) {
+		if (moveId == 0) {
+			continue;
+		}
+		if (!assignedMoves.emplace(moveId).second) {
+			return false;
+		}
+
+		const auto moveIt = std::find_if(info.moves.begin(), info.moves.end(), [moveId](const PokemonMoveState& state) {
+			return state.moveId == moveId;
+		});
+		if (moveIt == info.moves.end()) {
+			return false;
+		}
+	}
+
+	for (PokemonMoveState& state : info.moves) {
+		state.activeSlot = 0;
+	}
+	uint8_t activeSlot = 1;
+	for (const uint16_t moveId : moveIds) {
+		if (moveId == 0) {
+			continue;
+		}
+
+		auto moveIt = std::find_if(info.moves.begin(), info.moves.end(), [moveId](const PokemonMoveState& state) {
+			return state.moveId == moveId;
+		});
+		moveIt->activeSlot = activeSlot++;
+	}
+
+	pokeball->setPokemonInfo(info);
+	if (client) {
+		client->sendPokemonInfo(inventorySlot, info, activePokemon == pokeball);
+	}
+	return true;
+}
+
+void Player::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration)
+{
+	if (client) {
+		client->sendPokemonMoveCooldown(pokemonId, slot, duration);
+	}
+}
+
 void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)
 {
 	auto item = Item::CreateItem(pokeballId);
@@ -4970,6 +5004,13 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 
 	pokeball->setPokemonId(pokemon->getID());
 	setActivePokemon(pokeball);
+
+	// Pokemon::createPlayerPokemon reconciles the learnset with the current
+	// level. Keep the Pokeball copy in sync as well, especially for Pokemon
+	// created directly at a higher level or loaded from legacy data.
+	auto pokemonInfo = pokeball->getPokemonInfo();
+	pokemonInfo.moves = pokemon->getMoves();
+	pokeball->setPokemonInfo(pokemonInfo);
 
 	auto idx = std::find(std::begin(inventory), std::end(inventory), pokeball);
 	if (idx != std::end(inventory))
