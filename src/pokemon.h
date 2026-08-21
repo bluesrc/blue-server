@@ -33,6 +33,22 @@ enum PokemonBattleStat_t : uint8_t {
 	POKEMON_BATTLE_STAT_COUNT,
 };
 
+enum PokemonStatusCondition_t : uint8_t {
+	POKEMON_STATUS_NONE,
+	POKEMON_STATUS_BURN,
+	POKEMON_STATUS_FREEZE,
+	POKEMON_STATUS_PARALYSIS,
+	POKEMON_STATUS_POISON,
+	POKEMON_STATUS_SLEEP,
+	POKEMON_STATUS_CONFUSION,
+};
+
+struct PokemonBattleModifier {
+	PokemonBattleStat_t stat;
+	int8_t amount;
+	int64_t expiresAt;
+};
+
 class Pokemon final : public Creature
 {
 	public:
@@ -205,7 +221,11 @@ class Pokemon final : public Creature
 		bool refreshAvailableMoves();
 		bool setMoveSlot(uint16_t moveId, uint8_t slot);
 		bool useMove(uint8_t slot, Creature* target);
-		bool modifyBattleStatStage(PokemonBattleStat_t stat, int8_t amount);
+		bool modifyBattleStatStage(PokemonBattleStat_t stat, int8_t amount, uint32_t duration = 10000);
+		bool applyStatusCondition(PokemonStatusCondition_t status, uint32_t duration, Creature* source = nullptr);
+		bool applyFlinch(uint32_t duration = 1500);
+		int32_t getExecutingMoveDamage(const Creature* target) const;
+		bool rollExecutingMoveHit(const Creature* target) const;
 		bool isExecutingPokemonMove() const { return executingPokemonMove; }
 
 	private:
@@ -252,16 +272,30 @@ class Pokemon final : public Creature
 		uint64_t experience = 0;
 		bool shiny = false;
 		bool executingPokemonMove = false;
+		const PokemonMoveType* executingMove = nullptr;
+		PokemonStatusCondition_t pokemonStatus = POKEMON_STATUS_NONE;
+		int64_t pokemonStatusExpiresAt = 0;
+		int64_t pokemonStatusNextTick = 0;
+		int64_t flinchUntil = 0;
+		uint32_t pokemonStatusSourceId = 0;
 
 		std::vector<PokemonMoveState> knownMoves;
 		std::unordered_map<uint16_t, int64_t> moveCooldowns;
 		std::array<int8_t, POKEMON_BATTLE_STAT_COUNT> battleStatStages = {};
+		std::vector<PokemonBattleModifier> battleModifiers;
 
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;
 		double getBattleStatMultiplier(PokemonBattleStat_t stat) const;
+		bool rollMoveHit(const PokemonMoveType& move, const Creature* target) const;
+		void processPokemonBattleState();
+		void expireBattleModifiers(int64_t now);
+		void clearPokemonStatus();
+		void refreshBattleSpeed(bool notify = true);
+		void notifyBattleStateChanged();
+		bool canPerformMove();
 
 		void onCreatureEnter(Creature* creature);
 		void onCreatureLeave(Creature* creature);

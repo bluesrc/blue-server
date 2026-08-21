@@ -1,10 +1,10 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_POFF)
+combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_RED) -- Effect 14: debuff
 
 function onTargetCreature(creature, target)
 	local pokemon = Pokemon(target)
 	if pokemon then
-		pokemon:modifyBattleStatStage("attack", -1)
+		pokemon:modifyBattleStatStage("attack", -1, 10000)
 	end
 	return true
 end

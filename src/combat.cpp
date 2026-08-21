@@ -103,6 +103,12 @@ CombatDamage Combat::getCombatDamage(Creature* creature, Creature* target) const
 	CombatDamage damage;
 	damage.origin = params.origin;
 	damage.primary.type = params.combatType;
+	if (const Pokemon* pokemon = creature ? creature->getPokemon() : nullptr) {
+		if (pokemon->isExecutingPokemonMove()) {
+			damage.primary.value = -pokemon->getExecutingMoveDamage(target);
+			return damage;
+		}
+	}
 	if (formulaType == COMBAT_FORMULA_DAMAGE) {
 		damage.primary.value = normal_random(
 			static_cast<int32_t>(mina),
@@ -684,6 +690,12 @@ void Combat::addDistanceEffect(Creature* caster, const Position& fromPos, const 
 void Combat::doCombat(Creature* caster, Creature* target) const
 {
 	//target combat callback function
+	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	if (params.aggressive && pokemonCaster && pokemonCaster->isExecutingPokemonMove() && !pokemonCaster->rollExecutingMoveHit(target)) {
+		g_game.addMagicEffect(target->getPosition(), CONST_ME_POFF);
+		return;
+	}
+
 	if (params.combatType != COMBAT_NONE) {
 		CombatDamage damage = getCombatDamage(caster, target);
 
@@ -743,6 +755,8 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 		doAreaCombat(caster, position, area.get(), damage, params);
 	} else {
 		auto tiles = caster ? getCombatArea(caster->getPosition(), position, area.get()) : getCombatArea(position, position, area.get());
+		const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+		const bool pokemonMove = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 
 		SpectatorVec spectators;
 		uint32_t maxX = 0;
@@ -789,17 +803,24 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 						}
 					}
 
-					if (!params.aggressive || (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR)) {
-						for (const auto& condition : params.conditionList) {
-							if (caster == creature || !creature->isImmune(condition->getType())) {
-								Condition* conditionCopy = condition->clone();
-								if (caster) {
-									conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
-								}
+					const bool canAffect = !params.aggressive || (caster != creature && Combat::canDoCombat(caster, creature) == RETURNVALUE_NOERROR);
+					if (!canAffect) {
+						continue;
+					}
+					if (pokemonMove && params.aggressive && !pokemonCaster->rollExecutingMoveHit(creature)) {
+						g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+						continue;
+					}
 
-								//TODO: infight condition until all aggressive conditions has ended
-								creature->addCombatCondition(conditionCopy);
+					for (const auto& condition : params.conditionList) {
+						if (caster == creature || !creature->isImmune(condition->getType())) {
+							Condition* conditionCopy = condition->clone();
+							if (caster) {
+								conditionCopy->setParam(CONDITION_PARAM_OWNER, caster->getID());
 							}
+
+							//TODO: infight condition until all aggressive conditions has ended
+							creature->addCombatCondition(conditionCopy);
 						}
 					}
 
@@ -928,6 +949,8 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	auto tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
 
 	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
+	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 	int32_t criticalPrimary = 0;
 	int32_t criticalSecondary = 0;
 	if (!damage.critical && damage.primary.type != COMBAT_HEALING && casterPlayer && damage.origin != ORIGIN_CONDITION) {
@@ -1005,7 +1028,14 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	leechCombat.leeched = true;
 
 	for (Creature* creature : toDamageCreatures) {
-		CombatDamage damageCopy = damage; // we cannot avoid copying here, because we don't know if it's player combat or not, so we can't modify the initial damage.
+		if (pokemonFormulaDamage && !pokemonCaster->rollExecutingMoveHit(creature)) {
+			g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+			continue;
+		}
+		CombatDamage damageCopy = damage;
+		if (pokemonFormulaDamage) {
+			damageCopy.primary.value = -pokemonCaster->getExecutingMoveDamage(creature);
+		}
 		bool playerCombatReduced = false;
 		if ((damageCopy.primary.value < 0 || damageCopy.secondary.value < 0) && caster) {
 			Player* targetPlayer = creature->getPlayer();
@@ -1024,8 +1054,6 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 
 		bool success = false;
 		if (damageCopy.primary.type != COMBAT_MANADRAIN) {
-			const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
-			const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 			if (g_game.combatBlockHit(damageCopy, caster, creature,
 				pokemonFormulaDamage ? false : params.blockedByShield,
 				pokemonFormulaDamage ? false : params.blockedByArmor,

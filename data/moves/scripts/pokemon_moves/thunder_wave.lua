@@ -1,10 +1,11 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_RED) -- Effect 14: debuff
+combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_HOLYDAMAGE) -- Effect 40: paralysis
+combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_ENERGY)
 
 function onTargetCreature(creature, target)
 	local pokemon = Pokemon(target)
 	if pokemon then
-		pokemon:modifyBattleStatStage("defense", -1, 10000)
+		pokemon:applyStatusCondition("paralysis", 15000, creature)
 	end
 	return true
 end

@@ -123,7 +123,6 @@ class PokemonType
 
 		std::vector<LootBlock> lootItems;
 		std::vector<std::string> scripts;
-		std::vector<moveBlock_t> attackMoves;
 		std::vector<moveBlock_t> defenseMoves;
 		std::vector<summonBlock_t> summons;
 

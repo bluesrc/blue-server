@@ -1,10 +1,15 @@
 local combat = Combat()
-combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_MAGIC_RED) -- Effect 14: debuff
+combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_PURPLESMOKE) -- Effect 170
+combat:setArea(createCombatArea({
+	{1, 1, 1},
+	{1, 3, 1},
+	{1, 1, 1}
+}))
 
 function onTargetCreature(creature, target)
 	local pokemon = Pokemon(target)
 	if pokemon then
-		pokemon:modifyBattleStatStage("defense", -1, 10000)
+		pokemon:applyStatusCondition("poison", 15000, creature)
 	end
 	return true
 end

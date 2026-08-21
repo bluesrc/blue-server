@@ -1361,17 +1361,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 		}
 	}
 
-	if ((node = pokemonNode.child("attacks"))) {
-		for (auto attackNode : node.children()) {
-			moveBlock_t sb;
-			if (deserializeMove(attackNode, sb, pokemonName)) {
-				mType->info.attackMoves.emplace_back(std::move(sb));
-			} else {
-				std::cout << "[Warning - Pokemons::loadPokemon] Cant load move. " << file << std::endl;
-			}
-		}
-	}
-
 	if ((node = pokemonNode.child("defenses"))) {
 		if ((attr = node.attribute("defense"))) {
 			mType->info.defense = pugi::cast<int32_t>(attr.value());
@@ -1674,7 +1663,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 
 	mType->info.summons.shrink_to_fit();
 	mType->info.lootItems.shrink_to_fit();
-	mType->info.attackMoves.shrink_to_fit();
 	mType->info.defenseMoves.shrink_to_fit();
 	mType->info.voiceVector.shrink_to_fit();
 	mType->info.scripts.shrink_to_fit();

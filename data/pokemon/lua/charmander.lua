@@ -34,6 +34,8 @@ pokemon.learnset = {
 	{move = "growl", level = 3},
 	{move = "ember", level = 7},
 	{move = "smokescreen", level = 10},
+	{move = "will_o_wisp", level = 13},
+	{move = "bite", level = 15},
 }
 
 pokemon.evolution = {
@@ -62,11 +64,6 @@ pokemon.flags = {
 
 pokemon.loot = {
 	{id = "gold coin", chance = 60000, maxCount = 100}
-}
-
-pokemon.attacks = {
-	{name = "melee", attack = 1, skill = 70, effect = CONST_ME_DRAWBLOOD, interval = 2*1000},
-	{name = "flame strike", range = 1, chance = 10, interval = 2*1000, minDamage = -210, maxDamage = -300, target = true},
 }
 
 --todo: maybe calc this when do the damage to target?

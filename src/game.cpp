@@ -4336,6 +4336,72 @@ void Game::combatGetTypeInfo(CombatType_t combatType, Creature* target, TextColo
 			effect = CONST_ME_SMALLCLOUDS;
 			break;
 		}
+		case COMBAT_POKEMON_BUGDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREEN;
+			effect = CONST_ME_GREEN_RINGS;
+			break;
+		}
+		case COMBAT_POKEMON_DARKDAMAGE:
+		case COMBAT_POKEMON_GHOSTDAMAGE: {
+			color = TEXTCOLOR_DARKRED;
+			effect = CONST_ME_SMALLCLOUDS;
+			break;
+		}
+		case COMBAT_POKEMON_DRAGONDAMAGE:
+		case COMBAT_POKEMON_PSYCHICDAMAGE: {
+			color = TEXTCOLOR_PURPLE;
+			effect = CONST_ME_ENERGYHIT;
+			break;
+		}
+		case COMBAT_POKEMON_ELECTRICDAMAGE: {
+			color = TEXTCOLOR_ELECTRICPURPLE;
+			effect = CONST_ME_ENERGYHIT;
+			break;
+		}
+		case COMBAT_POKEMON_FAIRYDAMAGE: {
+			color = TEXTCOLOR_PASTELRED;
+			effect = CONST_ME_HEARTS;
+			break;
+		}
+		case COMBAT_POKEMON_FIGHTINGDAMAGE:
+		case COMBAT_POKEMON_NORMALDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREY;
+			effect = CONST_ME_HITAREA;
+			break;
+		}
+		case COMBAT_POKEMON_FIREDAMAGE: {
+			color = TEXTCOLOR_ORANGE;
+			effect = CONST_ME_HITBYFIRE;
+			break;
+		}
+		case COMBAT_POKEMON_FLYINGDAMAGE: {
+			color = TEXTCOLOR_WHITE_EXP;
+			effect = CONST_ME_HITAREA;
+			break;
+		}
+		case COMBAT_POKEMON_GRASSDAMAGE:
+		case COMBAT_POKEMON_POISONDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREEN;
+			effect = CONST_ME_HITBYPOISON;
+			break;
+		}
+		case COMBAT_POKEMON_GROUNDDAMAGE:
+		case COMBAT_POKEMON_ROCKDAMAGE:
+		case COMBAT_POKEMON_STEELDAMAGE: {
+			color = TEXTCOLOR_LIGHTGREY;
+			effect = CONST_ME_BLOCKHIT;
+			break;
+		}
+		case COMBAT_POKEMON_ICEDAMAGE: {
+			color = TEXTCOLOR_SKYBLUE;
+			effect = CONST_ME_ICEATTACK;
+			break;
+		}
+		case COMBAT_POKEMON_WATERDAMAGE: {
+			color = TEXTCOLOR_LIGHTBLUE;
+			effect = CONST_ME_LOSEENERGY;
+			break;
+		}
 		case COMBAT_LIFEDRAIN: {
 			color = TEXTCOLOR_RED;
 			effect = CONST_ME_MAGIC_RED;
