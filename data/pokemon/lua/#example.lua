@@ -60,23 +60,6 @@ pokemon.defenses = {
 	{name = "speed", chance = 15, interval = 2*1000, speed = 320, effect = CONST_ME_MAGIC_RED}
 }
 
-pokemon.elements = {
-	{type = COMBAT_PHYSICALDAMAGE, percent = 30},
-	{type = COMBAT_DEATHDAMAGE, percent = 30},
-	{type = COMBAT_ENERGYDAMAGE, percent = 50},
-	{type = COMBAT_EARTHDAMAGE, percent = 40},
-	{type = COMBAT_ICEDAMAGE, percent = -10},
-	{type = COMBAT_HOLYDAMAGE, percent = -10}
-}
-
-pokemon.immunities = {
-	{type = "fire", combat = true, condition = true},
-	{type = "drown", condition = true},
-	{type = "lifedrain", combat = true},
-	{type = "paralyze", condition = true},
-	{type = "invisible", condition = true}
-}
-
 mType.onThink = function(pokemon, interval)
 	print("I'm thinking")
 end
