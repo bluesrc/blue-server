@@ -1,6 +1,7 @@
 #include "otpch.h"
 #include "game.h"
 #include "pokemon.h"
+#include "player.h"
 
 #include "pokeball.h"
 #include "pokeballs.h"
@@ -43,6 +44,30 @@ void Pokeball::setPokemonMaxHealth()
 {
 	auto mType = g_pokemons.getPokemonType(pInfo.name);
 	pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
+}
+
+uint8_t Pokeball::addPokemonFriendship(int32_t amount)
+{
+	Cylinder* topParent = getTopParent();
+	Creature* ownerCreature = topParent ? topParent->getCreature() : nullptr;
+	Player* player = ownerCreature ? ownerCreature->getPlayer() : nullptr;
+
+	if (player && player->getActivePokemon() == this) {
+		Pokemon* activePokemon = getPokemon();
+		if (activePokemon) {
+			return activePokemon->addFriendship(amount);
+		}
+	}
+
+	const int64_t updatedFriendship = static_cast<int64_t>(pInfo.friendship) + amount;
+	pInfo.friendship = static_cast<uint8_t>(std::clamp<int64_t>(updatedFriendship, 0, 255));
+	if (pInfo.friendship >= 255) {
+		pInfo.combatFriendshipTime = 0;
+	}
+	if (player) {
+		player->updatePokemonInfo(this);
+	}
+	return pInfo.friendship;
 }
 
 PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, uint8_t level)
@@ -134,6 +159,7 @@ PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
 	pInfo.health = pokemon->getHealth();
 	pInfo.number = pokemon->getNumber();
 	pInfo.friendship = pokemon->getFriendship();
+	pInfo.combatFriendshipTime = pokemon->getCombatFriendshipTime();
 	pInfo.gender = (PokemonGenders_t)pokemon->getGender();
 	pInfo.shiny = pokemon->isShiny();
 	pInfo.moves = pokemon->getMoves();

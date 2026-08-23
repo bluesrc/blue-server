@@ -326,6 +326,7 @@ struct PokemonInfo_t
 	PokemonGenders_t gender;
 	PokemonNatures_t nature;
 	uint8_t friendship;
+	uint32_t combatFriendshipTime;
 	bool shiny;
 
 	PokemonStats_t stats;
@@ -345,6 +346,7 @@ struct PokemonInfo_t
 		gender(GENDER_UNDEFINED),
 		nature(NATURE_NONE),
 		friendship(0),
+		combatFriendshipTime(0),
 		shiny(false)
 	{
 	}

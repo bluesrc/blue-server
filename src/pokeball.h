@@ -35,6 +35,9 @@ public:
 
 	std::string getPokemonName() { return pInfo.name; }
 	void setPokemonName(std::string name) { pInfo.name = name; }
+	uint8_t getPokemonFriendship() const { return pInfo.friendship; }
+	uint8_t addPokemonFriendship(int32_t amount);
+	void setPokemonCombatFriendshipTime(uint32_t time) { pInfo.combatFriendshipTime = time; }
 
 	void setPokemonFullHealth() { pInfo.health = pInfo.maxHealth; }
 	void setPokemonFainted() { pInfo.fainted = true; }
