@@ -4698,6 +4698,20 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 
 		target->drainHealth(attacker, realDamage);
 		addCreatureHealth(spectators, target);
+		Pokemon* sourcePokemon = attacker ? attacker->getPokemon() : nullptr;
+		const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
+			sourcePokemon->getExecutingMove() : nullptr;
+		const uint32_t sourceId = attacker ? attacker->getID() : 0;
+		const uint32_t targetId = target->getID();
+		if (sourcePokemon) {
+			g_pokemons.executeAbilityAfterDamage(sourcePokemon, attacker, target, move, damage, true);
+		}
+		Creature* currentTarget = getCreatureByID(targetId);
+		Creature* currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+		Pokemon* targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
+		if (targetPokemon && targetPokemon != sourcePokemon) {
+			g_pokemons.executeAbilityAfterDamage(targetPokemon, currentSource, currentTarget, move, damage, false);
+		}
 	}
 
 	return true;

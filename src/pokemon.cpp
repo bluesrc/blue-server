@@ -397,10 +397,22 @@ uint8_t Pokemon::addFriendship(int32_t amount)
 	return friendship;
 }
 
-void Pokemon::markCombatActivity()
+void Pokemon::markCombatActivity(Creature* opponent)
 {
-	if (isSummon() && master && master->getPlayer()) {
-		lastCombatActivity = OTSYS_TIME();
+	const int64_t now = OTSYS_TIME();
+	const bool enteringCombat = !abilityCombatActive || lastCombatActivity == 0 ||
+		now - lastCombatActivity > POKEMON_COMBAT_ACTIVITY_TIMEOUT;
+	lastCombatActivity = now;
+	if (enteringCombat) {
+		abilityCombatActive = true;
+		g_pokemons.executeAbilityCombatEnter(this, opponent);
+	}
+}
+
+void Pokemon::processAbilityCombatState()
+{
+	if (abilityCombatActive && OTSYS_TIME() - lastCombatActivity > POKEMON_COMBAT_ACTIVITY_TIMEOUT) {
+		abilityCombatActive = false;
 	}
 }
 
@@ -1227,6 +1239,7 @@ void Pokemon::onEndCondition(ConditionType_t type)
 void Pokemon::onThink(uint32_t interval)
 {
 	Creature::onThink(interval);
+	processAbilityCombatState();
 	processPokemonBattleState();
 	processCombatFriendship(interval);
 
@@ -1452,6 +1465,15 @@ bool Pokemon::applyStatusCondition(PokemonStatusCondition_t status, uint32_t dur
 	if (status == POKEMON_STATUS_NONE || pokemonStatus != POKEMON_STATUS_NONE || getHealth() <= 0) {
 		return false;
 	}
+	if (source && isOpponent(source)) {
+		markCombatActivity(source);
+		if (Pokemon* sourcePokemon = source->getPokemon()) {
+			sourcePokemon->markCombatActivity(this);
+		}
+	}
+	if (!g_pokemons.executeAbilityBeforeStatus(this, source, status, duration)) {
+		return false;
+	}
 
 	const auto hasType = [this](PokemonTypes_t type) {
 		return std::find(mType->info.types.begin(), mType->info.types.end(), type) != mType->info.types.end();
@@ -1651,9 +1673,20 @@ bool Pokemon::rollMoveHit(const PokemonMoveType& move, const Creature* target) c
 	return static_cast<uint32_t>(uniform_random(1, 100)) <= hitChance;
 }
 
-int32_t Pokemon::getExecutingMoveDamage(const Creature* target) const
+int32_t Pokemon::getExecutingMoveDamage(Creature* target)
 {
-	return executingMove ? calculateMoveDamage(*executingMove, target) : 0;
+	if (!executingMove) {
+		return 0;
+	}
+	if (target && isOpponent(target)) {
+		markCombatActivity(target);
+		if (Pokemon* targetPokemon = target->getPokemon()) {
+			targetPokemon->markCombatActivity(this);
+		}
+	}
+
+	const int32_t damage = calculateMoveDamage(*executingMove, target);
+	return target ? g_pokemons.executeAbilityBeforeMoveDamage(this, target, *executingMove, damage) : damage;
 }
 
 bool Pokemon::rollExecutingMoveHit(const Creature* target) const
@@ -1721,7 +1754,7 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 		startCooldown();
 		Creature* combatTarget = needTarget ? target : attackedCreature;
 		if (combatTarget && isOpponent(combatTarget)) {
-			markCombatActivity();
+			markCombatActivity(combatTarget);
 		}
 	}
 	return result;
@@ -2861,10 +2894,10 @@ void Pokemon::setNormalCreatureLight()
 
 void Pokemon::drainHealth(Creature* attacker, int32_t damage)
 {
-	Creature::drainHealth(attacker, damage);
 	if (damage > 0 && attacker && isOpponent(attacker)) {
-		markCombatActivity();
+		markCombatActivity(attacker);
 	}
+	Creature::drainHealth(attacker, damage);
 
 	if (damage > 0 && randomStepping) {
 		ignoreFieldDamage = true;
@@ -2880,7 +2913,7 @@ void Pokemon::onAttackedCreatureDrainHealth(Creature* target, int32_t points)
 {
 	Creature::onAttackedCreatureDrainHealth(target, points);
 	if (points > 0 && target && isOpponent(target)) {
-		markCombatActivity();
+		markCombatActivity(target);
 	}
 }
 

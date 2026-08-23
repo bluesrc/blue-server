@@ -103,7 +103,7 @@ CombatDamage Combat::getCombatDamage(Creature* creature, Creature* target) const
 	CombatDamage damage;
 	damage.origin = params.origin;
 	damage.primary.type = params.combatType;
-	if (const Pokemon* pokemon = creature ? creature->getPokemon() : nullptr) {
+	if (Pokemon* pokemon = creature ? creature->getPokemon() : nullptr) {
 		if (pokemon->isExecutingPokemonMove()) {
 			damage.primary.value = -pokemon->getExecutingMoveDamage(target);
 			return damage;
@@ -949,7 +949,7 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	auto tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
 
 	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
-	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 	const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 	int32_t criticalPrimary = 0;
 	int32_t criticalSecondary = 0;

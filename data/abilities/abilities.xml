@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <abilities>
-	<ability id="1" key="overgrow" name="Overgrow" description="Powers up Grass-type moves when the Pokemon is in trouble." />
-	<ability id="2" key="blaze" name="Blaze" description="Powers up Fire-type moves when the Pokemon is in trouble." />
-	<ability id="3" key="torrent" name="Torrent" description="Powers up Water-type moves when the Pokemon is in trouble." />
+	<!-- Optional behavior: script="my_ability.lua" loads data/abilities/scripts/my_ability.lua. -->
+	<ability id="1" key="overgrow" name="Overgrow" description="Powers up Grass-type moves when the Pokemon is in trouble." script="overgrow.lua" />
+	<ability id="2" key="blaze" name="Blaze" description="Powers up Fire-type moves when the Pokemon is in trouble." script="blaze.lua" />
+	<ability id="3" key="torrent" name="Torrent" description="Powers up Water-type moves when the Pokemon is in trouble." script="torrent.lua" />
 </abilities>

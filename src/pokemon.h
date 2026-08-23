@@ -33,16 +33,6 @@ enum PokemonBattleStat_t : uint8_t {
 	POKEMON_BATTLE_STAT_COUNT,
 };
 
-enum PokemonStatusCondition_t : uint8_t {
-	POKEMON_STATUS_NONE,
-	POKEMON_STATUS_BURN,
-	POKEMON_STATUS_FREEZE,
-	POKEMON_STATUS_PARALYSIS,
-	POKEMON_STATUS_POISON,
-	POKEMON_STATUS_SLEEP,
-	POKEMON_STATUS_CONFUSION,
-};
-
 struct PokemonBattleModifier {
 	PokemonBattleStat_t stat;
 	int8_t amount;
@@ -229,9 +219,10 @@ class Pokemon final : public Creature
 		bool modifyBattleStatStage(PokemonBattleStat_t stat, int8_t amount, uint32_t duration = 10000);
 		bool applyStatusCondition(PokemonStatusCondition_t status, uint32_t duration, Creature* source = nullptr);
 		bool applyFlinch(uint32_t duration = 1500);
-		int32_t getExecutingMoveDamage(const Creature* target) const;
+		int32_t getExecutingMoveDamage(Creature* target);
 		bool rollExecutingMoveHit(const Creature* target) const;
 		bool isExecutingPokemonMove() const { return executingPokemonMove; }
+		const PokemonMoveType* getExecutingMove() const { return executingMove; }
 
 	private:
 		CreatureHashSet friendList;
@@ -272,6 +263,7 @@ class Pokemon final : public Creature
 		uint8_t friendship {0};
 		uint32_t combatFriendshipTime {0};
 		int64_t lastCombatActivity {0};
+		bool abilityCombatActive = false;
 		uint8_t evasion {100};
 		uint8_t accuracy {100};
 
@@ -295,7 +287,8 @@ class Pokemon final : public Creature
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
 		uint8_t changeFriendship(int32_t amount);
-		void markCombatActivity();
+		void markCombatActivity(Creature* opponent);
+		void processAbilityCombatState();
 		void processCombatFriendship(uint32_t interval);
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;

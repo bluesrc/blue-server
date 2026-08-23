@@ -49,6 +49,7 @@ struct summonBlock_t {
 };
 
 class BaseMove;
+class Pokemon;
 enum PokemonMoveTarget_t : uint8_t {
 	POKEMON_MOVE_TARGET_TARGET = 0,
 	POKEMON_MOVE_TARGET_SELF = 1,
@@ -80,11 +81,26 @@ struct PokemonMoveState {
 	uint8_t activeSlot = 0;
 };
 
+enum PokemonStatusCondition_t : uint8_t {
+	POKEMON_STATUS_NONE,
+	POKEMON_STATUS_BURN,
+	POKEMON_STATUS_FREEZE,
+	POKEMON_STATUS_PARALYSIS,
+	POKEMON_STATUS_POISON,
+	POKEMON_STATUS_SLEEP,
+	POKEMON_STATUS_CONFUSION,
+};
+
 struct PokemonAbilityType {
 	uint16_t id = 0;
 	std::string key;
 	std::string name;
 	std::string description;
+	std::string script;
+	int32_t combatEnterEvent = -1;
+	int32_t beforeMoveDamageEvent = -1;
+	int32_t beforeStatusEvent = -1;
+	int32_t afterDamageEvent = -1;
 };
 
 struct PokemonAbilityOption {
@@ -306,6 +322,13 @@ class Pokemons
 		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance);
 		uint16_t selectAbility(const PokemonType& pokemonType) const;
 		bool isAbilityAvailable(const PokemonType& pokemonType, uint16_t abilityId) const;
+		void executeAbilityCombatEnter(Pokemon* owner, Creature* opponent);
+		int32_t executeAbilityBeforeMoveDamage(Pokemon* owner, Creature* target,
+			const PokemonMoveType& move, int32_t damage);
+		bool executeAbilityBeforeStatus(Pokemon* owner, Creature* source,
+			PokemonStatusCondition_t& status, uint32_t& duration);
+		void executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creature* target,
+			const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource);
 		bool deserializeMove(PokemonMove* move, moveBlock_t& sb, const std::string& description = "");
 
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
@@ -328,6 +351,7 @@ class Pokemons
 		std::map<std::string, uint16_t> moveNames;
 		std::map<uint16_t, PokemonAbilityType> abilities;
 		std::map<std::string, uint16_t> abilityNames;
+		std::unique_ptr<LuaScriptInterface> abilityScriptInterface;
 
 		bool loaded = false;
 };

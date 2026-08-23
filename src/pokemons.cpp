@@ -177,6 +177,12 @@ bool Pokemons::loadAbilities()
 
 	std::map<uint16_t, PokemonAbilityType> loadedAbilities;
 	std::map<std::string, uint16_t> loadedNames;
+	auto loadedScriptInterface = std::make_unique<LuaScriptInterface>("Ability Interface");
+	if (!loadedScriptInterface->initState()) {
+		std::cout << "[Error - Pokemons::loadAbilities] Could not initialize the ability script interface." << std::endl;
+		return false;
+	}
+
 	for (const pugi::xml_node& node : doc.child("abilities").children("ability")) {
 		PokemonAbilityType ability;
 		const uint32_t abilityId = node.attribute("id").as_uint();
@@ -184,6 +190,7 @@ bool Pokemons::loadAbilities()
 		ability.key = asLowerCaseString(node.attribute("key").as_string());
 		ability.name = node.attribute("name").as_string();
 		ability.description = node.attribute("description").as_string();
+		ability.script = node.attribute("script").as_string();
 
 		if (abilityId == 0 || abilityId > std::numeric_limits<uint16_t>::max() ||
 				ability.key.empty() || ability.name.empty() || ability.description.empty()) {
@@ -191,7 +198,7 @@ bool Pokemons::loadAbilities()
 			return false;
 		}
 
-		if (!loadedAbilities.emplace(ability.id, ability).second ||
+		if (loadedAbilities.find(ability.id) != loadedAbilities.end() ||
 				!loadedNames.emplace(ability.key, ability.id).second) {
 			std::cout << "[Error - Pokemons::loadAbilities] Duplicate Pokemon ability id or key for "
 			          << ability.name << '.' << std::endl;
@@ -204,10 +211,33 @@ bool Pokemons::loadAbilities()
 			          << ability.name << '.' << std::endl;
 			return false;
 		}
+
+		if (!ability.script.empty()) {
+			const std::string scriptPath = "data/abilities/scripts/" + ability.script;
+			if (loadedScriptInterface->loadFile(scriptPath) != 0) {
+				std::cout << "[Error - Pokemons::loadAbilities] Could not load " << scriptPath << ": "
+				          << loadedScriptInterface->getLastLuaError() << std::endl;
+				return false;
+			}
+
+			ability.combatEnterEvent = loadedScriptInterface->getEvent("onCombatEnter");
+			ability.beforeMoveDamageEvent = loadedScriptInterface->getEvent("beforeMoveDamage");
+			ability.beforeStatusEvent = loadedScriptInterface->getEvent("beforeStatus");
+			ability.afterDamageEvent = loadedScriptInterface->getEvent("afterDamage");
+			if (ability.combatEnterEvent == -1 && ability.beforeMoveDamageEvent == -1 &&
+					ability.beforeStatusEvent == -1 && ability.afterDamageEvent == -1) {
+				std::cout << "[Error - Pokemons::loadAbilities] Ability script " << scriptPath
+				          << " does not define a supported event." << std::endl;
+				return false;
+			}
+		}
+
+		loadedAbilities.emplace(ability.id, std::move(ability));
 	}
 
 	abilities.swap(loadedAbilities);
 	abilityNames.swap(loadedNames);
+	abilityScriptInterface = std::move(loadedScriptInterface);
 	return true;
 }
 
@@ -394,6 +424,175 @@ bool Pokemons::isAbilityAvailable(const PokemonType& pokemonType, uint16_t abili
 {
 	return abilityId != 0 && std::any_of(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
 		[abilityId](const PokemonAbilityOption& option) { return option.abilityId == abilityId; });
+}
+
+void Pokemons::executeAbilityCombatEnter(Pokemon* owner, Creature* opponent)
+{
+	const PokemonAbilityType* ability = owner ? getAbilityById(owner->getAbilityId()) : nullptr;
+	if (!abilityScriptInterface || !ability || ability->combatEnterEvent == -1) {
+		return;
+	}
+
+	if (!abilityScriptInterface->reserveScriptEnv()) {
+		std::cout << "[Error - Pokemons::executeAbilityCombatEnter] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = abilityScriptInterface->getScriptEnv();
+	env->setScriptId(ability->combatEnterEvent, abilityScriptInterface.get());
+	lua_State* L = abilityScriptInterface->getLuaState();
+	abilityScriptInterface->pushFunction(ability->combatEnterEvent);
+	LuaScriptInterface::pushUserdata<Pokemon>(L, owner);
+	LuaScriptInterface::setMetatable(L, -1, "Pokemon");
+	if (opponent) {
+		LuaScriptInterface::pushUserdata<Creature>(L, opponent);
+		LuaScriptInterface::setCreatureMetatable(L, -1, opponent);
+	} else {
+		lua_pushnil(L);
+	}
+	abilityScriptInterface->callVoidFunction(2);
+}
+
+int32_t Pokemons::executeAbilityBeforeMoveDamage(Pokemon* owner, Creature* target,
+	const PokemonMoveType& move, int32_t damage)
+{
+	const PokemonAbilityType* ability = owner ? getAbilityById(owner->getAbilityId()) : nullptr;
+	if (!abilityScriptInterface || !ability || ability->beforeMoveDamageEvent == -1) {
+		return damage;
+	}
+
+	if (!abilityScriptInterface->reserveScriptEnv()) {
+		std::cout << "[Error - Pokemons::executeAbilityBeforeMoveDamage] Call stack overflow" << std::endl;
+		return damage;
+	}
+
+	ScriptEnvironment* env = abilityScriptInterface->getScriptEnv();
+	env->setScriptId(ability->beforeMoveDamageEvent, abilityScriptInterface.get());
+	lua_State* L = abilityScriptInterface->getLuaState();
+	abilityScriptInterface->pushFunction(ability->beforeMoveDamageEvent);
+	LuaScriptInterface::pushUserdata<Pokemon>(L, owner);
+	LuaScriptInterface::setMetatable(L, -1, "Pokemon");
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, move.id);
+	LuaScriptInterface::pushString(L, move.name);
+	lua_pushinteger(L, move.type);
+	lua_pushinteger(L, move.category);
+	lua_pushinteger(L, damage);
+
+	int32_t result = damage;
+	if (abilityScriptInterface->protectedCall(L, 7, 1) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -1) && !LuaScriptInterface::getBoolean(L, -1)) {
+			result = 0;
+		} else if (lua_isnumber(L, -1)) {
+			const lua_Number returnedDamage = lua_tonumber(L, -1);
+			if (std::isfinite(returnedDamage)) {
+				result = static_cast<int32_t>(std::clamp<lua_Number>(returnedDamage, 0, std::numeric_limits<int32_t>::max()));
+			}
+		}
+		lua_pop(L, 1);
+	}
+	abilityScriptInterface->resetScriptEnv();
+	return result;
+}
+
+bool Pokemons::executeAbilityBeforeStatus(Pokemon* owner, Creature* source,
+	PokemonStatusCondition_t& status, uint32_t& duration)
+{
+	const PokemonAbilityType* ability = owner ? getAbilityById(owner->getAbilityId()) : nullptr;
+	if (!abilityScriptInterface || !ability || ability->beforeStatusEvent == -1) {
+		return true;
+	}
+
+	if (!abilityScriptInterface->reserveScriptEnv()) {
+		std::cout << "[Error - Pokemons::executeAbilityBeforeStatus] Call stack overflow" << std::endl;
+		return true;
+	}
+
+	ScriptEnvironment* env = abilityScriptInterface->getScriptEnv();
+	env->setScriptId(ability->beforeStatusEvent, abilityScriptInterface.get());
+	lua_State* L = abilityScriptInterface->getLuaState();
+	abilityScriptInterface->pushFunction(ability->beforeStatusEvent);
+	LuaScriptInterface::pushUserdata<Pokemon>(L, owner);
+	LuaScriptInterface::setMetatable(L, -1, "Pokemon");
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, status);
+	lua_pushinteger(L, duration);
+
+	bool accepted = true;
+	if (abilityScriptInterface->protectedCall(L, 4, 2) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -2) && !LuaScriptInterface::getBoolean(L, -2)) {
+			accepted = false;
+		} else if (lua_isnumber(L, -2)) {
+			const int32_t returnedStatus = LuaScriptInterface::getNumber<int32_t>(L, -2);
+			if (returnedStatus >= POKEMON_STATUS_BURN && returnedStatus <= POKEMON_STATUS_CONFUSION) {
+				status = static_cast<PokemonStatusCondition_t>(returnedStatus);
+			}
+		}
+		if (lua_isnumber(L, -1)) {
+			const lua_Number returnedDuration = lua_tonumber(L, -1);
+			if (std::isfinite(returnedDuration)) {
+				duration = static_cast<uint32_t>(std::clamp<lua_Number>(returnedDuration, 1, std::numeric_limits<uint32_t>::max()));
+			}
+		}
+		lua_pop(L, 2);
+	}
+	abilityScriptInterface->resetScriptEnv();
+	return accepted;
+}
+
+void Pokemons::executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creature* target,
+	const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource)
+{
+	const PokemonAbilityType* ability = owner ? getAbilityById(owner->getAbilityId()) : nullptr;
+	if (!abilityScriptInterface || !ability || ability->afterDamageEvent == -1) {
+		return;
+	}
+
+	if (!abilityScriptInterface->reserveScriptEnv()) {
+		std::cout << "[Error - Pokemons::executeAbilityAfterDamage] Call stack overflow" << std::endl;
+		return;
+	}
+
+	ScriptEnvironment* env = abilityScriptInterface->getScriptEnv();
+	env->setScriptId(ability->afterDamageEvent, abilityScriptInterface.get());
+	lua_State* L = abilityScriptInterface->getLuaState();
+	abilityScriptInterface->pushFunction(ability->afterDamageEvent);
+	LuaScriptInterface::pushUserdata<Pokemon>(L, owner);
+	LuaScriptInterface::setMetatable(L, -1, "Pokemon");
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, move ? move->id : 0);
+	lua_pushinteger(L, damage.primary.value);
+	lua_pushinteger(L, damage.primary.type);
+	lua_pushinteger(L, damage.secondary.value);
+	lua_pushinteger(L, damage.secondary.type);
+	lua_pushinteger(L, damage.origin);
+	LuaScriptInterface::pushBoolean(L, ownerIsSource);
+	abilityScriptInterface->callVoidFunction(10);
 }
 
 std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& pokemonType)
