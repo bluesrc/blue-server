@@ -2810,6 +2810,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "getFriendship", LuaScriptInterface::luaPokemonGetFriendship);
 	registerMethod("Pokemon", "addFriendship", LuaScriptInterface::luaPokemonAddFriendship);
 	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
+	registerMethod("Pokemon", "getAbility", LuaScriptInterface::luaPokemonGetAbility);
 	registerMethod("Pokemon", "setMoveSlot", LuaScriptInterface::luaPokemonSetMoveSlot);
 	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
 	registerMethod("Pokemon", "modifyBattleStatStage", LuaScriptInterface::luaPokemonModifyBattleStatStage);
@@ -3111,6 +3112,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "conditionImmunities", LuaScriptInterface::luaPokemonTypeConditionImmunities);
 
 	registerMethod("PokemonType", "addLearnMove", LuaScriptInterface::luaPokemonTypeAddLearnMove);
+	registerMethod("PokemonType", "addAbility", LuaScriptInterface::luaPokemonTypeAddAbility);
 
 	registerMethod("PokemonType", "getDefenseList", LuaScriptInterface::luaPokemonTypeGetDefenseList);
 	registerMethod("PokemonType", "addDefense", LuaScriptInterface::luaPokemonTypeAddDefense);
@@ -14547,6 +14549,19 @@ int LuaScriptInterface::luaPokemonTypeAddLearnMove(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaPokemonTypeAddAbility(lua_State* L)
+{
+	// pokemonType:addAbility(abilityName, chance)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (!pokemonType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, g_pokemons.addAbility(pokemonType, getString(L, 2), getNumber<uint32_t>(L, 3)));
+	return 1;
+}
+
 int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
 {
 	// pokemon:getMoves()
@@ -14579,6 +14594,24 @@ int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
 		setField(L, "activeSlot", state.activeSlot);
 		lua_rawseti(L, -2, ++index);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetAbility(lua_State* L)
+{
+	// pokemon:getAbility()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	const PokemonAbilityType* ability = pokemon ? g_pokemons.getAbilityById(pokemon->getAbilityId()) : nullptr;
+	if (!ability) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_createtable(L, 0, 4);
+	setField(L, "id", ability->id);
+	setField(L, "key", ability->key);
+	setField(L, "name", ability->name);
+	setField(L, "description", ability->description);
 	return 1;
 }
 

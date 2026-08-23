@@ -131,6 +131,10 @@ void PokemonType::loadLoot(PokemonType* pokemonType, LootBlock lootBlock)
 
 bool Pokemons::loadFromXml(bool reloading /*= false*/)
 {
+	if (!loadAbilities()) {
+		return false;
+	}
+
 	if (!loadMoves()) {
 		return false;
 	}
@@ -159,6 +163,51 @@ bool Pokemons::loadFromXml(bool reloading /*= false*/)
 		}
 	}
 
+	return true;
+}
+
+bool Pokemons::loadAbilities()
+{
+	pugi::xml_document doc;
+	pugi::xml_parse_result result = doc.load_file("data/abilities/abilities.xml");
+	if (!result) {
+		printXMLError("Error - Pokemons::loadAbilities", "data/abilities/abilities.xml", result);
+		return false;
+	}
+
+	std::map<uint16_t, PokemonAbilityType> loadedAbilities;
+	std::map<std::string, uint16_t> loadedNames;
+	for (const pugi::xml_node& node : doc.child("abilities").children("ability")) {
+		PokemonAbilityType ability;
+		const uint32_t abilityId = node.attribute("id").as_uint();
+		ability.id = static_cast<uint16_t>(abilityId);
+		ability.key = asLowerCaseString(node.attribute("key").as_string());
+		ability.name = node.attribute("name").as_string();
+		ability.description = node.attribute("description").as_string();
+
+		if (abilityId == 0 || abilityId > std::numeric_limits<uint16_t>::max() ||
+				ability.key.empty() || ability.name.empty() || ability.description.empty()) {
+			std::cout << "[Error - Pokemons::loadAbilities] Invalid Pokemon ability definition." << std::endl;
+			return false;
+		}
+
+		if (!loadedAbilities.emplace(ability.id, ability).second ||
+				!loadedNames.emplace(ability.key, ability.id).second) {
+			std::cout << "[Error - Pokemons::loadAbilities] Duplicate Pokemon ability id or key for "
+			          << ability.name << '.' << std::endl;
+			return false;
+		}
+
+		const std::string displayName = asLowerCaseString(ability.name);
+		if (displayName != ability.key && !loadedNames.emplace(displayName, ability.id).second) {
+			std::cout << "[Error - Pokemons::loadAbilities] Duplicate Pokemon ability name for "
+			          << ability.name << '.' << std::endl;
+			return false;
+		}
+	}
+
+	abilities.swap(loadedAbilities);
+	abilityNames.swap(loadedNames);
 	return true;
 }
 
@@ -244,6 +293,18 @@ const PokemonMoveType* Pokemons::getMoveByName(const std::string& name) const
 	return nameIt != moveNames.end() ? getMoveById(nameIt->second) : nullptr;
 }
 
+const PokemonAbilityType* Pokemons::getAbilityById(uint16_t id) const
+{
+	const auto it = abilities.find(id);
+	return it != abilities.end() ? &it->second : nullptr;
+}
+
+const PokemonAbilityType* Pokemons::getAbilityByName(const std::string& name) const
+{
+	const auto nameIt = abilityNames.find(asLowerCaseString(name));
+	return nameIt != abilityNames.end() ? getAbilityById(nameIt->second) : nullptr;
+}
+
 bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level)
 {
 	if (!pokemonType) {
@@ -270,6 +331,69 @@ bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveNam
 		return lhs.level != rhs.level ? lhs.level < rhs.level : lhs.moveId < rhs.moveId;
 	});
 	return true;
+}
+
+bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance)
+{
+	if (!pokemonType || chance == 0 || chance > 100) {
+		return false;
+	}
+
+	const PokemonAbilityType* ability = getAbilityByName(abilityName);
+	if (!ability) {
+		std::cout << "[Warning - Pokemons::addAbility] Unknown ability " << abilityName
+		          << " for " << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	auto& abilityOptions = pokemonType->info.abilities;
+	const auto duplicate = std::find_if(abilityOptions.begin(), abilityOptions.end(), [ability](const PokemonAbilityOption& option) {
+		return option.abilityId == ability->id;
+	});
+	if (duplicate != abilityOptions.end()) {
+		std::cout << "[Warning - Pokemons::addAbility] Duplicate ability " << ability->name
+		          << " for " << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	uint64_t totalChance = chance;
+	for (const PokemonAbilityOption& option : abilityOptions) {
+		totalChance += option.chance;
+	}
+	if (totalChance > 100) {
+		std::cout << "[Warning - Pokemons::addAbility] Total ability chance exceeds 100 for "
+		          << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	abilityOptions.push_back({ability->id, chance});
+	return true;
+}
+
+uint16_t Pokemons::selectAbility(const PokemonType& pokemonType) const
+{
+	uint32_t totalChance = 0;
+	for (const PokemonAbilityOption& option : pokemonType.info.abilities) {
+		totalChance += option.chance;
+	}
+	if (totalChance == 0) {
+		return 0;
+	}
+
+	uint32_t roll = static_cast<uint32_t>(uniform_random(1, 100));
+	for (const PokemonAbilityOption& option : pokemonType.info.abilities) {
+		if (roll <= option.chance) {
+			return option.abilityId;
+		}
+		roll -= option.chance;
+	}
+	return 0;
+}
+
+bool Pokemons::isAbilityAvailable(const PokemonType& pokemonType, uint16_t abilityId) const
+{
+	return abilityId != 0 && std::any_of(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
+		[abilityId](const PokemonAbilityOption& option) { return option.abilityId == abilityId; });
 }
 
 std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& pokemonType)

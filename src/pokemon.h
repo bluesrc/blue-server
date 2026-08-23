@@ -210,6 +210,8 @@ class Pokemon final : public Creature
 		static uint64_t getExperienceForLevel(LevelRate_t rate, uint8_t level);
 		uint8_t getGender() const { return gender; }
 		bool isShiny() const { return shiny; }
+		uint16_t getAbilityId() const { return abilityId; }
+		const PokemonAbilityType* getAbility() const;
 		PokemonStats_t getIvs() { return ivs; }
 		PokemonStats_t getEvs() { return evs; }
 		PokemonNatures_t getNature() const { return nature; }
@@ -276,6 +278,7 @@ class Pokemon final : public Creature
 		uint8_t level = 1;
 		uint64_t experience = 0;
 		bool shiny = false;
+		uint16_t abilityId = 0;
 		bool executingPokemonMove = false;
 		const PokemonMoveType* executingMove = nullptr;
 		PokemonStatusCondition_t pokemonStatus = POKEMON_STATUS_NONE;

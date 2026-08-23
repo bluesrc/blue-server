@@ -62,6 +62,11 @@ Pokemon* Pokemon::createPlayerPokemon(PokemonInfo_t pInfo)
 	return new Pokemon(mType, pInfo);
 }
 
+const PokemonAbilityType* Pokemon::getAbility() const
+{
+	return g_pokemons.getAbilityById(abilityId);
+}
+
 Pokemon::Pokemon(PokemonType* mType) :
 	Creature(),
 	nameDescription(mType->nameDescription),
@@ -90,6 +95,7 @@ Pokemon::Pokemon(PokemonType* mType) :
 	health = healthMax;
 
 	friendship = mType->info.base_friendship;
+	abilityId = g_pokemons.selectAbility(*mType);
 
 	if (mType->info.gender_ratio.male == 0.0 && mType->info.gender_ratio.female == 0.0) {
 		gender = GENDER_UNDEFINED;
@@ -157,6 +163,8 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	combatFriendshipTime = std::min<uint32_t>(pInfo.combatFriendshipTime, POKEMON_COMBAT_FRIENDSHIP_INTERVAL - 1);
 	shiny = pInfo.shiny;
 	gender = pInfo.gender;
+	abilityId = g_pokemons.isAbilityAvailable(*mType, pInfo.abilityId) ?
+		pInfo.abilityId : g_pokemons.selectAbility(*mType);
 
 	// register creature events
 	for (const std::string& scriptName : mType->info.scripts) {
@@ -363,6 +371,7 @@ void Pokemon::syncPokeball()
 	info.combatFriendshipTime = combatFriendshipTime;
 	info.gender = gender;
 	info.shiny = shiny;
+	info.abilityId = abilityId;
 	info.moves = knownMoves;
 	pokeball->setPokemonInfo(info);
 	player->updatePokemonInfo(pokeball);

@@ -80,6 +80,18 @@ struct PokemonMoveState {
 	uint8_t activeSlot = 0;
 };
 
+struct PokemonAbilityType {
+	uint16_t id = 0;
+	std::string key;
+	std::string name;
+	std::string description;
+};
+
+struct PokemonAbilityOption {
+	uint16_t abilityId = 0;
+	uint32_t chance = 0;
+};
+
 struct moveBlock_t {
 	constexpr moveBlock_t() = default;
 	~moveBlock_t();
@@ -179,6 +191,7 @@ class PokemonType
 		PokemonStats_t ev_yield = {};
 		PokemonStats_t base_stats = {};
 		std::vector<PokemonLearnMove> learnset;
+		std::vector<PokemonAbilityOption> abilities;
 
 		uint16_t number {0};
 		std::array<PokemonTypes_t, 2> types = { TYPE_NONE, TYPE_NONE };
@@ -287,13 +300,19 @@ class Pokemons
 		PokemonType* getPokemonType(const std::string& name, bool loadFromFile = true);
 		const PokemonMoveType* getMoveById(uint16_t id) const;
 		const PokemonMoveType* getMoveByName(const std::string& name) const;
+		const PokemonAbilityType* getAbilityById(uint16_t id) const;
+		const PokemonAbilityType* getAbilityByName(const std::string& name) const;
 		bool addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level);
+		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance);
+		uint16_t selectAbility(const PokemonType& pokemonType) const;
+		bool isAbilityAvailable(const PokemonType& pokemonType, uint16_t abilityId) const;
 		bool deserializeMove(PokemonMove* move, moveBlock_t& sb, const std::string& description = "");
 
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
 		std::map<std::string, PokemonType> pokemons;
 
 	private:
+		bool loadAbilities();
 		bool loadMoves();
 		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
 		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
@@ -307,6 +326,8 @@ class Pokemons
 		std::map<std::string, std::string> unloadedPokemons;
 		std::map<uint16_t, PokemonMoveType> moves;
 		std::map<std::string, uint16_t> moveNames;
+		std::map<uint16_t, PokemonAbilityType> abilities;
+		std::map<std::string, uint16_t> abilityNames;
 
 		bool loaded = false;
 };
@@ -328,6 +349,7 @@ struct PokemonInfo_t
 	uint8_t friendship;
 	uint32_t combatFriendshipTime;
 	bool shiny;
+	uint16_t abilityId {0};
 
 	PokemonStats_t stats;
 	PokemonStats_t ivs;

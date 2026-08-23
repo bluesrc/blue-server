@@ -38,6 +38,10 @@ pokemon.learnset = {
 	{move = "bite", level = 15},
 }
 
+pokemon.abilities = {
+	{ability = "blaze", chance = 100},
+}
+
 pokemon.evolution = {
     type= EVOLVE_LEVEL,
     level= 25
