@@ -18,6 +18,7 @@
 #include "teleport.h"
 #include "databasemanager.h"
 #include "bed.h"
+#include "pokeball.h"
 #include "pokemon.h"
 #include "scheduler.h"
 #include "databasetasks.h"
@@ -2482,6 +2483,8 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getName", LuaScriptInterface::luaItemGetName);
 	registerMethod("Item", "getPluralName", LuaScriptInterface::luaItemGetPluralName);
 	registerMethod("Item", "getArticle", LuaScriptInterface::luaItemGetArticle);
+	registerMethod("Item", "getPokemonFriendship", LuaScriptInterface::luaItemGetPokemonFriendship);
+	registerMethod("Item", "addPokemonFriendship", LuaScriptInterface::luaItemAddPokemonFriendship);
 
 	registerMethod("Item", "getPosition", LuaScriptInterface::luaItemGetPosition);
 	registerMethod("Item", "getTile", LuaScriptInterface::luaItemGetTile);
@@ -2804,6 +2807,8 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "setLevel", LuaScriptInterface::luaPokemonSetLevel);
 	registerMethod("Pokemon", "addExperience", LuaScriptInterface::luaPokemonAddExperience);
 	registerMethod("Pokemon", "addLevel", LuaScriptInterface::luaPokemonAddLevel);
+	registerMethod("Pokemon", "getFriendship", LuaScriptInterface::luaPokemonGetFriendship);
+	registerMethod("Pokemon", "addFriendship", LuaScriptInterface::luaPokemonAddFriendship);
 	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
 	registerMethod("Pokemon", "setMoveSlot", LuaScriptInterface::luaPokemonSetMoveSlot);
 	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
@@ -6894,6 +6899,33 @@ int LuaScriptInterface::luaItemGetArticle(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaItemGetPokemonFriendship(lua_State* L)
+{
+	// item:getPokemonFriendship()
+	Item* item = getUserdata<Item>(L, 1);
+	Pokeball* pokeball = item ? item->getPokeball() : nullptr;
+	if (pokeball) {
+		lua_pushnumber(L, pokeball->getPokemonFriendship());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaItemAddPokemonFriendship(lua_State* L)
+{
+	// item:addPokemonFriendship(amount)
+	Item* item = getUserdata<Item>(L, 1);
+	Pokeball* pokeball = item ? item->getPokeball() : nullptr;
+	if (!pokeball) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushnumber(L, pokeball->addPokemonFriendship(getNumber<int32_t>(L, 2)));
+	return 1;
+}
+
 int LuaScriptInterface::luaItemGetPosition(lua_State* L)
 {
 	// item:getPosition()
@@ -10924,6 +10956,31 @@ int LuaScriptInterface::luaPokemonAddLevel(lua_State* L)
 	}
 
 	pushBoolean(L, pokemon->addLevel(getBoolean(L, 2, false)));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetFriendship(lua_State* L)
+{
+	// pokemon:getFriendship()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (pokemon) {
+		lua_pushnumber(L, pokemon->getFriendship());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonAddFriendship(lua_State* L)
+{
+	// pokemon:addFriendship(amount)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_pushnumber(L, pokemon->addFriendship(getNumber<int32_t>(L, 2)));
 	return 1;
 }
 

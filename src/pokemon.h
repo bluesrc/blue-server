@@ -148,6 +148,7 @@ class Pokemon final : public Creature
 
 		void drainHealth(Creature* attacker, int32_t damage) override;
 		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
+		void onAttackedCreatureDrainHealth(Creature* target, int32_t points) override;
 
 		bool isWalkingToSpawn() const {
 			return walkingToSpawn;
@@ -212,7 +213,9 @@ class Pokemon final : public Creature
 		PokemonStats_t getIvs() { return ivs; }
 		PokemonStats_t getEvs() { return evs; }
 		PokemonNatures_t getNature() const { return nature; }
-		uint8_t getFriendship() { return friendship;  }
+		uint8_t getFriendship() const { return friendship; }
+		uint8_t addFriendship(int32_t amount);
+		uint32_t getCombatFriendshipTime() const { return combatFriendshipTime; }
 		uint16_t getNumber() { return mType->info.number; }
 		const PokemonStats_t& getPokemonStats() const { return stats; }
 		PokemonStats_t getEffectivePokemonStats() const;
@@ -265,6 +268,8 @@ class Pokemon final : public Creature
 		PokemonGenders_t gender = GENDER_NONE;
 		PokemonNatures_t nature = NATURE_NONE;
 		uint8_t friendship {0};
+		uint32_t combatFriendshipTime {0};
+		int64_t lastCombatActivity {0};
 		uint8_t evasion {100};
 		uint8_t accuracy {100};
 
@@ -286,6 +291,9 @@ class Pokemon final : public Creature
 
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
+		uint8_t changeFriendship(int32_t amount);
+		void markCombatActivity();
+		void processCombatFriendship(uint32_t interval);
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;
 		double getBattleStatMultiplier(PokemonBattleStat_t stat) const;

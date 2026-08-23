@@ -26,6 +26,8 @@ uint32_t Pokemon::pokemonAutoID = 0x40000000;
 namespace {
 	constexpr uint32_t POKEMON_STATUS_DAMAGE_TICK = 3000;
 	constexpr uint32_t POKEMON_STATUS_VISUAL_TICK = 2000;
+	constexpr uint32_t POKEMON_COMBAT_FRIENDSHIP_INTERVAL = 5 * 60 * 1000;
+	constexpr int64_t POKEMON_COMBAT_ACTIVITY_TIMEOUT = 10 * 1000;
 
 	MagicEffectClasses getPokemonStatusEffect(PokemonStatusCondition_t status)
 	{
@@ -152,6 +154,7 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	health = std::clamp(pInfo.health, 0, healthMax);
 
 	friendship = pInfo.friendship;
+	combatFriendshipTime = std::min<uint32_t>(pInfo.combatFriendshipTime, POKEMON_COMBAT_FRIENDSHIP_INTERVAL - 1);
 	shiny = pInfo.shiny;
 	gender = pInfo.gender;
 
@@ -357,11 +360,72 @@ void Pokemon::syncPokeball()
 	info.evs = evs;
 	info.nature = nature;
 	info.friendship = friendship;
+	info.combatFriendshipTime = combatFriendshipTime;
 	info.gender = gender;
 	info.shiny = shiny;
 	info.moves = knownMoves;
 	pokeball->setPokemonInfo(info);
 	player->updatePokemonInfo(pokeball);
+}
+
+uint8_t Pokemon::changeFriendship(int32_t amount)
+{
+	const int64_t updatedFriendship = static_cast<int64_t>(friendship) + amount;
+	friendship = static_cast<uint8_t>(std::clamp<int64_t>(updatedFriendship, 0, 255));
+	if (friendship >= 255) {
+		combatFriendshipTime = 0;
+	}
+	return friendship;
+}
+
+uint8_t Pokemon::addFriendship(int32_t amount)
+{
+	const uint8_t previousFriendship = friendship;
+	changeFriendship(amount);
+	if (friendship != previousFriendship) {
+		syncPokeball();
+	}
+	return friendship;
+}
+
+void Pokemon::markCombatActivity()
+{
+	if (isSummon() && master && master->getPlayer()) {
+		lastCombatActivity = OTSYS_TIME();
+	}
+}
+
+void Pokemon::processCombatFriendship(uint32_t interval)
+{
+	Player* player = master ? master->getPlayer() : nullptr;
+	if (!isSummon() || !player) {
+		return;
+	}
+
+	if (friendship >= 255) {
+		if (combatFriendshipTime != 0) {
+			combatFriendshipTime = 0;
+			if (Pokeball* pokeball = player->getActivePokemon(); pokeball && pokeball->getPokemon() == this) {
+				pokeball->setPokemonCombatFriendshipTime(0);
+			}
+		}
+		return;
+	}
+
+	const int64_t now = OTSYS_TIME();
+	if (lastCombatActivity == 0 || now - lastCombatActivity > POKEMON_COMBAT_ACTIVITY_TIMEOUT) {
+		return;
+	}
+
+	combatFriendshipTime = std::min<uint32_t>(combatFriendshipTime + interval, POKEMON_COMBAT_FRIENDSHIP_INTERVAL);
+	if (combatFriendshipTime >= POKEMON_COMBAT_FRIENDSHIP_INTERVAL) {
+		combatFriendshipTime -= POKEMON_COMBAT_FRIENDSHIP_INTERVAL;
+		addFriendship(1);
+	}
+
+	if (Pokeball* pokeball = player->getActivePokemon(); pokeball && pokeball->getPokemon() == this) {
+		pokeball->setPokemonCombatFriendshipTime(combatFriendshipTime);
+	}
 }
 
 uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
@@ -384,6 +448,7 @@ uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 	}
 
 	if (level != previousLevel) {
+		changeFriendship(level - previousLevel);
 		learnAvailableMoves(true);
 		updateStats(true);
 		g_game.changeSpeed(this, 0);
@@ -429,7 +494,11 @@ bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
 		return false;
 	}
 
+	const uint8_t previousLevel = level;
 	level = newLevel;
+	if (level > previousLevel) {
+		changeFriendship(level - previousLevel);
+	}
 	experience = getExperienceForLevel(mType->info.level_rate, level);
 	learnAvailableMoves();
 	updateStats(!fullHealth);
@@ -1150,6 +1219,7 @@ void Pokemon::onThink(uint32_t interval)
 {
 	Creature::onThink(interval);
 	processPokemonBattleState();
+	processCombatFriendship(interval);
 
 	if (mType->info.thinkEvent != -1) {
 		// onThink(self, interval)
@@ -1640,6 +1710,10 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 	executingPokemonMove = false;
 	if (result) {
 		startCooldown();
+		Creature* combatTarget = needTarget ? target : attackedCreature;
+		if (combatTarget && isOpponent(combatTarget)) {
+			markCombatActivity();
+		}
 	}
 	return result;
 }
@@ -2779,6 +2853,9 @@ void Pokemon::setNormalCreatureLight()
 void Pokemon::drainHealth(Creature* attacker, int32_t damage)
 {
 	Creature::drainHealth(attacker, damage);
+	if (damage > 0 && attacker && isOpponent(attacker)) {
+		markCombatActivity();
+	}
 
 	if (damage > 0 && randomStepping) {
 		ignoreFieldDamage = true;
@@ -2787,6 +2864,14 @@ void Pokemon::drainHealth(Creature* attacker, int32_t damage)
 
 	if (isInvisible()) {
 		removeCondition(CONDITION_INVISIBLE);
+	}
+}
+
+void Pokemon::onAttackedCreatureDrainHealth(Creature* target, int32_t points)
+{
+	Creature::onAttackedCreatureDrainHealth(target, points);
+	if (points > 0 && target && isOpponent(target)) {
+		markCombatActivity();
 	}
 }
 
