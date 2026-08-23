@@ -101,6 +101,28 @@ registerPokemonType.learnset = function(mtype, mask)
 	end
 end
 
+registerPokemonType.abilities = function(mtype, mask)
+	if type(mask.abilities) == "table" then
+		local totalChance = 0
+		for _, entry in ipairs(mask.abilities) do
+			if not entry.ability or type(entry.chance) ~= "number" or entry.chance % 1 ~= 0 or entry.chance < 1 or entry.chance > 100 then
+				print(string.format("[Warning - registerPokemonType.abilities] Invalid ability chance for %s.", mtype:name() or "Pokemon"))
+				return
+			end
+			totalChance = totalChance + entry.chance
+		end
+
+		if totalChance ~= 100 then
+			print(string.format("[Warning - registerPokemonType.abilities] Ability chances must total 100 for %s.", mtype:name() or "Pokemon"))
+			return
+		end
+
+		for _, entry in ipairs(mask.abilities) do
+			mtype:addAbility(entry.ability, entry.chance)
+		end
+	end
+end
+
 registerPokemonType.evolution = function(mtype, mask)
 	if mask.evolution then
 		mtype:evolution(mask.evolution)

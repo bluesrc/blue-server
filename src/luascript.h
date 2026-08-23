@@ -398,6 +398,7 @@ class LuaScriptInterface
 		// Push
 		static void pushBoolean(lua_State* L, bool value);
 		static void pushCombatDamage(lua_State* L, const CombatDamage& damage);
+		static void pushPokemonMoveFlags(lua_State* L, uint32_t flags);
 		static void pushInstantMove(lua_State* L, const InstantMove& move);
 		static void pushPosition(lua_State* L, const Position& position, int32_t stackpos = 0);
 		static void pushOutfit(lua_State* L, const Outfit_t& outfit);
@@ -1061,6 +1062,11 @@ class LuaScriptInterface
 		static int luaPokemonGetFriendship(lua_State* L);
 		static int luaPokemonAddFriendship(lua_State* L);
 		static int luaPokemonGetMoves(lua_State* L);
+		static int luaPokemonGetAbility(lua_State* L);
+		static int luaPokemonGetAbilityState(lua_State* L);
+		static int luaPokemonSetAbilityState(lua_State* L);
+		static int luaPokemonClearAbilityState(lua_State* L);
+		static int luaPokemonRefreshAbilityStats(lua_State* L);
 		static int luaPokemonSetMoveSlot(lua_State* L);
 		static int luaPokemonUseMove(lua_State* L);
 		static int luaPokemonModifyBattleStatStage(lua_State* L);
@@ -1348,6 +1354,7 @@ class LuaScriptInterface
 		static int luaPokemonTypeConditionImmunities(lua_State* L);
 
 		static int luaPokemonTypeAddLearnMove(lua_State* L);
+		static int luaPokemonTypeAddAbility(lua_State* L);
 
 		static int luaPokemonTypeGetDefenseList(lua_State* L);
 		static int luaPokemonTypeAddDefense(lua_State* L);

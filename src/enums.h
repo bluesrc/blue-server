@@ -615,6 +615,10 @@ struct CombatDamage
 	BlockType_t blockType = BLOCK_NONE;
 	bool critical = false;
 	bool leeched = false;
+	// Internal guards for the defensive Pokemon ability pipeline.
+	bool defensiveAbilityProcessed = false;
+	bool defensiveAbilityBlocked = false;
+	bool healingAbilityProcessed = false;
 };
 
 using MarketOfferList = std::list<MarketOffer>;

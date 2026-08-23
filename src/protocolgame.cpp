@@ -3457,6 +3457,11 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 		msg.add<uint8_t>(move.target);
 	}
 
+	const PokemonAbilityType* ability = g_pokemons.getAbilityById(info.abilityId);
+	msg.add<uint16_t>(ability ? ability->id : 0);
+	msg.addString(ability ? ability->name : "");
+	msg.addString(ability ? ability->description : "");
+
 	writeToOutputBuffer(msg);
 }
 

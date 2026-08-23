@@ -802,53 +802,57 @@
 	<instant name="pokemon soulfire" words="###50" aggressive="1" blockwalls="1" range="7" needtarget="1" needlearn="1" script="pokemon/pokemon_soulfire.lua" />
 	<instant name="dipthrah skill reducer" words="###51" aggressive="1" blockwalls="1" needtarget="0" needlearn="1" script="pokemon/dipthrah_skill_reducer.lua" />
 
-	<!-- Pokemon Moves. PP is metadata only and is not consumed by the current battle system. -->
+	<!-- Pokemon Moves. PP is metadata only and is not consumed by the current battle system.
+	     priority defaults to 0 (-7..5); flags is a comma-separated list of move properties. -->
 	<instant name="Tackle" words="###pokemon_tackle" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="1" key="tackle" type="normal" category="physical" power="40" pp="35" accuracy="100" range="1" cooldown="2000"
+		pokemonmoveid="1" key="tackle" type="normal" category="physical" power="40" pp="35" accuracy="100" range="1" cooldown="2000" flags="contact"
 		script="pokemon_moves/tackle.lua" />
 	<instant name="Scratch" words="###pokemon_scratch" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="2" key="scratch" type="normal" category="physical" power="40" pp="35" accuracy="100" range="1" cooldown="2000"
+		pokemonmoveid="2" key="scratch" type="normal" category="physical" power="40" pp="35" accuracy="100" range="1" cooldown="2000" flags="contact"
 		script="pokemon_moves/scratch.lua" />
 	<instant name="Vine Whip" words="###pokemon_vine_whip" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="0" direction="1"
-		pokemonmoveid="3" key="vine_whip" type="grass" category="physical" power="45" pp="25" accuracy="100" range="3" cooldown="2500"
+		pokemonmoveid="3" key="vine_whip" type="grass" category="physical" power="45" pp="25" accuracy="100" range="3" cooldown="2500" flags="contact"
 		script="pokemon_moves/vine_whip.lua" />
 	<instant name="Ember" words="###pokemon_ember" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="4" key="ember" type="fire" category="special" power="40" pp="25" accuracy="100" range="4" cooldown="2500"
+		pokemonmoveid="4" key="ember" type="fire" category="special" power="40" pp="25" accuracy="100" range="4" cooldown="2500" flags="projectile"
 		script="pokemon_moves/ember.lua" />
 	<instant name="Water Gun" words="###pokemon_water_gun" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="0" direction="1"
 		pokemonmoveid="5" key="water_gun" type="water" category="special" power="40" pp="25" accuracy="100" range="3" cooldown="2500"
 		script="pokemon_moves/water_gun.lua" />
 	<instant name="Growl" words="###pokemon_growl" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="6" key="growl" type="normal" category="status" power="0" pp="40" accuracy="100" range="4" cooldown="5000"
+		pokemonmoveid="6" key="growl" type="normal" category="status" power="0" pp="40" accuracy="100" range="4" cooldown="5000" flags="sound,reflectable"
 		script="pokemon_moves/growl.lua" />
 	<instant name="Growth" words="###pokemon_growth" group="support" enabled="0" aggressive="0" selftarget="1"
 		pokemonmoveid="7" key="growth" type="normal" category="status" power="0" pp="20" accuracy="100" range="0" cooldown="5000"
 		script="pokemon_moves/growth.lua" />
 	<instant name="Smokescreen" words="###pokemon_smokescreen" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="0" targetmode="area"
-		pokemonmoveid="8" key="smokescreen" type="normal" category="status" power="0" pp="20" accuracy="100" range="1" cooldown="5000"
+		pokemonmoveid="8" key="smokescreen" type="normal" category="status" power="0" pp="20" accuracy="100" range="1" cooldown="5000" flags="reflectable"
 		script="pokemon_moves/smokescreen.lua" />
 	<instant name="Tail Whip" words="###pokemon_tail_whip" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="9" key="tail_whip" type="normal" category="status" power="0" pp="30" accuracy="100" range="4" cooldown="5000"
+		pokemonmoveid="9" key="tail_whip" type="normal" category="status" power="0" pp="30" accuracy="100" range="4" cooldown="5000" flags="reflectable"
 		script="pokemon_moves/tail_whip.lua" />
 	<instant name="Withdraw" words="###pokemon_withdraw" group="support" enabled="0" aggressive="0" selftarget="1"
 		pokemonmoveid="10" key="withdraw" type="water" category="status" power="0" pp="40" accuracy="100" range="0" cooldown="5000"
 		script="pokemon_moves/withdraw.lua" />
 	<instant name="Will-O-Wisp" words="###pokemon_will_o_wisp" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="11" key="will_o_wisp" type="fire" category="status" power="0" pp="15" accuracy="85" range="4" cooldown="5000"
+		pokemonmoveid="11" key="will_o_wisp" type="fire" category="status" power="0" pp="15" accuracy="85" range="4" cooldown="5000" flags="projectile,reflectable"
 		script="pokemon_moves/will_o_wisp.lua" />
 	<instant name="Ice Beam" words="###pokemon_ice_beam" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="0" direction="1"
 		pokemonmoveid="12" key="ice_beam" type="ice" category="special" power="90" pp="10" accuracy="100" range="3" cooldown="3500"
 		script="pokemon_moves/ice_beam.lua" />
 	<instant name="Thunder Wave" words="###pokemon_thunder_wave" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="13" key="thunder_wave" type="electric" category="status" power="0" pp="20" accuracy="90" range="4" cooldown="5000"
+		pokemonmoveid="13" key="thunder_wave" type="electric" category="status" power="0" pp="20" accuracy="90" range="4" cooldown="5000" flags="projectile,reflectable"
 		script="pokemon_moves/thunder_wave.lua" />
 	<instant name="Poison Powder" words="###pokemon_poison_powder" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="0" targetmode="area"
-		pokemonmoveid="14" key="poison_powder" type="poison" category="status" power="0" pp="35" accuracy="75" range="1" cooldown="5000"
+		pokemonmoveid="14" key="poison_powder" type="poison" category="status" power="0" pp="35" accuracy="75" range="1" cooldown="5000" flags="powder,reflectable"
 		script="pokemon_moves/poison_powder.lua" />
 	<instant name="Sleep Powder" words="###pokemon_sleep_powder" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="0" targetmode="area"
-		pokemonmoveid="15" key="sleep_powder" type="grass" category="status" power="0" pp="15" accuracy="75" range="1" cooldown="7000"
+		pokemonmoveid="15" key="sleep_powder" type="grass" category="status" power="0" pp="15" accuracy="75" range="1" cooldown="7000" flags="powder,reflectable"
 		script="pokemon_moves/sleep_powder.lua" />
 	<instant name="Bite" words="###pokemon_bite" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
-		pokemonmoveid="16" key="bite" type="dark" category="physical" power="60" pp="25" accuracy="100" range="1" cooldown="3000"
+		pokemonmoveid="16" key="bite" type="dark" category="physical" power="60" pp="25" accuracy="100" range="1" cooldown="3000" flags="contact,bite"
 		script="pokemon_moves/bite.lua" />
+	<instant name="Teleport" words="###pokemon_teleport" group="support" enabled="0" aggressive="0" selftarget="1"
+		pokemonmoveid="17" key="teleport" type="psychic" category="status" power="0" pp="20" accuracy="100" range="0" cooldown="5000" priority="-6" flags="escape"
+		script="pokemon_moves/teleport.lua" />
 </moves>

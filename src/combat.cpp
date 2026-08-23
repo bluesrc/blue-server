@@ -12,6 +12,7 @@
 #include "events.h"
 
 extern Game g_game;
+extern Pokemons g_pokemons;
 extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
@@ -103,7 +104,7 @@ CombatDamage Combat::getCombatDamage(Creature* creature, Creature* target) const
 	CombatDamage damage;
 	damage.origin = params.origin;
 	damage.primary.type = params.combatType;
-	if (const Pokemon* pokemon = creature ? creature->getPokemon() : nullptr) {
+	if (Pokemon* pokemon = creature ? creature->getPokemon() : nullptr) {
 		if (pokemon->isExecutingPokemonMove()) {
 			damage.primary.value = -pokemon->getExecutingMoveDamage(target);
 			return damage;
@@ -690,9 +691,12 @@ void Combat::addDistanceEffect(Creature* caster, const Position& fromPos, const 
 void Combat::doCombat(Creature* caster, Creature* target) const
 {
 	//target combat callback function
-	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 	if (params.aggressive && pokemonCaster && pokemonCaster->isExecutingPokemonMove() && !pokemonCaster->rollExecutingMoveHit(target)) {
 		g_game.addMagicEffect(target->getPosition(), CONST_ME_POFF);
+		if (const PokemonMoveType* move = pokemonCaster->getExecutingMove()) {
+			g_pokemons.executeAbilityMoveMiss(pokemonCaster, target, *move);
+		}
 		return;
 	}
 
@@ -755,7 +759,7 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 		doAreaCombat(caster, position, area.get(), damage, params);
 	} else {
 		auto tiles = caster ? getCombatArea(caster->getPosition(), position, area.get()) : getCombatArea(position, position, area.get());
-		const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+		Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 		const bool pokemonMove = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 
 		SpectatorVec spectators;
@@ -809,6 +813,9 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 					}
 					if (pokemonMove && params.aggressive && !pokemonCaster->rollExecutingMoveHit(creature)) {
 						g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+						if (const PokemonMoveType* move = pokemonCaster->getExecutingMove()) {
+							g_pokemons.executeAbilityMoveMiss(pokemonCaster, creature, *move);
+						}
 						continue;
 					}
 
@@ -884,6 +891,9 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 	} else {
 		success = g_game.combatChangeMana(caster, target, damage);
 	}
+	if (damage.defensiveAbilityBlocked) {
+		return;
+	}
 
 	if (success) {
 		if (damage.blockType == BLOCK_NONE || damage.blockType == BLOCK_ARMOR) {
@@ -949,7 +959,7 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	auto tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
 
 	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
-	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 	const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 	int32_t criticalPrimary = 0;
 	int32_t criticalSecondary = 0;
@@ -1030,6 +1040,9 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	for (Creature* creature : toDamageCreatures) {
 		if (pokemonFormulaDamage && !pokemonCaster->rollExecutingMoveHit(creature)) {
 			g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+			if (const PokemonMoveType* move = pokemonCaster->getExecutingMove()) {
+				g_pokemons.executeAbilityMoveMiss(pokemonCaster, creature, *move);
+			}
 			continue;
 		}
 		CombatDamage damageCopy = damage;
@@ -1063,6 +1076,9 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 			success = g_game.combatChangeHealth(caster, creature, damageCopy);
 		} else {
 			success = g_game.combatChangeMana(caster, creature, damageCopy);
+		}
+		if (damageCopy.defensiveAbilityBlocked) {
+			continue;
 		}
 
 		if (success) {

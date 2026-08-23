@@ -8,6 +8,8 @@
 #include "pokemons.h"
 
 #include <array>
+#include <unordered_set>
+#include <variant>
 
 class Creature;
 class Game;
@@ -33,21 +35,13 @@ enum PokemonBattleStat_t : uint8_t {
 	POKEMON_BATTLE_STAT_COUNT,
 };
 
-enum PokemonStatusCondition_t : uint8_t {
-	POKEMON_STATUS_NONE,
-	POKEMON_STATUS_BURN,
-	POKEMON_STATUS_FREEZE,
-	POKEMON_STATUS_PARALYSIS,
-	POKEMON_STATUS_POISON,
-	POKEMON_STATUS_SLEEP,
-	POKEMON_STATUS_CONFUSION,
-};
-
 struct PokemonBattleModifier {
 	PokemonBattleStat_t stat;
 	int8_t amount;
 	int64_t expiresAt;
 };
+
+using PokemonAbilityStateValue = std::variant<bool, double, std::string>;
 
 class Pokemon final : public Creature
 {
@@ -145,6 +139,7 @@ class Pokemon final : public Creature
 		void onRemoveCreature(Creature* creature, bool isLogout) override;
 		void onCreatureMove(Creature* creature, const Tile* newTile, const Position& newPos, const Tile* oldTile, const Position& oldPos, bool teleport) override;
 		void onCreatureSay(Creature* creature, SpeakClasses type, const std::string& text) override;
+		void onPlacedCreature() override;
 
 		void drainHealth(Creature* attacker, int32_t damage) override;
 		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
@@ -210,6 +205,15 @@ class Pokemon final : public Creature
 		static uint64_t getExperienceForLevel(LevelRate_t rate, uint8_t level);
 		uint8_t getGender() const { return gender; }
 		bool isShiny() const { return shiny; }
+		uint16_t getAbilityId() const { return abilityId; }
+		const PokemonAbilityType* getAbility() const;
+		PokemonStatusCondition_t getPokemonStatusCondition() const { return pokemonStatus; }
+		const PokemonAbilityStateValue* getAbilityState(const std::string& key) const;
+		void setAbilityState(std::string key, PokemonAbilityStateValue value);
+		bool clearAbilityState(const std::string& key);
+		void clearAbilityState();
+		void refreshAbilityStats(bool preserveHealth = false, bool notify = true);
+		void leaveAbilityCombat();
 		PokemonStats_t getIvs() { return ivs; }
 		PokemonStats_t getEvs() { return evs; }
 		PokemonNatures_t getNature() const { return nature; }
@@ -227,9 +231,10 @@ class Pokemon final : public Creature
 		bool modifyBattleStatStage(PokemonBattleStat_t stat, int8_t amount, uint32_t duration = 10000);
 		bool applyStatusCondition(PokemonStatusCondition_t status, uint32_t duration, Creature* source = nullptr);
 		bool applyFlinch(uint32_t duration = 1500);
-		int32_t getExecutingMoveDamage(const Creature* target) const;
+		int32_t getExecutingMoveDamage(Creature* target);
 		bool rollExecutingMoveHit(const Creature* target) const;
 		bool isExecutingPokemonMove() const { return executingPokemonMove; }
+		const PokemonMoveType* getExecutingMove() const { return executingMove; }
 
 	private:
 		CreatureHashSet friendList;
@@ -263,6 +268,7 @@ class Pokemon final : public Creature
 		bool walkingToSpawn = false;
 
 		PokemonStats_t stats = {};
+		PokemonStats_t abilityStats = {};
 		PokemonStats_t ivs = {};
 		PokemonStats_t evs = {};
 		PokemonGenders_t gender = GENDER_NONE;
@@ -270,13 +276,19 @@ class Pokemon final : public Creature
 		uint8_t friendship {0};
 		uint32_t combatFriendshipTime {0};
 		int64_t lastCombatActivity {0};
+		bool abilityCombatActive = false;
 		uint8_t evasion {100};
 		uint8_t accuracy {100};
 
 		uint8_t level = 1;
 		uint64_t experience = 0;
 		bool shiny = false;
+		uint16_t abilityId = 0;
 		bool executingPokemonMove = false;
+		bool processingPokemonMoveUse = false;
+		bool calculatingAbilityStats = false;
+		bool processingFriendshipChange = false;
+		bool abilitySpawnProcessed = false;
 		const PokemonMoveType* executingMove = nullptr;
 		PokemonStatusCondition_t pokemonStatus = POKEMON_STATUS_NONE;
 		int64_t pokemonStatusExpiresAt = 0;
@@ -286,14 +298,22 @@ class Pokemon final : public Creature
 
 		std::vector<PokemonMoveState> knownMoves;
 		std::unordered_map<uint16_t, int64_t> moveCooldowns;
+		std::unordered_map<std::string, PokemonAbilityStateValue> abilityState;
+		std::unordered_set<uint32_t> abilityCombatOpponentIds;
+		std::unordered_set<uint32_t> encounteredPokemonIds;
 		std::array<int8_t, POKEMON_BATTLE_STAT_COUNT> battleStatStages = {};
 		std::vector<PokemonBattleModifier> battleModifiers;
 
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
 		uint8_t changeFriendship(int32_t amount);
-		void markCombatActivity();
+		void markCombatActivity(Creature* opponent);
+		bool canEscapeCombat(const PokemonMoveType& move);
+		void completeCombatEscape();
+		void processAbilityCombatState();
 		void processCombatFriendship(uint32_t interval);
+		void processEvolutionEvent(uint8_t previousLevel);
+		void processEncounter(Creature* creature);
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;
 		double getBattleStatMultiplier(PokemonBattleStat_t stat) const;
