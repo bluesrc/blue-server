@@ -320,6 +320,7 @@ bool Spawn::spawnPokemon(uint32_t spawnId, PokemonType* mType, const Position& p
 			std::cout << "[Warning - Spawns::startup] Couldn't spawn pokemon \"" << pokemon_ptr->getName() << "\" on position: " << pos << '.' << std::endl;
 			return false;
 		}
+		pokemon_ptr->onPlacedCreature();
 	} else {
 		if (!g_game.placeCreature(pokemon_ptr.get(), pos, false, true)) {
 			return false;

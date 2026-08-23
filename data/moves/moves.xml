@@ -852,4 +852,7 @@
 	<instant name="Bite" words="###pokemon_bite" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
 		pokemonmoveid="16" key="bite" type="dark" category="physical" power="60" pp="25" accuracy="100" range="1" cooldown="3000" flags="contact,bite"
 		script="pokemon_moves/bite.lua" />
+	<instant name="Teleport" words="###pokemon_teleport" group="support" enabled="0" aggressive="0" selftarget="1"
+		pokemonmoveid="17" key="teleport" type="psychic" category="status" power="0" pp="20" accuracy="100" range="0" cooldown="5000" priority="-6" flags="escape"
+		script="pokemon_moves/teleport.lua" />
 </moves>

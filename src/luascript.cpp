@@ -1067,7 +1067,7 @@ void LuaScriptInterface::pushCombatDamage(lua_State* L, const CombatDamage& dama
 
 void LuaScriptInterface::pushPokemonMoveFlags(lua_State* L, uint32_t flags)
 {
-	lua_createtable(L, 0, 15);
+	lua_createtable(L, 0, 16);
 	setField(L, "mask", flags);
 	const auto setFlag = [L, flags](const char* name, PokemonMoveFlag_t flag) {
 		pushBoolean(L, (flags & flag) != 0);
@@ -1087,6 +1087,7 @@ void LuaScriptInterface::pushPokemonMoveFlags(lua_State* L, uint32_t flags)
 	setFlag("explosive", POKEMON_MOVE_FLAG_EXPLOSIVE);
 	setFlag("healing", POKEMON_MOVE_FLAG_HEALING);
 	setFlag("reflectable", POKEMON_MOVE_FLAG_REFLECTABLE);
+	setFlag("escape", POKEMON_MOVE_FLAG_ESCAPE);
 }
 
 void LuaScriptInterface::pushInstantMove(lua_State* L, const InstantMove& move)
@@ -2158,6 +2159,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(POKEMON_MOVE_FLAG_EXPLOSIVE)
 	registerEnum(POKEMON_MOVE_FLAG_HEALING)
 	registerEnum(POKEMON_MOVE_FLAG_REFLECTABLE)
+	registerEnum(POKEMON_MOVE_FLAG_ESCAPE)
 	registerEnum(POKEMON_STATUS_NONE)
 	registerEnum(POKEMON_STATUS_BURN)
 	registerEnum(POKEMON_STATUS_FREEZE)
@@ -2857,6 +2859,10 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "addFriendship", LuaScriptInterface::luaPokemonAddFriendship);
 	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
 	registerMethod("Pokemon", "getAbility", LuaScriptInterface::luaPokemonGetAbility);
+	registerMethod("Pokemon", "getAbilityState", LuaScriptInterface::luaPokemonGetAbilityState);
+	registerMethod("Pokemon", "setAbilityState", LuaScriptInterface::luaPokemonSetAbilityState);
+	registerMethod("Pokemon", "clearAbilityState", LuaScriptInterface::luaPokemonClearAbilityState);
+	registerMethod("Pokemon", "refreshAbilityStats", LuaScriptInterface::luaPokemonRefreshAbilityStats);
 	registerMethod("Pokemon", "setMoveSlot", LuaScriptInterface::luaPokemonSetMoveSlot);
 	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
 	registerMethod("Pokemon", "modifyBattleStatStage", LuaScriptInterface::luaPokemonModifyBattleStatStage);
@@ -14662,6 +14668,100 @@ int LuaScriptInterface::luaPokemonGetAbility(lua_State* L)
 	setField(L, "key", ability->key);
 	setField(L, "name", ability->name);
 	setField(L, "description", ability->description);
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetAbilityState(lua_State* L)
+{
+	// pokemon:getAbilityState(key[, defaultValue])
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const PokemonAbilityStateValue* value = pokemon->getAbilityState(getString(L, 2));
+	if (!value) {
+		if (lua_gettop(L) >= 3) {
+			lua_pushvalue(L, 3);
+		} else {
+			lua_pushnil(L);
+		}
+		return 1;
+	}
+
+	if (const bool* boolean = std::get_if<bool>(value)) {
+		pushBoolean(L, *boolean);
+	} else if (const double* number = std::get_if<double>(value)) {
+		lua_pushnumber(L, *number);
+	} else {
+		pushString(L, std::get<std::string>(*value));
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonSetAbilityState(lua_State* L)
+{
+	// pokemon:setAbilityState(key, value)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const std::string key = getString(L, 2);
+	if (key.empty()) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	if (lua_isnil(L, 3)) {
+		pokemon->clearAbilityState(key);
+	} else if (lua_isboolean(L, 3)) {
+		pokemon->setAbilityState(key, getBoolean(L, 3));
+	} else if (lua_isnumber(L, 3)) {
+		pokemon->setAbilityState(key, static_cast<double>(lua_tonumber(L, 3)));
+	} else if (lua_isstring(L, 3)) {
+		pokemon->setAbilityState(key, getString(L, 3));
+	} else {
+		reportErrorFunc(L, "Ability state only supports boolean, number, string or nil values.");
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonClearAbilityState(lua_State* L)
+{
+	// pokemon:clearAbilityState([key])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	if (lua_gettop(L) >= 2 && !lua_isnil(L, 2)) {
+		pokemon->clearAbilityState(getString(L, 2));
+	} else {
+		pokemon->clearAbilityState();
+	}
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonRefreshAbilityStats(lua_State* L)
+{
+	// pokemon:refreshAbilityStats()
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	pokemon->refreshAbilityStats();
+	pushBoolean(L, true);
 	return 1;
 }
 

@@ -4435,6 +4435,27 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			return false;
 		}
 
+		if (!damage.healingAbilityProcessed) {
+			damage.healingAbilityProcessed = true;
+			Pokemon* sourcePokemon = attacker ? attacker->getPokemon() : nullptr;
+			Pokemon* targetPokemon = target->getPokemon();
+			const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
+				sourcePokemon->getExecutingMove() : nullptr;
+			int32_t amount = damage.primary.value;
+			if (sourcePokemon) {
+				amount = g_pokemons.executeAbilityBeforeHeal(
+					sourcePokemon, attacker, target, move, amount, true);
+			}
+			if (amount > 0 && targetPokemon && targetPokemon != sourcePokemon) {
+				amount = g_pokemons.executeAbilityBeforeHeal(
+					targetPokemon, attacker, target, move, amount, false);
+			}
+			damage.primary.value = amount;
+			if (amount == 0) {
+				return true;
+			}
+		}
+
 		if (damage.origin != ORIGIN_NONE) {
 			const auto& events = target->getCreatureEvents(CREATURE_EVENT_HEALTHCHANGE);
 			if (!events.empty()) {
@@ -4491,6 +4512,25 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 					message.text = spectatorMessage;
 				}
 				tmpPlayer->sendTextMessage(message);
+			}
+		}
+
+		if (realHealthChange > 0) {
+			Pokemon* sourcePokemon = attacker ? attacker->getPokemon() : nullptr;
+			const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
+				sourcePokemon->getExecutingMove() : nullptr;
+			const uint32_t sourceId = attacker ? attacker->getID() : 0;
+			const uint32_t targetId = target->getID();
+			if (sourcePokemon) {
+				g_pokemons.executeAbilityAfterHeal(
+					sourcePokemon, attacker, target, move, realHealthChange, true);
+			}
+			Creature* currentTarget = getCreatureByID(targetId);
+			Creature* currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+			Pokemon* targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
+			if (targetPokemon && targetPokemon != sourcePokemon) {
+				g_pokemons.executeAbilityAfterHeal(
+					targetPokemon, currentSource, currentTarget, move, realHealthChange, false);
 			}
 		}
 	} else {
@@ -4714,6 +4754,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		}
 
 		target->drainHealth(attacker, realDamage);
+		const bool targetFainted = target->getHealth() <= 0;
 		addCreatureHealth(spectators, target);
 		Pokemon* sourcePokemon = attacker ? attacker->getPokemon() : nullptr;
 		const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
@@ -4728,6 +4769,18 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		Pokemon* targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
 		if (targetPokemon && targetPokemon != sourcePokemon) {
 			g_pokemons.executeAbilityAfterDamage(targetPokemon, currentSource, currentTarget, move, damage, false);
+		}
+		if (targetFainted) {
+			currentTarget = getCreatureByID(targetId);
+			currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+			sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
+			targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
+			if (sourcePokemon && currentSource != currentTarget) {
+				g_pokemons.executeAbilityKnockout(sourcePokemon, currentTarget, move);
+			}
+			if (targetPokemon) {
+				g_pokemons.executeAbilityFaint(targetPokemon, currentSource, move);
+			}
 		}
 	}
 

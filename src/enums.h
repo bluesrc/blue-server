@@ -618,6 +618,7 @@ struct CombatDamage
 	// Internal guards for the defensive Pokemon ability pipeline.
 	bool defensiveAbilityProcessed = false;
 	bool defensiveAbilityBlocked = false;
+	bool healingAbilityProcessed = false;
 };
 
 using MarketOfferList = std::list<MarketOffer>;

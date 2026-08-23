@@ -12,6 +12,7 @@
 #include "events.h"
 
 extern Game g_game;
+extern Pokemons g_pokemons;
 extern Weapons* g_weapons;
 extern ConfigManager g_config;
 extern Events* g_events;
@@ -690,9 +691,12 @@ void Combat::addDistanceEffect(Creature* caster, const Position& fromPos, const 
 void Combat::doCombat(Creature* caster, Creature* target) const
 {
 	//target combat callback function
-	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 	if (params.aggressive && pokemonCaster && pokemonCaster->isExecutingPokemonMove() && !pokemonCaster->rollExecutingMoveHit(target)) {
 		g_game.addMagicEffect(target->getPosition(), CONST_ME_POFF);
+		if (const PokemonMoveType* move = pokemonCaster->getExecutingMove()) {
+			g_pokemons.executeAbilityMoveMiss(pokemonCaster, target, *move);
+		}
 		return;
 	}
 
@@ -755,7 +759,7 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 		doAreaCombat(caster, position, area.get(), damage, params);
 	} else {
 		auto tiles = caster ? getCombatArea(caster->getPosition(), position, area.get()) : getCombatArea(position, position, area.get());
-		const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+		Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 		const bool pokemonMove = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 
 		SpectatorVec spectators;
@@ -809,6 +813,9 @@ void Combat::doCombat(Creature* caster, const Position& position) const
 					}
 					if (pokemonMove && params.aggressive && !pokemonCaster->rollExecutingMoveHit(creature)) {
 						g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+						if (const PokemonMoveType* move = pokemonCaster->getExecutingMove()) {
+							g_pokemons.executeAbilityMoveMiss(pokemonCaster, creature, *move);
+						}
 						continue;
 					}
 
@@ -1033,6 +1040,9 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 	for (Creature* creature : toDamageCreatures) {
 		if (pokemonFormulaDamage && !pokemonCaster->rollExecutingMoveHit(creature)) {
 			g_game.addMagicEffect(creature->getPosition(), CONST_ME_POFF);
+			if (const PokemonMoveType* move = pokemonCaster->getExecutingMove()) {
+				g_pokemons.executeAbilityMoveMiss(pokemonCaster, creature, *move);
+			}
 			continue;
 		}
 		CombatDamage damageCopy = damage;

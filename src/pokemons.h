@@ -72,6 +72,7 @@ enum PokemonMoveFlag_t : uint32_t {
 	POKEMON_MOVE_FLAG_EXPLOSIVE = 1u << 11,
 	POKEMON_MOVE_FLAG_HEALING = 1u << 12,
 	POKEMON_MOVE_FLAG_REFLECTABLE = 1u << 13,
+	POKEMON_MOVE_FLAG_ESCAPE = 1u << 14,
 };
 
 struct PokemonMoveType {
@@ -121,11 +122,30 @@ struct PokemonAbilityType {
 	std::string name;
 	std::string description;
 	std::string script;
+	int32_t calculateStatsEvent = -1;
+	int32_t spawnEvent = -1;
+	int32_t summonEvent = -1;
+	int32_t recallEvent = -1;
+	int32_t stepEvent = -1;
+	int32_t captureAttemptEvent = -1;
+	int32_t encounterEvent = -1;
+	int32_t lootEvent = -1;
+	int32_t friendshipChangeEvent = -1;
+	int32_t evolutionEvent = -1;
+	int32_t beforeEscapeEvent = -1;
 	int32_t combatEnterEvent = -1;
+	int32_t combatExitEvent = -1;
+	int32_t beforeMoveUseEvent = -1;
+	int32_t afterMoveUseEvent = -1;
+	int32_t moveMissEvent = -1;
 	int32_t beforeMoveDamageEvent = -1;
 	int32_t beforeDamageEvent = -1;
 	int32_t beforeStatusEvent = -1;
 	int32_t afterDamageEvent = -1;
+	int32_t knockoutEvent = -1;
+	int32_t faintEvent = -1;
+	int32_t beforeHealEvent = -1;
+	int32_t afterHealEvent = -1;
 };
 
 struct PokemonAbilityOption {
@@ -347,7 +367,24 @@ class Pokemons
 		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance);
 		uint16_t selectAbility(const PokemonType& pokemonType) const;
 		bool isAbilityAvailable(const PokemonType& pokemonType, uint16_t abilityId) const;
+		PokemonStats_t executeAbilityCalculateStats(Pokemon* owner, const PokemonStats_t& stats);
+		void executeAbilitySpawn(Pokemon* owner);
+		void executeAbilitySummon(Pokemon* owner, Creature* master);
+		void executeAbilityRecall(Pokemon* owner, Creature* master, bool fainted);
+		void executeAbilityStep(Pokemon* owner, const Position& fromPosition, const Position& toPosition);
+		double executeAbilityCaptureAttempt(Pokemon* owner, Player* trainer, Pokemon* target,
+			uint16_t pokeballId, double chance, bool ownerIsTarget);
+		void executeAbilityEncounter(Pokemon* owner, Pokemon* encountered);
+		void executeAbilityLoot(Pokemon* owner, Pokemon* defeated, Container* corpse, bool ownerIsDefeated);
+		void executeAbilityFriendshipChange(Pokemon* owner, uint8_t oldValue, uint8_t newValue, int32_t delta);
+		void executeAbilityEvolution(Pokemon* owner, EvolveTypes_t type, uint32_t requirement);
+		bool executeAbilityBeforeEscape(Pokemon* owner, Pokemon* escapingPokemon,
+			const PokemonMoveType& move);
 		void executeAbilityCombatEnter(Pokemon* owner, Creature* opponent);
+		void executeAbilityCombatExit(Pokemon* owner);
+		bool executeAbilityBeforeMoveUse(Pokemon* owner, Creature* target, const PokemonMoveType& move);
+		void executeAbilityAfterMoveUse(Pokemon* owner, Creature* target, const PokemonMoveType& move, bool success);
+		void executeAbilityMoveMiss(Pokemon* owner, Creature* target, const PokemonMoveType& move);
 		int32_t executeAbilityBeforeMoveDamage(Pokemon* owner, Creature* target,
 			const PokemonMoveType& move, int32_t damage);
 		bool executeAbilityBeforeDamage(Pokemon* owner, Creature* source,
@@ -356,6 +393,12 @@ class Pokemons
 			PokemonStatusCondition_t& status, uint32_t& duration);
 		void executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creature* target,
 			const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource);
+		void executeAbilityKnockout(Pokemon* owner, Creature* target, const PokemonMoveType* move);
+		void executeAbilityFaint(Pokemon* owner, Creature* source, const PokemonMoveType* move);
+		int32_t executeAbilityBeforeHeal(Pokemon* owner, Creature* source, Creature* target,
+			const PokemonMoveType* move, int32_t amount, bool ownerIsSource);
+		void executeAbilityAfterHeal(Pokemon* owner, Creature* source, Creature* target,
+			const PokemonMoveType* move, int32_t amount, bool ownerIsSource);
 		bool deserializeMove(PokemonMove* move, moveBlock_t& sb, const std::string& description = "");
 
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
