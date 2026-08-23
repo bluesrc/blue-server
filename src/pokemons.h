@@ -56,6 +56,24 @@ enum PokemonMoveTarget_t : uint8_t {
 	POKEMON_MOVE_TARGET_AREA = 2
 };
 
+enum PokemonMoveFlag_t : uint32_t {
+	POKEMON_MOVE_FLAG_NONE = 0,
+	POKEMON_MOVE_FLAG_CONTACT = 1u << 0,
+	POKEMON_MOVE_FLAG_SOUND = 1u << 1,
+	POKEMON_MOVE_FLAG_PUNCH = 1u << 2,
+	POKEMON_MOVE_FLAG_BITE = 1u << 3,
+	POKEMON_MOVE_FLAG_PROJECTILE = 1u << 4,
+	POKEMON_MOVE_FLAG_PULSE = 1u << 5,
+	POKEMON_MOVE_FLAG_BOMB = 1u << 6,
+	POKEMON_MOVE_FLAG_DANCE = 1u << 7,
+	POKEMON_MOVE_FLAG_POWDER = 1u << 8,
+	POKEMON_MOVE_FLAG_SLICING = 1u << 9,
+	POKEMON_MOVE_FLAG_WIND = 1u << 10,
+	POKEMON_MOVE_FLAG_EXPLOSIVE = 1u << 11,
+	POKEMON_MOVE_FLAG_HEALING = 1u << 12,
+	POKEMON_MOVE_FLAG_REFLECTABLE = 1u << 13,
+};
+
 struct PokemonMoveType {
 	uint16_t id = 0;
 	std::string key;
@@ -69,6 +87,12 @@ struct PokemonMoveType {
 	uint8_t range = 1;
 	uint32_t cooldown = 2000;
 	PokemonMoveTarget_t target = POKEMON_MOVE_TARGET_SELF;
+	int8_t priority = 0;
+	uint32_t flags = POKEMON_MOVE_FLAG_NONE;
+
+	bool hasFlag(PokemonMoveFlag_t flag) const {
+		return (flags & flag) != 0;
+	}
 };
 
 struct PokemonLearnMove {
@@ -99,6 +123,7 @@ struct PokemonAbilityType {
 	std::string script;
 	int32_t combatEnterEvent = -1;
 	int32_t beforeMoveDamageEvent = -1;
+	int32_t beforeDamageEvent = -1;
 	int32_t beforeStatusEvent = -1;
 	int32_t afterDamageEvent = -1;
 };
@@ -325,6 +350,8 @@ class Pokemons
 		void executeAbilityCombatEnter(Pokemon* owner, Creature* opponent);
 		int32_t executeAbilityBeforeMoveDamage(Pokemon* owner, Creature* target,
 			const PokemonMoveType& move, int32_t damage);
+		bool executeAbilityBeforeDamage(Pokemon* owner, Creature* source,
+			const PokemonMoveType* move, CombatDamage& damage);
 		bool executeAbilityBeforeStatus(Pokemon* owner, Creature* source,
 			PokemonStatusCondition_t& status, uint32_t& duration);
 		void executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creature* target,

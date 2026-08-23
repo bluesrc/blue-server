@@ -1065,6 +1065,30 @@ void LuaScriptInterface::pushCombatDamage(lua_State* L, const CombatDamage& dama
 	lua_pushnumber(L, damage.origin);
 }
 
+void LuaScriptInterface::pushPokemonMoveFlags(lua_State* L, uint32_t flags)
+{
+	lua_createtable(L, 0, 15);
+	setField(L, "mask", flags);
+	const auto setFlag = [L, flags](const char* name, PokemonMoveFlag_t flag) {
+		pushBoolean(L, (flags & flag) != 0);
+		lua_setfield(L, -2, name);
+	};
+	setFlag("contact", POKEMON_MOVE_FLAG_CONTACT);
+	setFlag("sound", POKEMON_MOVE_FLAG_SOUND);
+	setFlag("punch", POKEMON_MOVE_FLAG_PUNCH);
+	setFlag("bite", POKEMON_MOVE_FLAG_BITE);
+	setFlag("projectile", POKEMON_MOVE_FLAG_PROJECTILE);
+	setFlag("pulse", POKEMON_MOVE_FLAG_PULSE);
+	setFlag("bomb", POKEMON_MOVE_FLAG_BOMB);
+	setFlag("dance", POKEMON_MOVE_FLAG_DANCE);
+	setFlag("powder", POKEMON_MOVE_FLAG_POWDER);
+	setFlag("slicing", POKEMON_MOVE_FLAG_SLICING);
+	setFlag("wind", POKEMON_MOVE_FLAG_WIND);
+	setFlag("explosive", POKEMON_MOVE_FLAG_EXPLOSIVE);
+	setFlag("healing", POKEMON_MOVE_FLAG_HEALING);
+	setFlag("reflectable", POKEMON_MOVE_FLAG_REFLECTABLE);
+}
+
 void LuaScriptInterface::pushInstantMove(lua_State* L, const InstantMove& move)
 {
 	lua_createtable(L, 0, 7);
@@ -2119,6 +2143,21 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(POKEMON_MOVE_CATEGORY_PHYSICAL)
 	registerEnum(POKEMON_MOVE_CATEGORY_SPECIAL)
 	registerEnum(POKEMON_MOVE_CATEGORY_STATUS)
+	registerEnum(POKEMON_MOVE_FLAG_NONE)
+	registerEnum(POKEMON_MOVE_FLAG_CONTACT)
+	registerEnum(POKEMON_MOVE_FLAG_SOUND)
+	registerEnum(POKEMON_MOVE_FLAG_PUNCH)
+	registerEnum(POKEMON_MOVE_FLAG_BITE)
+	registerEnum(POKEMON_MOVE_FLAG_PROJECTILE)
+	registerEnum(POKEMON_MOVE_FLAG_PULSE)
+	registerEnum(POKEMON_MOVE_FLAG_BOMB)
+	registerEnum(POKEMON_MOVE_FLAG_DANCE)
+	registerEnum(POKEMON_MOVE_FLAG_POWDER)
+	registerEnum(POKEMON_MOVE_FLAG_SLICING)
+	registerEnum(POKEMON_MOVE_FLAG_WIND)
+	registerEnum(POKEMON_MOVE_FLAG_EXPLOSIVE)
+	registerEnum(POKEMON_MOVE_FLAG_HEALING)
+	registerEnum(POKEMON_MOVE_FLAG_REFLECTABLE)
 	registerEnum(POKEMON_STATUS_NONE)
 	registerEnum(POKEMON_STATUS_BURN)
 	registerEnum(POKEMON_STATUS_FREEZE)
@@ -14587,7 +14626,7 @@ int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
 			continue;
 		}
 
-		lua_createtable(L, 0, 11);
+		lua_createtable(L, 0, 14);
 		setField(L, "id", move->id);
 		setField(L, "key", move->key);
 		setField(L, "name", move->name);
@@ -14598,6 +14637,10 @@ int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
 		setField(L, "accuracy", move->accuracy);
 		setField(L, "range", move->range);
 		setField(L, "cooldown", move->cooldown);
+		setField(L, "target", move->target);
+		setField(L, "priority", move->priority);
+		pushPokemonMoveFlags(L, move->flags);
+		lua_setfield(L, -2, "flags");
 		setField(L, "activeSlot", state.activeSlot);
 		lua_rawseti(L, -2, ++index);
 	}

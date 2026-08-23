@@ -884,6 +884,9 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 	} else {
 		success = g_game.combatChangeMana(caster, target, damage);
 	}
+	if (damage.defensiveAbilityBlocked) {
+		return;
+	}
 
 	if (success) {
 		if (damage.blockType == BLOCK_NONE || damage.blockType == BLOCK_ARMOR) {
@@ -1063,6 +1066,9 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 			success = g_game.combatChangeHealth(caster, creature, damageCopy);
 		} else {
 			success = g_game.combatChangeMana(caster, creature, damageCopy);
+		}
+		if (damageCopy.defensiveAbilityBlocked) {
+			continue;
 		}
 
 		if (success) {

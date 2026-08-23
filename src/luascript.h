@@ -398,6 +398,7 @@ class LuaScriptInterface
 		// Push
 		static void pushBoolean(lua_State* L, bool value);
 		static void pushCombatDamage(lua_State* L, const CombatDamage& damage);
+		static void pushPokemonMoveFlags(lua_State* L, uint32_t flags);
 		static void pushInstantMove(lua_State* L, const InstantMove& move);
 		static void pushPosition(lua_State* L, const Position& position, int32_t stackpos = 0);
 		static void pushOutfit(lua_State* L, const Outfit_t& outfit);

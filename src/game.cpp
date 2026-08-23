@@ -4521,6 +4521,23 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			return true;
 		}
 
+		if (!damage.defensiveAbilityProcessed) {
+			damage.defensiveAbilityProcessed = true;
+			Pokemon* targetPokemon = target->getPokemon();
+			if (targetPokemon) {
+				Pokemon* sourcePokemon = attacker ? attacker->getPokemon() : nullptr;
+				const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
+					sourcePokemon->getExecutingMove() : nullptr;
+				if (!g_pokemons.executeAbilityBeforeDamage(targetPokemon, attacker, move, damage)) {
+					return false;
+				}
+				healthChange = damage.primary.value + damage.secondary.value;
+				if (healthChange == 0) {
+					return true;
+				}
+			}
+		}
+
 		TextMessage message;
 		message.position = targetPos;
 
