@@ -2859,6 +2859,12 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "addFriendship", LuaScriptInterface::luaPokemonAddFriendship);
 	registerMethod("Pokemon", "getMoves", LuaScriptInterface::luaPokemonGetMoves);
 	registerMethod("Pokemon", "getAbility", LuaScriptInterface::luaPokemonGetAbility);
+	registerMethod("Pokemon", "getHeldItem", LuaScriptInterface::luaPokemonGetHeldItem);
+	registerMethod("Pokemon", "consumeHeldItem", LuaScriptInterface::luaPokemonConsumeHeldItem);
+	registerMethod("Pokemon", "healFromHeldItem", LuaScriptInterface::luaPokemonHealFromHeldItem);
+	registerMethod("Pokemon", "getHeldItemState", LuaScriptInterface::luaPokemonGetHeldItemState);
+	registerMethod("Pokemon", "setHeldItemState", LuaScriptInterface::luaPokemonSetHeldItemState);
+	registerMethod("Pokemon", "clearHeldItemState", LuaScriptInterface::luaPokemonClearHeldItemState);
 	registerMethod("Pokemon", "getAbilityState", LuaScriptInterface::luaPokemonGetAbilityState);
 	registerMethod("Pokemon", "setAbilityState", LuaScriptInterface::luaPokemonSetAbilityState);
 	registerMethod("Pokemon", "clearAbilityState", LuaScriptInterface::luaPokemonClearAbilityState);
@@ -2867,6 +2873,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Pokemon", "useMove", LuaScriptInterface::luaPokemonUseMove);
 	registerMethod("Pokemon", "modifyBattleStatStage", LuaScriptInterface::luaPokemonModifyBattleStatStage);
 	registerMethod("Pokemon", "applyStatusCondition", LuaScriptInterface::luaPokemonApplyStatusCondition);
+	registerMethod("Pokemon", "cureStatusCondition", LuaScriptInterface::luaPokemonCureStatusCondition);
 	registerMethod("Pokemon", "applyFlinch", LuaScriptInterface::luaPokemonApplyFlinch);
 
 	registerMethod("Pokemon", "rename", LuaScriptInterface::luaPokemonRename);
@@ -14671,6 +14678,142 @@ int LuaScriptInterface::luaPokemonGetAbility(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaPokemonGetHeldItem(lua_State* L)
+{
+	// pokemon:getHeldItem()
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	const PokemonHeldItemType* heldItem = pokemon ? g_pokemons.getHeldItemById(pokemon->getHeldItemId()) : nullptr;
+	if (!heldItem) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const ItemType& itemType = Item::items[heldItem->itemId];
+	lua_createtable(L, 0, 5);
+	setField(L, "id", heldItem->itemId);
+	setField(L, "key", heldItem->key);
+	setField(L, "name", itemType.name);
+	setField(L, "description", heldItem->description);
+	pushBoolean(L, heldItem->consumable);
+	lua_setfield(L, -2, "consumable");
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonConsumeHeldItem(lua_State* L)
+{
+	// pokemon:consumeHeldItem()
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, pokemon->consumeHeldItem());
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonHealFromHeldItem(lua_State* L)
+{
+	// pokemon:healFromHeldItem(numerator[, denominator])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	const uint32_t numerator = getNumber<uint32_t>(L, 2);
+	const uint32_t denominator = getNumber<uint32_t>(L, 3, 100);
+	if (!pokemon || numerator == 0 || denominator == 0 || pokemon->getHealth() <= 0) {
+		lua_pushinteger(L, 0);
+		return 1;
+	}
+
+	const int64_t calculatedAmount = std::max<int64_t>(1,
+		(static_cast<int64_t>(pokemon->getMaxHealth()) * numerator) / denominator);
+	CombatDamage damage;
+	damage.primary.type = COMBAT_HEALING;
+	damage.primary.value = static_cast<int32_t>(std::min<int64_t>(calculatedAmount, std::numeric_limits<int32_t>::max()));
+	const int32_t previousHealth = pokemon->getHealth();
+	g_game.combatChangeHealth(pokemon, pokemon, damage);
+	lua_pushinteger(L, std::max<int32_t>(0, pokemon->getHealth() - previousHealth));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonGetHeldItemState(lua_State* L)
+{
+	// pokemon:getHeldItemState(key[, defaultValue])
+	const Pokemon* pokemon = getUserdata<const Pokemon>(L, 1);
+	if (!pokemon) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const PokemonHeldItemStateValue* value = pokemon->getHeldItemState(getString(L, 2));
+	if (!value) {
+		if (lua_gettop(L) >= 3) {
+			lua_pushvalue(L, 3);
+		} else {
+			lua_pushnil(L);
+		}
+		return 1;
+	}
+
+	if (const bool* boolean = std::get_if<bool>(value)) {
+		pushBoolean(L, *boolean);
+	} else if (const double* number = std::get_if<double>(value)) {
+		lua_pushnumber(L, *number);
+	} else {
+		pushString(L, std::get<std::string>(*value));
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonSetHeldItemState(lua_State* L)
+{
+	// pokemon:setHeldItemState(key, value)
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	const std::string key = getString(L, 2);
+	if (key.empty()) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	if (lua_isnil(L, 3)) {
+		pokemon->clearHeldItemState(key);
+	} else if (lua_isboolean(L, 3)) {
+		pokemon->setHeldItemState(key, getBoolean(L, 3));
+	} else if (lua_isnumber(L, 3)) {
+		pokemon->setHeldItemState(key, static_cast<double>(lua_tonumber(L, 3)));
+	} else if (lua_isstring(L, 3)) {
+		pokemon->setHeldItemState(key, getString(L, 3));
+	} else {
+		reportErrorFunc(L, "Held item state only supports boolean, number, string or nil values.");
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonClearHeldItemState(lua_State* L)
+{
+	// pokemon:clearHeldItemState([key])
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	if (!pokemon) {
+		pushBoolean(L, false);
+		return 1;
+	}
+
+	if (lua_gettop(L) >= 2 && !lua_isnil(L, 2)) {
+		pokemon->clearHeldItemState(getString(L, 2));
+	} else {
+		pokemon->clearHeldItemState();
+	}
+	pushBoolean(L, true);
+	return 1;
+}
+
 int LuaScriptInterface::luaPokemonGetAbilityState(lua_State* L)
 {
 	// pokemon:getAbilityState(key[, defaultValue])
@@ -14860,6 +15003,14 @@ int LuaScriptInterface::luaPokemonApplyStatusCondition(lua_State* L)
 
 	Creature* source = lua_gettop(L) >= 4 ? getCreature(L, 4) : nullptr;
 	pushBoolean(L, pokemon->applyStatusCondition(status, getNumber<uint32_t>(L, 3, 15000), source));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonCureStatusCondition(lua_State* L)
+{
+	// pokemon:cureStatusCondition()
+	Pokemon* pokemon = getUserdata<Pokemon>(L, 1);
+	pushBoolean(L, pokemon && pokemon->cureStatusCondition());
 	return 1;
 }
 

@@ -10,6 +10,7 @@
 #include "weapons.h"
 #include "configmanager.h"
 #include "game.h"
+#include "items.h"
 
 #include "pugicast.h"
 
@@ -166,6 +167,10 @@ bool Pokemons::loadFromXml(bool reloading /*= false*/)
 		return false;
 	}
 
+	if (!loadHeldItems()) {
+		return false;
+	}
+
 	if (!loadMoves()) {
 		return false;
 	}
@@ -194,6 +199,103 @@ bool Pokemons::loadFromXml(bool reloading /*= false*/)
 		}
 	}
 
+	return true;
+}
+
+bool Pokemons::loadHeldItems()
+{
+	pugi::xml_document doc;
+	pugi::xml_parse_result result = doc.load_file("data/helditems/helditems.xml");
+	if (!result) {
+		printXMLError("Error - Pokemons::loadHeldItems", "data/helditems/helditems.xml", result);
+		return false;
+	}
+
+	std::map<uint16_t, PokemonHeldItemType> loadedHeldItems;
+	std::unordered_set<std::string> loadedKeys;
+	auto loadedScriptInterface = std::make_unique<LuaScriptInterface>("Held Item Interface");
+	if (!loadedScriptInterface->initState()) {
+		std::cout << "[Error - Pokemons::loadHeldItems] Could not initialize the held item script interface." << std::endl;
+		return false;
+	}
+
+	for (const pugi::xml_node& node : doc.child("heldItems").children("heldItem")) {
+		PokemonHeldItemType heldItem;
+		const uint32_t itemId = node.attribute("itemid").as_uint();
+		heldItem.key = asLowerCaseString(node.attribute("key").as_string());
+		heldItem.description = node.attribute("description").as_string();
+		heldItem.script = node.attribute("script").as_string();
+		heldItem.consumable = node.attribute("consumable").as_bool(false);
+
+		if (itemId == 0 || itemId > std::numeric_limits<uint16_t>::max() || heldItem.key.empty() ||
+				heldItem.description.empty()) {
+			std::cout << "[Error - Pokemons::loadHeldItems] Invalid held item definition for item "
+			          << itemId << '.' << std::endl;
+			return false;
+		}
+
+		heldItem.itemId = static_cast<uint16_t>(itemId);
+		const ItemType& itemType = Item::items[heldItem.itemId];
+		if (itemType.id == 0 || itemType.clientId == 0 || itemType.isContainer() ||
+				itemType.isFluidContainer()) {
+			std::cout << "[Error - Pokemons::loadHeldItems] Invalid held item definition for item "
+			          << itemId << '.' << std::endl;
+			return false;
+		}
+
+		if (loadedHeldItems.find(heldItem.itemId) != loadedHeldItems.end() ||
+				!loadedKeys.emplace(heldItem.key).second) {
+			std::cout << "[Error - Pokemons::loadHeldItems] Duplicate held item id or key for item "
+			          << itemId << '.' << std::endl;
+			return false;
+		}
+
+		if (!heldItem.script.empty()) {
+			const std::string scriptPath = "data/helditems/scripts/" + heldItem.script;
+			if (loadedScriptInterface->loadFile(scriptPath) != 0) {
+				std::cout << "[Error - Pokemons::loadHeldItems] Could not load " << scriptPath << ": "
+				          << loadedScriptInterface->getLastLuaError() << std::endl;
+				return false;
+			}
+
+			heldItem.calculateStatsEvent = loadedScriptInterface->getEvent("onCalculateStats");
+			heldItem.combatEnterEvent = loadedScriptInterface->getEvent("onCombatEnter");
+			heldItem.combatExitEvent = loadedScriptInterface->getEvent("onCombatExit");
+			heldItem.combatPulseEvent = loadedScriptInterface->getEvent("onCombatPulse");
+			heldItem.beforeMoveUseEvent = loadedScriptInterface->getEvent("beforeMoveUse");
+			heldItem.beforeMoveDamageEvent = loadedScriptInterface->getEvent("beforeMoveDamage");
+			heldItem.beforeDamageEvent = loadedScriptInterface->getEvent("beforeDamage");
+			heldItem.afterDamageEvent = loadedScriptInterface->getEvent("afterDamage");
+			heldItem.beforeStatusEvent = loadedScriptInterface->getEvent("beforeStatus");
+			heldItem.afterStatusEvent = loadedScriptInterface->getEvent("afterStatus");
+			heldItem.beforeHealEvent = loadedScriptInterface->getEvent("beforeHeal");
+			heldItem.afterHealEvent = loadedScriptInterface->getEvent("afterHeal");
+			heldItem.knockoutEvent = loadedScriptInterface->getEvent("onKnockout");
+			heldItem.faintEvent = loadedScriptInterface->getEvent("onFaint");
+			heldItem.experienceGainEvent = loadedScriptInterface->getEvent("onExperienceGain");
+			heldItem.evGainEvent = loadedScriptInterface->getEvent("onEVGain");
+			heldItem.friendshipChangeEvent = loadedScriptInterface->getEvent("onFriendshipChange");
+			heldItem.evolutionEvent = loadedScriptInterface->getEvent("onEvolution");
+			if (heldItem.calculateStatsEvent == -1 && heldItem.combatEnterEvent == -1 &&
+					heldItem.combatExitEvent == -1 && heldItem.combatPulseEvent == -1 &&
+					heldItem.beforeMoveUseEvent == -1 && heldItem.beforeMoveDamageEvent == -1 &&
+					heldItem.beforeDamageEvent == -1 && heldItem.afterDamageEvent == -1 &&
+					heldItem.beforeStatusEvent == -1 && heldItem.afterStatusEvent == -1 &&
+					heldItem.beforeHealEvent == -1 && heldItem.afterHealEvent == -1 &&
+					heldItem.knockoutEvent == -1 && heldItem.faintEvent == -1 &&
+					heldItem.experienceGainEvent == -1 && heldItem.evGainEvent == -1 &&
+					heldItem.friendshipChangeEvent == -1 && heldItem.evolutionEvent == -1) {
+				std::cout << "[Error - Pokemons::loadHeldItems] Held item script " << scriptPath
+				          << " does not define a supported event." << std::endl;
+				return false;
+			}
+		}
+
+		loadedHeldItems.emplace(heldItem.itemId, std::move(heldItem));
+	}
+
+	heldItems.swap(loadedHeldItems);
+	heldItemScriptInterface = std::move(loadedScriptInterface);
 	return true;
 }
 
@@ -419,6 +521,12 @@ const PokemonAbilityType* Pokemons::getAbilityByName(const std::string& name) co
 {
 	const auto nameIt = abilityNames.find(asLowerCaseString(name));
 	return nameIt != abilityNames.end() ? getAbilityById(nameIt->second) : nullptr;
+}
+
+const PokemonHeldItemType* Pokemons::getHeldItemById(uint16_t itemId) const
+{
+	const auto it = heldItems.find(itemId);
+	return it != heldItems.end() ? &it->second : nullptr;
 }
 
 bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level)
@@ -1217,6 +1325,577 @@ void Pokemons::executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creat
 	lua_pushinteger(L, move ? move->priority : 0);
 	LuaScriptInterface::pushPokemonMoveFlags(L, move ? move->flags : POKEMON_MOVE_FLAG_NONE);
 	abilityScriptInterface->callVoidFunction(12);
+}
+
+bool Pokemons::prepareHeldItemEvent(Pokemon* owner, int32_t eventId, const char* eventName)
+{
+	if (!heldItemScriptInterface || !owner || eventId == -1 ||
+			!processingHeldItemEvents.emplace(owner).second) {
+		return false;
+	}
+	if (!heldItemScriptInterface->reserveScriptEnv()) {
+		processingHeldItemEvents.erase(owner);
+		std::cout << "[Error - Pokemons::" << eventName << "] Call stack overflow" << std::endl;
+		return false;
+	}
+
+	ScriptEnvironment* env = heldItemScriptInterface->getScriptEnv();
+	env->setScriptId(eventId, heldItemScriptInterface.get());
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	heldItemScriptInterface->pushFunction(eventId);
+	LuaScriptInterface::pushUserdata<Pokemon>(L, owner);
+	LuaScriptInterface::setMetatable(L, -1, "Pokemon");
+	return true;
+}
+
+void Pokemons::finishHeldItemEvent(Pokemon* owner)
+{
+	processingHeldItemEvents.erase(owner);
+}
+
+void Pokemons::callHeldItemVoidFunction(Pokemon* owner, int32_t parameterCount)
+{
+	heldItemScriptInterface->callVoidFunction(parameterCount);
+	finishHeldItemEvent(owner);
+}
+
+PokemonStats_t Pokemons::executeHeldItemCalculateStats(Pokemon* owner, const PokemonStats_t& stats)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || heldItem->calculateStatsEvent == -1 || !heldItemScriptInterface) {
+		return stats;
+	}
+
+	const bool nestedHeldItemEvent = processingHeldItemEvents.find(owner) != processingHeldItemEvents.end();
+	if (nestedHeldItemEvent) {
+		if (!heldItemScriptInterface->reserveScriptEnv()) {
+			std::cout << "[Error - Pokemons::executeHeldItemCalculateStats] Call stack overflow" << std::endl;
+			return stats;
+		}
+		ScriptEnvironment* env = heldItemScriptInterface->getScriptEnv();
+		env->setScriptId(heldItem->calculateStatsEvent, heldItemScriptInterface.get());
+		lua_State* nestedState = heldItemScriptInterface->getLuaState();
+		heldItemScriptInterface->pushFunction(heldItem->calculateStatsEvent);
+		LuaScriptInterface::pushUserdata<Pokemon>(nestedState, owner);
+		LuaScriptInterface::setMetatable(nestedState, -1, "Pokemon");
+	} else if (!prepareHeldItemEvent(owner, heldItem->calculateStatsEvent, "executeHeldItemCalculateStats")) {
+		return stats;
+	}
+
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	lua_createtable(L, 0, 10);
+	LuaScriptInterface::setField(L, "hp", stats.hp);
+	LuaScriptInterface::setField(L, "attack", stats.attack);
+	LuaScriptInterface::setField(L, "defense", stats.defense);
+	LuaScriptInterface::setField(L, "sp_attack", stats.sp_attack);
+	LuaScriptInterface::setField(L, "sp_defense", stats.sp_defense);
+	LuaScriptInterface::setField(L, "speed", stats.speed);
+	LuaScriptInterface::setField(L, "currentHealth", owner->getHealth());
+	LuaScriptInterface::setField(L, "maxHealth", owner->getMaxHealth());
+	LuaScriptInterface::setField(L, "healthPercent", owner->getMaxHealth() > 0 ?
+		(100.0 * owner->getHealth()) / owner->getMaxHealth() : 0.0);
+	LuaScriptInterface::setField(L, "status", owner->getPokemonStatusCondition());
+
+	lua_pushvalue(L, -1);
+	const int32_t statsReference = luaL_ref(L, LUA_REGISTRYINDEX);
+	const bool success = heldItemScriptInterface->protectedCall(L, 2, 0) == 0;
+	if (!success) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	}
+
+	PokemonStats_t result = stats;
+	if (success) {
+		lua_rawgeti(L, LUA_REGISTRYINDEX, statsReference);
+		const auto readStat = [L](const char* field, uint8_t fallback) {
+			lua_getfield(L, -1, field);
+			uint8_t value = fallback;
+			if (lua_isnumber(L, -1)) {
+				const lua_Number number = lua_tonumber(L, -1);
+				if (std::isfinite(number)) {
+					value = static_cast<uint8_t>(std::clamp<lua_Number>(std::floor(number), 1, 255));
+				}
+			}
+			lua_pop(L, 1);
+			return value;
+		};
+		result.hp = readStat("hp", result.hp);
+		result.attack = readStat("attack", result.attack);
+		result.defense = readStat("defense", result.defense);
+		result.sp_attack = readStat("sp_attack", result.sp_attack);
+		result.sp_defense = readStat("sp_defense", result.sp_defense);
+		result.speed = readStat("speed", result.speed);
+		lua_pop(L, 1);
+	}
+	luaL_unref(L, LUA_REGISTRYINDEX, statsReference);
+	heldItemScriptInterface->resetScriptEnv();
+	if (!nestedHeldItemEvent) {
+		finishHeldItemEvent(owner);
+	}
+	return result;
+}
+
+void Pokemons::executeHeldItemCombatEnter(Pokemon* owner, Creature* opponent)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->combatEnterEvent, "executeHeldItemCombatEnter")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (opponent) {
+		LuaScriptInterface::pushUserdata<Creature>(L, opponent);
+		LuaScriptInterface::setCreatureMetatable(L, -1, opponent);
+	} else {
+		lua_pushnil(L);
+	}
+	callHeldItemVoidFunction(owner, 2);
+}
+
+void Pokemons::executeHeldItemCombatExit(Pokemon* owner)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (heldItem && prepareHeldItemEvent(owner, heldItem->combatExitEvent, "executeHeldItemCombatExit")) {
+		callHeldItemVoidFunction(owner, 1);
+	}
+}
+
+void Pokemons::executeHeldItemCombatPulse(Pokemon* owner, uint32_t interval)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->combatPulseEvent, "executeHeldItemCombatPulse")) {
+		return;
+	}
+	lua_pushinteger(heldItemScriptInterface->getLuaState(), interval);
+	callHeldItemVoidFunction(owner, 2);
+}
+
+bool Pokemons::executeHeldItemBeforeMoveUse(Pokemon* owner, Creature* target, const PokemonMoveType& move)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeMoveUseEvent, "executeHeldItemBeforeMoveUse")) {
+		return true;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	pushAbilityMoveContext(L, &move);
+
+	bool accepted = true;
+	if (heldItemScriptInterface->protectedCall(L, 8, 1) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		accepted = !lua_isboolean(L, -1) || LuaScriptInterface::getBoolean(L, -1);
+		lua_pop(L, 1);
+	}
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return accepted;
+}
+
+int32_t Pokemons::executeHeldItemBeforeMoveDamage(Pokemon* owner, Creature* target,
+	const PokemonMoveType& move, int32_t damage)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeMoveDamageEvent, "executeHeldItemBeforeMoveDamage")) {
+		return damage;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, move.id);
+	LuaScriptInterface::pushString(L, move.name);
+	lua_pushinteger(L, move.type);
+	lua_pushinteger(L, move.category);
+	lua_pushinteger(L, damage);
+	lua_pushinteger(L, move.priority);
+	LuaScriptInterface::pushPokemonMoveFlags(L, move.flags);
+
+	int32_t result = damage;
+	if (heldItemScriptInterface->protectedCall(L, 9, 1) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -1) && !LuaScriptInterface::getBoolean(L, -1)) {
+			result = 0;
+		} else if (lua_isnumber(L, -1)) {
+			const lua_Number returnedDamage = lua_tonumber(L, -1);
+			if (std::isfinite(returnedDamage)) {
+				result = static_cast<int32_t>(std::clamp<lua_Number>(returnedDamage, 0, std::numeric_limits<int32_t>::max()));
+			}
+		}
+		lua_pop(L, 1);
+	}
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return result;
+}
+
+bool Pokemons::executeHeldItemBeforeDamage(Pokemon* owner, Creature* source,
+	const PokemonMoveType* move, CombatDamage& damage)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeDamageEvent, "executeHeldItemBeforeDamage")) {
+		return true;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, move ? move->id : 0);
+	LuaScriptInterface::pushString(L, move ? move->name : "");
+	lua_pushinteger(L, move ? move->type : TYPE_NONE);
+	lua_pushinteger(L, move ? move->category : -1);
+	lua_pushinteger(L, damage.primary.value);
+	lua_pushinteger(L, damage.primary.type);
+	lua_pushinteger(L, damage.secondary.value);
+	lua_pushinteger(L, damage.secondary.type);
+	lua_pushinteger(L, damage.origin);
+	LuaScriptInterface::pushBoolean(L, damage.critical);
+	lua_pushinteger(L, move ? move->priority : 0);
+	LuaScriptInterface::pushPokemonMoveFlags(L, move ? move->flags : POKEMON_MOVE_FLAG_NONE);
+
+	bool accepted = true;
+	if (heldItemScriptInterface->protectedCall(L, 14, 2) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -2) && !LuaScriptInterface::getBoolean(L, -2)) {
+			damage.primary.value = 0;
+			damage.secondary.value = 0;
+			damage.defensiveAbilityBlocked = true;
+			accepted = false;
+		} else {
+			const auto readDamage = [L](int32_t index, int32_t currentDamage) {
+				if (!lua_isnumber(L, index)) {
+					return currentDamage;
+				}
+				const lua_Number value = lua_tonumber(L, index);
+				return std::isfinite(value) ? static_cast<int32_t>(std::clamp<lua_Number>(
+					value, 0, std::numeric_limits<int32_t>::max())) : currentDamage;
+			};
+			damage.primary.value = readDamage(-2, damage.primary.value);
+			damage.secondary.value = readDamage(-1, damage.secondary.value);
+		}
+		lua_pop(L, 2);
+	}
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return accepted;
+}
+
+void Pokemons::executeHeldItemAfterDamage(Pokemon* owner, Creature* source, Creature* target,
+	const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterDamageEvent, "executeHeldItemAfterDamage")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, move ? move->id : 0);
+	lua_pushinteger(L, damage.primary.value);
+	lua_pushinteger(L, damage.primary.type);
+	lua_pushinteger(L, damage.secondary.value);
+	lua_pushinteger(L, damage.secondary.type);
+	lua_pushinteger(L, damage.origin);
+	LuaScriptInterface::pushBoolean(L, ownerIsSource);
+	lua_pushinteger(L, move ? move->priority : 0);
+	LuaScriptInterface::pushPokemonMoveFlags(L, move ? move->flags : POKEMON_MOVE_FLAG_NONE);
+	callHeldItemVoidFunction(owner, 12);
+}
+
+bool Pokemons::executeHeldItemBeforeStatus(Pokemon* owner, Creature* source,
+	PokemonStatusCondition_t& status, uint32_t& duration)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeStatusEvent, "executeHeldItemBeforeStatus")) {
+		return true;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, status);
+	lua_pushinteger(L, duration);
+	Pokemon* sourcePokemon = source ? source->getPokemon() : nullptr;
+	const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
+		sourcePokemon->getExecutingMove() : nullptr;
+	pushAbilityMoveContext(L, move);
+
+	bool accepted = true;
+	if (heldItemScriptInterface->protectedCall(L, 10, 2) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -2) && !LuaScriptInterface::getBoolean(L, -2)) {
+			accepted = false;
+		} else if (lua_isnumber(L, -2)) {
+			const int32_t returnedStatus = LuaScriptInterface::getNumber<int32_t>(L, -2);
+			if (returnedStatus >= POKEMON_STATUS_BURN && returnedStatus <= POKEMON_STATUS_CONFUSION) {
+				status = static_cast<PokemonStatusCondition_t>(returnedStatus);
+			}
+		}
+		if (lua_isnumber(L, -1)) {
+			const lua_Number returnedDuration = lua_tonumber(L, -1);
+			if (std::isfinite(returnedDuration)) {
+				duration = static_cast<uint32_t>(std::clamp<lua_Number>(returnedDuration, 1, std::numeric_limits<uint32_t>::max()));
+			}
+		}
+		lua_pop(L, 2);
+	}
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return accepted;
+}
+
+void Pokemons::executeHeldItemAfterStatus(Pokemon* owner, Creature* source, PokemonStatusCondition_t status)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterStatusEvent, "executeHeldItemAfterStatus")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_pushinteger(L, status);
+	callHeldItemVoidFunction(owner, 3);
+}
+
+int32_t Pokemons::executeHeldItemBeforeHeal(Pokemon* owner, Creature* source, Creature* target,
+	const PokemonMoveType* move, int32_t amount, bool ownerIsSource)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeHealEvent, "executeHeldItemBeforeHeal")) {
+		return amount;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	pushAbilityMoveContext(L, move);
+	lua_pushinteger(L, amount);
+	LuaScriptInterface::pushBoolean(L, ownerIsSource);
+
+	int32_t result = amount;
+	if (heldItemScriptInterface->protectedCall(L, 11, 1) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -1) && !LuaScriptInterface::getBoolean(L, -1)) {
+			result = 0;
+		} else if (lua_isnumber(L, -1)) {
+			const lua_Number returnedAmount = lua_tonumber(L, -1);
+			if (std::isfinite(returnedAmount)) {
+				result = static_cast<int32_t>(std::clamp<lua_Number>(returnedAmount, 0, std::numeric_limits<int32_t>::max()));
+			}
+		}
+		lua_pop(L, 1);
+	}
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return result;
+}
+
+void Pokemons::executeHeldItemAfterHeal(Pokemon* owner, Creature* source, Creature* target,
+	const PokemonMoveType* move, int32_t amount, bool ownerIsSource)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterHealEvent, "executeHeldItemAfterHeal")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	pushAbilityMoveContext(L, move);
+	lua_pushinteger(L, amount);
+	LuaScriptInterface::pushBoolean(L, ownerIsSource);
+	callHeldItemVoidFunction(owner, 11);
+}
+
+void Pokemons::executeHeldItemKnockout(Pokemon* owner, Creature* target, const PokemonMoveType* move)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->knockoutEvent, "executeHeldItemKnockout")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	pushAbilityMoveContext(L, move);
+	callHeldItemVoidFunction(owner, 8);
+}
+
+void Pokemons::executeHeldItemFaint(Pokemon* owner, Creature* source, const PokemonMoveType* move)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->faintEvent, "executeHeldItemFaint")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (source) {
+		LuaScriptInterface::pushUserdata<Creature>(L, source);
+		LuaScriptInterface::setCreatureMetatable(L, -1, source);
+	} else {
+		lua_pushnil(L);
+	}
+	pushAbilityMoveContext(L, move);
+	callHeldItemVoidFunction(owner, 8);
+}
+
+uint64_t Pokemons::executeHeldItemExperienceGain(Pokemon* owner, uint64_t experience)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->experienceGainEvent, "executeHeldItemExperienceGain")) {
+		return experience;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	lua_pushnumber(L, static_cast<lua_Number>(experience));
+
+	uint64_t result = experience;
+	if (heldItemScriptInterface->protectedCall(L, 2, 1) != 0) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	} else {
+		if (lua_isboolean(L, -1) && !LuaScriptInterface::getBoolean(L, -1)) {
+			result = 0;
+		} else if (lua_isnumber(L, -1)) {
+			const lua_Number returnedExperience = lua_tonumber(L, -1);
+			if (std::isfinite(returnedExperience)) {
+				if (returnedExperience <= 0) {
+					result = 0;
+				} else if (returnedExperience >= static_cast<lua_Number>(std::numeric_limits<uint64_t>::max())) {
+					result = std::numeric_limits<uint64_t>::max();
+				} else {
+					result = static_cast<uint64_t>(std::floor(returnedExperience));
+				}
+			}
+		}
+		lua_pop(L, 1);
+	}
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return result;
+}
+
+PokemonStats_t Pokemons::executeHeldItemEVGain(Pokemon* owner, const PokemonStats_t& evs)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->evGainEvent, "executeHeldItemEVGain")) {
+		return evs;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	lua_createtable(L, 0, 6);
+	LuaScriptInterface::setField(L, "hp", evs.hp);
+	LuaScriptInterface::setField(L, "attack", evs.attack);
+	LuaScriptInterface::setField(L, "defense", evs.defense);
+	LuaScriptInterface::setField(L, "sp_attack", evs.sp_attack);
+	LuaScriptInterface::setField(L, "sp_defense", evs.sp_defense);
+	LuaScriptInterface::setField(L, "speed", evs.speed);
+	lua_pushvalue(L, -1);
+	const int32_t evReference = luaL_ref(L, LUA_REGISTRYINDEX);
+	const bool success = heldItemScriptInterface->protectedCall(L, 2, 0) == 0;
+	if (!success) {
+		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
+	}
+
+	PokemonStats_t result = evs;
+	if (success) {
+		lua_rawgeti(L, LUA_REGISTRYINDEX, evReference);
+		const auto readEV = [L](const char* field, uint8_t fallback) {
+			lua_getfield(L, -1, field);
+			uint8_t value = fallback;
+			if (lua_isnumber(L, -1)) {
+				const lua_Number number = lua_tonumber(L, -1);
+				if (std::isfinite(number)) {
+					value = static_cast<uint8_t>(std::clamp<lua_Number>(std::floor(number), 0, 255));
+				}
+			}
+			lua_pop(L, 1);
+			return value;
+		};
+		result.hp = readEV("hp", result.hp);
+		result.attack = readEV("attack", result.attack);
+		result.defense = readEV("defense", result.defense);
+		result.sp_attack = readEV("sp_attack", result.sp_attack);
+		result.sp_defense = readEV("sp_defense", result.sp_defense);
+		result.speed = readEV("speed", result.speed);
+		lua_pop(L, 1);
+	}
+	luaL_unref(L, LUA_REGISTRYINDEX, evReference);
+	heldItemScriptInterface->resetScriptEnv();
+	finishHeldItemEvent(owner);
+	return result;
+}
+
+void Pokemons::executeHeldItemFriendshipChange(Pokemon* owner, uint8_t oldValue, uint8_t newValue, int32_t delta)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->friendshipChangeEvent, "executeHeldItemFriendshipChange")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	lua_pushinteger(L, oldValue);
+	lua_pushinteger(L, newValue);
+	lua_pushinteger(L, delta);
+	callHeldItemVoidFunction(owner, 4);
+}
+
+void Pokemons::executeHeldItemEvolution(Pokemon* owner, EvolveTypes_t type, uint32_t requirement)
+{
+	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->evolutionEvent, "executeHeldItemEvolution")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	lua_pushinteger(L, type);
+	lua_pushinteger(L, requirement);
+	callHeldItemVoidFunction(owner, 3);
 }
 
 void Pokemons::executeAbilityKnockout(Pokemon* owner, Creature* target, const PokemonMoveType* move)

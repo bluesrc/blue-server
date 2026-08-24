@@ -3462,6 +3462,15 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	msg.addString(ability ? ability->name : "");
 	msg.addString(ability ? ability->description : "");
 
+	const PokemonHeldItemType* heldItem = g_pokemons.getHeldItemById(info.heldItemId);
+	const ItemType& heldItemType = Item::items[info.heldItemId];
+	const bool hasHeldItem = info.heldItemId != 0 && heldItemType.id != 0;
+	msg.add<uint16_t>(hasHeldItem ? info.heldItemId : 0);
+	msg.add<uint16_t>(hasHeldItem ? heldItemType.clientId : 0);
+	msg.addString(hasHeldItem ? heldItemType.name : "");
+	msg.addString(heldItem ? heldItem->description : "");
+	msg.add<bool>(heldItem != nullptr);
+
 	writeToOutputBuffer(msg);
 }
 

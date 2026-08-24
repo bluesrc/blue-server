@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<heldItems>
+	<heldItem itemid="2674" key="sitrus_berry"
+		description="Test Sitrus Berry. Restores 25% HP at half health or below."
+		script="sitrus_berry.lua" consumable="true" />
+
+	<!--
+	Register only real held-item assets here. Example:
+	<heldItem itemid="12345" key="held_item_key" description="Held item description."
+		script="held_item.lua" consumable="true" />
+	-->
+</heldItems>

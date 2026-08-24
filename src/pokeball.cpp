@@ -164,6 +164,7 @@ PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
 	pInfo.gender = (PokemonGenders_t)pokemon->getGender();
 	pInfo.shiny = pokemon->isShiny();
 	pInfo.abilityId = pokemon->getAbilityId();
+	pInfo.heldItemId = pokemon->getHeldItemId();
 	pInfo.moves = pokemon->getMoves();
 
 	return pInfo;

@@ -17,6 +17,7 @@
 #include "iologindata.h"
 #include "iomarket.h"
 #include "items.h"
+#include "pokeball.h"
 #include "pokemon.h"
 #include "movement.h"
 #include "scheduler.h"
@@ -4445,10 +4446,18 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			if (sourcePokemon) {
 				amount = g_pokemons.executeAbilityBeforeHeal(
 					sourcePokemon, attacker, target, move, amount, true);
+				if (amount > 0) {
+					amount = g_pokemons.executeHeldItemBeforeHeal(
+						sourcePokemon, attacker, target, move, amount, true);
+				}
 			}
 			if (amount > 0 && targetPokemon && targetPokemon != sourcePokemon) {
 				amount = g_pokemons.executeAbilityBeforeHeal(
 					targetPokemon, attacker, target, move, amount, false);
+				if (amount > 0) {
+					amount = g_pokemons.executeHeldItemBeforeHeal(
+						targetPokemon, attacker, target, move, amount, false);
+				}
 			}
 			damage.primary.value = amount;
 			if (amount == 0) {
@@ -4527,9 +4536,25 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			}
 			Creature* currentTarget = getCreatureByID(targetId);
 			Creature* currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+			sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
+			if (sourcePokemon) {
+				g_pokemons.executeHeldItemAfterHeal(
+					sourcePokemon, currentSource, currentTarget, move, realHealthChange, true);
+			}
+			currentTarget = getCreatureByID(targetId);
+			currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+			sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
 			Pokemon* targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
 			if (targetPokemon && targetPokemon != sourcePokemon) {
 				g_pokemons.executeAbilityAfterHeal(
+					targetPokemon, currentSource, currentTarget, move, realHealthChange, false);
+			}
+			currentTarget = getCreatureByID(targetId);
+			currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+			sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
+			targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
+			if (targetPokemon && targetPokemon != sourcePokemon) {
+				g_pokemons.executeHeldItemAfterHeal(
 					targetPokemon, currentSource, currentTarget, move, realHealthChange, false);
 			}
 		}
@@ -4569,6 +4594,9 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 				const PokemonMoveType* move = sourcePokemon && sourcePokemon->isExecutingPokemonMove() ?
 					sourcePokemon->getExecutingMove() : nullptr;
 				if (!g_pokemons.executeAbilityBeforeDamage(targetPokemon, attacker, move, damage)) {
+					return false;
+				}
+				if (!g_pokemons.executeHeldItemBeforeDamage(targetPokemon, attacker, move, damage)) {
 					return false;
 				}
 				healthChange = damage.primary.value + damage.secondary.value;
@@ -4764,11 +4792,28 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		if (sourcePokemon) {
 			g_pokemons.executeAbilityAfterDamage(sourcePokemon, attacker, target, move, damage, true);
 		}
+
 		Creature* currentTarget = getCreatureByID(targetId);
 		Creature* currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+		sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
+		if (sourcePokemon) {
+			g_pokemons.executeHeldItemAfterDamage(sourcePokemon, currentSource, currentTarget, move, damage, true);
+		}
+
+		currentTarget = getCreatureByID(targetId);
+		currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+		sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
 		Pokemon* targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
 		if (targetPokemon && targetPokemon != sourcePokemon) {
 			g_pokemons.executeAbilityAfterDamage(targetPokemon, currentSource, currentTarget, move, damage, false);
+		}
+
+		currentTarget = getCreatureByID(targetId);
+		currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+		sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
+		targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
+		if (targetPokemon && targetPokemon != sourcePokemon) {
+			g_pokemons.executeHeldItemAfterDamage(targetPokemon, currentSource, currentTarget, move, damage, false);
 		}
 		if (targetFainted) {
 			currentTarget = getCreatureByID(targetId);
@@ -4777,9 +4822,24 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 			targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
 			if (sourcePokemon && currentSource != currentTarget) {
 				g_pokemons.executeAbilityKnockout(sourcePokemon, currentTarget, move);
+				currentTarget = getCreatureByID(targetId);
+				currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+				sourcePokemon = currentSource ? currentSource->getPokemon() : nullptr;
+				if (sourcePokemon && currentSource != currentTarget) {
+					g_pokemons.executeHeldItemKnockout(sourcePokemon, currentTarget, move);
+				}
 			}
+			currentTarget = getCreatureByID(targetId);
+			currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+			targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
 			if (targetPokemon) {
 				g_pokemons.executeAbilityFaint(targetPokemon, currentSource, move);
+				currentTarget = getCreatureByID(targetId);
+				currentSource = sourceId != 0 ? getCreatureByID(sourceId) : nullptr;
+				targetPokemon = currentTarget ? currentTarget->getPokemon() : nullptr;
+				if (targetPokemon) {
+					g_pokemons.executeHeldItemFaint(targetPokemon, currentSource, move);
+				}
 			}
 		}
 	}
@@ -5976,6 +6036,7 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	static constexpr uint8_t PLAYER_TRADE_EXTENDED_OPCODE = 74;
 	static constexpr uint8_t PLAYER_BACKPACK_EXTENDED_OPCODE = 75;
 	static constexpr uint8_t POKEMON_MOVE_SLOTS_EXTENDED_OPCODE = 76;
+	static constexpr uint8_t POKEMON_HELD_ITEM_EXTENDED_OPCODE = 77;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
 	const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
@@ -6048,6 +6109,45 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 			static_cast<uint16_t>(values[3]), static_cast<uint16_t>(values[4])
 		};
 		player->setPokemonMoveSlots(static_cast<uint16_t>(values[0]), moveIds);
+		return;
+	}
+
+	if (opcode == POKEMON_HELD_ITEM_EXTENDED_OPCODE) {
+		std::vector<std::string> parts;
+		size_t start = 0;
+		while (start <= buffer.size()) {
+			const size_t separator = buffer.find(';', start);
+			parts.emplace_back(buffer.substr(start, separator == std::string::npos ? std::string::npos : separator - start));
+			if (separator == std::string::npos) {
+				break;
+			}
+			start = separator + 1;
+		}
+
+		uint64_t inventorySlot = 0;
+		if (parts.size() == 2 && parts[0] == "R" && parseUnsigned(parts[1], inventorySlot) &&
+				inventorySlot <= UINT16_MAX) {
+			playerRemovePokemonHeldItem(player, static_cast<uint16_t>(inventorySlot));
+			return;
+		}
+
+		if (parts.size() == 7 && parts[0] == "E" && parseUnsigned(parts[1], inventorySlot) &&
+				inventorySlot <= UINT16_MAX) {
+			uint64_t x = 0;
+			uint64_t y = 0;
+			uint64_t z = 0;
+			uint64_t stackPos = 0;
+			uint64_t spriteId = 0;
+			if (parseUnsigned(parts[2], x) && x <= UINT16_MAX &&
+					parseUnsigned(parts[3], y) && y <= UINT16_MAX &&
+					parseUnsigned(parts[4], z) && z <= UINT8_MAX &&
+					parseUnsigned(parts[5], stackPos) && stackPos <= UINT8_MAX &&
+					parseUnsigned(parts[6], spriteId) && spriteId <= UINT16_MAX) {
+				playerEquipPokemonHeldItem(player, static_cast<uint16_t>(inventorySlot),
+					Position(static_cast<uint16_t>(x), static_cast<uint16_t>(y), static_cast<uint8_t>(z)),
+					static_cast<uint8_t>(stackPos), static_cast<uint16_t>(spriteId));
+			}
+		}
 		return;
 	}
 
@@ -6132,6 +6232,131 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	for (CreatureEvent* creatureEvent : player->getCreatureEvents(CREATURE_EVENT_EXTENDED_OPCODE)) {
 		creatureEvent->executeExtendedOpcode(player, opcode, buffer);
 	}
+}
+
+void Game::playerEquipPokemonHeldItem(Player* player, uint16_t inventorySlot, const Position& fromPos,
+		uint8_t fromStackPos, uint16_t spriteId)
+{
+	if (!player || inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
+		return;
+	}
+	if (player->hasCondition(CONDITION_INFIGHT) && player->getZone() != ZONE_PROTECTION) {
+		player->sendCancelMessage("You cannot change held items while in combat outside a protection zone.");
+		return;
+	}
+	if (player->isTradeSessionActive()) {
+		player->sendCancelMessage("You cannot change held items during a trade.");
+		return;
+	}
+
+	Item* pokeballItem = player->getInventoryItem(static_cast<slots_t>(inventorySlot));
+	Pokeball* pokeball = pokeballItem ? pokeballItem->getPokeball() : nullptr;
+	Thing* sourceThing = internalGetThing(player, fromPos, fromStackPos, spriteId, STACKPOS_MOVE);
+	Item* sourceItem = sourceThing ? sourceThing->getItem() : nullptr;
+	if (!pokeball || !sourceItem || sourceItem->getTopParent() != player || sourceItem->getPokeball()) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
+	const ItemType& sourceType = Item::items[sourceItem->getID()];
+	const PokemonHeldItemType* heldItem = g_pokemons.getHeldItemById(sourceItem->getID());
+	if (sourceType.clientId != spriteId || !heldItem || !sourceItem->hasMarketAttributes()) {
+		player->sendCancelMessage("This item cannot be held by a Pokemon.");
+		return;
+	}
+
+	PokemonInfo_t info = pokeball->getPokemonInfo();
+	const uint16_t newHeldItemId = sourceItem->getID();
+	if (info.heldItemId == newHeldItemId) {
+		return;
+	}
+
+	Cylinder* sourceParent = sourceItem->getParent();
+	const int32_t sourceIndex = sourceParent ? sourceParent->getThingIndex(sourceItem) : -1;
+	if (!sourceParent || sourceIndex < 0) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
+	Container staging(ITEM_BAG, 1);
+	Item* stagedItem = nullptr;
+	ReturnValue ret = internalMoveItem(sourceParent, &staging, INDEX_WHEREEVER, sourceItem, 1,
+		&stagedItem, FLAG_NOLIMIT | FLAG_IGNOREAUTOSTACK);
+	if (ret != RETURNVALUE_NOERROR || !stagedItem) {
+		player->sendCancelMessage(ret);
+		return;
+	}
+
+	if (info.heldItemId != 0) {
+		Item* previousItem = Item::CreateItem(info.heldItemId, 1);
+		if (!previousItem) {
+			internalMoveItem(&staging, sourceParent, sourceIndex, stagedItem, 1, nullptr, FLAG_NOLIMIT);
+			player->sendCancelMessage("The current held item is invalid and cannot be returned.");
+			return;
+		}
+
+		ret = internalPlayerAddItem(player, previousItem, false);
+		if (ret != RETURNVALUE_NOERROR) {
+			ReleaseItem(previousItem);
+			internalMoveItem(&staging, sourceParent, sourceIndex, stagedItem, 1, nullptr, FLAG_NOLIMIT);
+			player->sendCancelMessage(ret);
+			return;
+		}
+	}
+
+	internalRemoveItem(stagedItem, 1);
+	info.heldItemId = newHeldItemId;
+	pokeball->setPokemonInfo(info);
+	if (Pokemon* pokemon = pokeball->getPokemon()) {
+		pokemon->setHeldItemId(newHeldItemId);
+	}
+	player->updatePokemonInfo(pokeball);
+}
+
+void Game::playerRemovePokemonHeldItem(Player* player, uint16_t inventorySlot)
+{
+	if (!player || inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
+		return;
+	}
+	if (player->hasCondition(CONDITION_INFIGHT) && player->getZone() != ZONE_PROTECTION) {
+		player->sendCancelMessage("You cannot change held items while in combat outside a protection zone.");
+		return;
+	}
+	if (player->isTradeSessionActive()) {
+		player->sendCancelMessage("You cannot change held items during a trade.");
+		return;
+	}
+
+	Item* pokeballItem = player->getInventoryItem(static_cast<slots_t>(inventorySlot));
+	Pokeball* pokeball = pokeballItem ? pokeballItem->getPokeball() : nullptr;
+	if (!pokeball) {
+		return;
+	}
+
+	PokemonInfo_t info = pokeball->getPokemonInfo();
+	if (info.heldItemId == 0) {
+		return;
+	}
+
+	Item* heldItem = Item::CreateItem(info.heldItemId, 1);
+	if (!heldItem) {
+		player->sendCancelMessage("The current held item is invalid and cannot be returned.");
+		return;
+	}
+
+	const ReturnValue ret = internalPlayerAddItem(player, heldItem, false);
+	if (ret != RETURNVALUE_NOERROR) {
+		ReleaseItem(heldItem);
+		player->sendCancelMessage(ret);
+		return;
+	}
+
+	info.heldItemId = 0;
+	pokeball->setPokemonInfo(info);
+	if (Pokemon* pokemon = pokeball->getPokemon()) {
+		pokemon->setHeldItemId(0);
+	}
+	player->updatePokemonInfo(pokeball);
 }
 
 std::vector<Item*> Game::getMarketItemList(uint16_t wareId, uint16_t sufficientCount, const Player& player)
