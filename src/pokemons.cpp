@@ -263,6 +263,7 @@ bool Pokemons::loadHeldItems()
 			heldItem.combatExitEvent = loadedScriptInterface->getEvent("onCombatExit");
 			heldItem.combatPulseEvent = loadedScriptInterface->getEvent("onCombatPulse");
 			heldItem.beforeMoveUseEvent = loadedScriptInterface->getEvent("beforeMoveUse");
+			heldItem.afterMoveUseEvent = loadedScriptInterface->getEvent("afterMoveUse");
 			heldItem.beforeMoveDamageEvent = loadedScriptInterface->getEvent("beforeMoveDamage");
 			heldItem.beforeDamageEvent = loadedScriptInterface->getEvent("beforeDamage");
 			heldItem.afterDamageEvent = loadedScriptInterface->getEvent("afterDamage");
@@ -278,7 +279,8 @@ bool Pokemons::loadHeldItems()
 			heldItem.evolutionEvent = loadedScriptInterface->getEvent("onEvolution");
 			if (heldItem.calculateStatsEvent == -1 && heldItem.combatEnterEvent == -1 &&
 					heldItem.combatExitEvent == -1 && heldItem.combatPulseEvent == -1 &&
-					heldItem.beforeMoveUseEvent == -1 && heldItem.beforeMoveDamageEvent == -1 &&
+					heldItem.beforeMoveUseEvent == -1 && heldItem.afterMoveUseEvent == -1 &&
+					heldItem.beforeMoveDamageEvent == -1 &&
 					heldItem.beforeDamageEvent == -1 && heldItem.afterDamageEvent == -1 &&
 					heldItem.beforeStatusEvent == -1 && heldItem.afterStatusEvent == -1 &&
 					heldItem.beforeHealEvent == -1 && heldItem.afterHealEvent == -1 &&
@@ -1327,6 +1329,12 @@ void Pokemons::executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creat
 	abilityScriptInterface->callVoidFunction(12);
 }
 
+const PokemonHeldItemType* Pokemons::getHeldItemForEvent(const Pokemon* owner) const
+{
+	return owner && owner->isHeldItemEffectActive() ?
+		getHeldItemById(owner->getEffectiveHeldItemId()) : nullptr;
+}
+
 bool Pokemons::prepareHeldItemEvent(Pokemon* owner, int32_t eventId, const char* eventName)
 {
 	if (!heldItemScriptInterface || !owner || eventId == -1 ||
@@ -1361,7 +1369,7 @@ void Pokemons::callHeldItemVoidFunction(Pokemon* owner, int32_t parameterCount)
 
 PokemonStats_t Pokemons::executeHeldItemCalculateStats(Pokemon* owner, const PokemonStats_t& stats)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || heldItem->calculateStatsEvent == -1 || !heldItemScriptInterface) {
 		return stats;
 	}
@@ -1436,7 +1444,7 @@ PokemonStats_t Pokemons::executeHeldItemCalculateStats(Pokemon* owner, const Pok
 
 void Pokemons::executeHeldItemCombatEnter(Pokemon* owner, Creature* opponent)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->combatEnterEvent, "executeHeldItemCombatEnter")) {
 		return;
 	}
@@ -1452,7 +1460,7 @@ void Pokemons::executeHeldItemCombatEnter(Pokemon* owner, Creature* opponent)
 
 void Pokemons::executeHeldItemCombatExit(Pokemon* owner)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (heldItem && prepareHeldItemEvent(owner, heldItem->combatExitEvent, "executeHeldItemCombatExit")) {
 		callHeldItemVoidFunction(owner, 1);
 	}
@@ -1460,7 +1468,7 @@ void Pokemons::executeHeldItemCombatExit(Pokemon* owner)
 
 void Pokemons::executeHeldItemCombatPulse(Pokemon* owner, uint32_t interval)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->combatPulseEvent, "executeHeldItemCombatPulse")) {
 		return;
 	}
@@ -1470,7 +1478,7 @@ void Pokemons::executeHeldItemCombatPulse(Pokemon* owner, uint32_t interval)
 
 bool Pokemons::executeHeldItemBeforeMoveUse(Pokemon* owner, Creature* target, const PokemonMoveType& move)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeMoveUseEvent, "executeHeldItemBeforeMoveUse")) {
 		return true;
 	}
@@ -1495,10 +1503,29 @@ bool Pokemons::executeHeldItemBeforeMoveUse(Pokemon* owner, Creature* target, co
 	return accepted;
 }
 
+void Pokemons::executeHeldItemAfterMoveUse(Pokemon* owner, Creature* target,
+	const PokemonMoveType& move, bool success)
+{
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
+	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterMoveUseEvent, "executeHeldItemAfterMoveUse")) {
+		return;
+	}
+	lua_State* L = heldItemScriptInterface->getLuaState();
+	if (target) {
+		LuaScriptInterface::pushUserdata<Creature>(L, target);
+		LuaScriptInterface::setCreatureMetatable(L, -1, target);
+	} else {
+		lua_pushnil(L);
+	}
+	pushAbilityMoveContext(L, &move);
+	LuaScriptInterface::pushBoolean(L, success);
+	callHeldItemVoidFunction(owner, 9);
+}
+
 int32_t Pokemons::executeHeldItemBeforeMoveDamage(Pokemon* owner, Creature* target,
 	const PokemonMoveType& move, int32_t damage)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeMoveDamageEvent, "executeHeldItemBeforeMoveDamage")) {
 		return damage;
 	}
@@ -1539,7 +1566,7 @@ int32_t Pokemons::executeHeldItemBeforeMoveDamage(Pokemon* owner, Creature* targ
 bool Pokemons::executeHeldItemBeforeDamage(Pokemon* owner, Creature* source,
 	const PokemonMoveType* move, CombatDamage& damage)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeDamageEvent, "executeHeldItemBeforeDamage")) {
 		return true;
 	}
@@ -1594,7 +1621,7 @@ bool Pokemons::executeHeldItemBeforeDamage(Pokemon* owner, Creature* source,
 void Pokemons::executeHeldItemAfterDamage(Pokemon* owner, Creature* source, Creature* target,
 	const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterDamageEvent, "executeHeldItemAfterDamage")) {
 		return;
 	}
@@ -1626,7 +1653,7 @@ void Pokemons::executeHeldItemAfterDamage(Pokemon* owner, Creature* source, Crea
 bool Pokemons::executeHeldItemBeforeStatus(Pokemon* owner, Creature* source,
 	PokemonStatusCondition_t& status, uint32_t& duration)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeStatusEvent, "executeHeldItemBeforeStatus")) {
 		return true;
 	}
@@ -1671,7 +1698,7 @@ bool Pokemons::executeHeldItemBeforeStatus(Pokemon* owner, Creature* source,
 
 void Pokemons::executeHeldItemAfterStatus(Pokemon* owner, Creature* source, PokemonStatusCondition_t status)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterStatusEvent, "executeHeldItemAfterStatus")) {
 		return;
 	}
@@ -1689,7 +1716,7 @@ void Pokemons::executeHeldItemAfterStatus(Pokemon* owner, Creature* source, Poke
 int32_t Pokemons::executeHeldItemBeforeHeal(Pokemon* owner, Creature* source, Creature* target,
 	const PokemonMoveType* move, int32_t amount, bool ownerIsSource)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->beforeHealEvent, "executeHeldItemBeforeHeal")) {
 		return amount;
 	}
@@ -1732,7 +1759,7 @@ int32_t Pokemons::executeHeldItemBeforeHeal(Pokemon* owner, Creature* source, Cr
 void Pokemons::executeHeldItemAfterHeal(Pokemon* owner, Creature* source, Creature* target,
 	const PokemonMoveType* move, int32_t amount, bool ownerIsSource)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->afterHealEvent, "executeHeldItemAfterHeal")) {
 		return;
 	}
@@ -1757,7 +1784,7 @@ void Pokemons::executeHeldItemAfterHeal(Pokemon* owner, Creature* source, Creatu
 
 void Pokemons::executeHeldItemKnockout(Pokemon* owner, Creature* target, const PokemonMoveType* move)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->knockoutEvent, "executeHeldItemKnockout")) {
 		return;
 	}
@@ -1774,7 +1801,7 @@ void Pokemons::executeHeldItemKnockout(Pokemon* owner, Creature* target, const P
 
 void Pokemons::executeHeldItemFaint(Pokemon* owner, Creature* source, const PokemonMoveType* move)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->faintEvent, "executeHeldItemFaint")) {
 		return;
 	}
@@ -1791,7 +1818,7 @@ void Pokemons::executeHeldItemFaint(Pokemon* owner, Creature* source, const Poke
 
 uint64_t Pokemons::executeHeldItemExperienceGain(Pokemon* owner, uint64_t experience)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->experienceGainEvent, "executeHeldItemExperienceGain")) {
 		return experience;
 	}
@@ -1825,7 +1852,7 @@ uint64_t Pokemons::executeHeldItemExperienceGain(Pokemon* owner, uint64_t experi
 
 PokemonStats_t Pokemons::executeHeldItemEVGain(Pokemon* owner, const PokemonStats_t& evs)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->evGainEvent, "executeHeldItemEVGain")) {
 		return evs;
 	}
@@ -1875,7 +1902,7 @@ PokemonStats_t Pokemons::executeHeldItemEVGain(Pokemon* owner, const PokemonStat
 
 void Pokemons::executeHeldItemFriendshipChange(Pokemon* owner, uint8_t oldValue, uint8_t newValue, int32_t delta)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->friendshipChangeEvent, "executeHeldItemFriendshipChange")) {
 		return;
 	}
@@ -1888,7 +1915,7 @@ void Pokemons::executeHeldItemFriendshipChange(Pokemon* owner, uint8_t oldValue,
 
 void Pokemons::executeHeldItemEvolution(Pokemon* owner, EvolveTypes_t type, uint32_t requirement)
 {
-	const PokemonHeldItemType* heldItem = owner ? getHeldItemById(owner->getHeldItemId()) : nullptr;
+	const PokemonHeldItemType* heldItem = getHeldItemForEvent(owner);
 	if (!heldItem || !prepareHeldItemEvent(owner, heldItem->evolutionEvent, "executeHeldItemEvolution")) {
 		return;
 	}

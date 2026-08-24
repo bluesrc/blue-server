@@ -24,6 +24,10 @@ function beforeMoveUse(owner, target, moveId, moveName, moveType, category,
     return true
 end
 
+function afterMoveUse(owner, target, moveId, moveName, moveType, category,
+        priority, moveFlags, success)
+end
+
 -- Return replacement damage, false to cancel, or nil to preserve it.
 function beforeMoveDamage(owner, target, moveId, moveName, moveType, category,
         damage, priority, moveFlags)
@@ -93,5 +97,23 @@ end
 -- owner:clearHeldItemState()
 
 -- Consumable helpers:
--- local restored = owner:healFromHeldItem(1, 4) -- exact 1/4 max HP
--- if restored > 0 then owner:consumeHeldItem() end
+-- if owner:consumeHeldItem() then
+--     owner:healFromHeldItem(1, 4) -- exact 1/4 max HP
+-- end
+
+-- Battle-only held-item transitions. Persistent Pokeball ownership is not
+-- changed by temporary exchange or theft and is restored on combat exit.
+-- owner:suppressHeldItem(HELD_ITEM_SUPPRESSION_EMBARGO)
+-- owner:unsuppressHeldItem(HELD_ITEM_SUPPRESSION_EMBARGO)
+-- owner:isHeldItemSuppressed() -- any reason
+-- owner:exchangeHeldItemsForBattle(otherPokemon) -- future Trick/Switcheroo
+-- owner:stealHeldItemForBattle(otherPokemon)    -- future Covet/Thief
+-- owner:setTemporaryHeldItem(itemId)
+-- owner:clearTemporaryHeldItem()
+
+-- Consumption and move-lock state are native so Recycle and Choice effects do
+-- not depend on arbitrary script keys.
+-- owner:getConsumedHeldItemId()
+-- owner:restoreConsumedHeldItem()
+-- owner:getHeldItemLockedMoveId()
+-- owner:setHeldItemLockedMoveId(moveId)

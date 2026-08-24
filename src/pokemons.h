@@ -75,6 +75,14 @@ enum PokemonMoveFlag_t : uint32_t {
 	POKEMON_MOVE_FLAG_ESCAPE = 1u << 14,
 };
 
+enum PokemonHeldItemSuppression_t : uint32_t {
+	HELD_ITEM_SUPPRESSION_NONE = 0,
+	HELD_ITEM_SUPPRESSION_ABILITY = 1u << 0,
+	HELD_ITEM_SUPPRESSION_EMBARGO = 1u << 1,
+	HELD_ITEM_SUPPRESSION_MAGIC_ROOM = 1u << 2,
+	HELD_ITEM_SUPPRESSION_REMOVED = 1u << 3,
+};
+
 struct PokemonMoveType {
 	uint16_t id = 0;
 	std::string key;
@@ -159,6 +167,7 @@ struct PokemonHeldItemType {
 	int32_t combatExitEvent = -1;
 	int32_t combatPulseEvent = -1;
 	int32_t beforeMoveUseEvent = -1;
+	int32_t afterMoveUseEvent = -1;
 	int32_t beforeMoveDamageEvent = -1;
 	int32_t beforeDamageEvent = -1;
 	int32_t afterDamageEvent = -1;
@@ -425,6 +434,8 @@ class Pokemons
 		void executeHeldItemCombatExit(Pokemon* owner);
 		void executeHeldItemCombatPulse(Pokemon* owner, uint32_t interval);
 		bool executeHeldItemBeforeMoveUse(Pokemon* owner, Creature* target, const PokemonMoveType& move);
+		void executeHeldItemAfterMoveUse(Pokemon* owner, Creature* target,
+			const PokemonMoveType& move, bool success);
 		int32_t executeHeldItemBeforeMoveDamage(Pokemon* owner, Creature* target,
 			const PokemonMoveType& move, int32_t damage);
 		bool executeHeldItemBeforeDamage(Pokemon* owner, Creature* source,
@@ -459,6 +470,7 @@ class Pokemons
 		bool loadAbilities();
 		bool loadHeldItems();
 		bool loadMoves();
+		const PokemonHeldItemType* getHeldItemForEvent(const Pokemon* owner) const;
 		bool prepareHeldItemEvent(Pokemon* owner, int32_t eventId, const char* eventName);
 		void finishHeldItemEvent(Pokemon* owner);
 		void callHeldItemVoidFunction(Pokemon* owner, int32_t parameterCount);

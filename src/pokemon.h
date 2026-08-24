@@ -44,6 +44,15 @@ struct PokemonBattleModifier {
 using PokemonAbilityStateValue = std::variant<bool, double, std::string>;
 using PokemonHeldItemStateValue = PokemonAbilityStateValue;
 
+struct PokemonHeldItemBattleState {
+	uint16_t temporaryItemId = 0;
+	uint16_t consumedItemId = 0;
+	uint16_t lockedMoveId = 0;
+	uint32_t suppressionReasons = HELD_ITEM_SUPPRESSION_NONE;
+	bool hasTemporaryItem = false;
+	bool consumedTemporaryItem = false;
+};
+
 class Pokemon final : public Creature
 {
 	public:
@@ -208,8 +217,23 @@ class Pokemon final : public Creature
 		bool isShiny() const { return shiny; }
 		uint16_t getAbilityId() const { return abilityId; }
 		uint16_t getHeldItemId() const { return heldItemId; }
+		uint16_t getEffectiveHeldItemId() const;
+		uint16_t getConsumedHeldItemId() const { return heldItemBattleState.consumedItemId; }
+		uint16_t getHeldItemLockedMoveId() const { return heldItemBattleState.lockedMoveId; }
+		uint32_t getHeldItemSuppressionReasons() const { return heldItemBattleState.suppressionReasons; }
+		bool isHeldItemEffectActive() const;
+		bool isHeldItemSuppressed(uint32_t reason = HELD_ITEM_SUPPRESSION_NONE) const;
 		void setHeldItemId(uint16_t itemId);
 		bool consumeHeldItem();
+		int32_t healFromHeldItem(uint32_t numerator, uint32_t denominator = 100);
+		bool restoreConsumedHeldItem();
+		bool suppressHeldItem(uint32_t reason);
+		bool unsuppressHeldItem(uint32_t reason);
+		bool setTemporaryHeldItemId(uint16_t itemId);
+		bool clearTemporaryHeldItem();
+		bool exchangeHeldItemsForBattle(Pokemon* other);
+		bool stealHeldItemForBattle(Pokemon* other);
+		bool setHeldItemLockedMoveId(uint16_t moveId);
 		const PokemonHeldItemStateValue* getHeldItemState(const std::string& key) const;
 		void setHeldItemState(std::string key, PokemonHeldItemStateValue value);
 		bool clearHeldItemState(const std::string& key);
@@ -222,6 +246,7 @@ class Pokemon final : public Creature
 		void clearAbilityState();
 		void refreshAbilityStats(bool preserveHealth = false, bool notify = true);
 		void leaveAbilityCombat();
+		bool isInPokemonCombat() const { return abilityCombatActive; }
 		PokemonStats_t getIvs() { return ivs; }
 		PokemonStats_t getEvs() { return evs; }
 		PokemonNatures_t getNature() const { return nature; }
@@ -310,6 +335,7 @@ class Pokemon final : public Creature
 		std::unordered_map<uint16_t, int64_t> moveCooldowns;
 		std::unordered_map<std::string, PokemonAbilityStateValue> abilityState;
 		std::unordered_map<std::string, PokemonHeldItemStateValue> heldItemState;
+		PokemonHeldItemBattleState heldItemBattleState;
 		uint32_t heldItemCombatPulseElapsed = 0;
 		std::unordered_set<uint32_t> abilityCombatOpponentIds;
 		std::unordered_set<uint32_t> encounteredPokemonIds;
@@ -318,6 +344,8 @@ class Pokemon final : public Creature
 
 		void updateStats(bool preserveHealth = false);
 		void syncPokeball();
+		void resetHeldItemBattleState();
+		void refreshHeldItemTransition();
 		uint8_t changeFriendship(int32_t amount);
 		void markCombatActivity(Creature* opponent);
 		bool canEscapeCombat(const PokemonMoveType& move);

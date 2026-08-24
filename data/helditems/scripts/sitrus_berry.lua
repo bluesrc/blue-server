@@ -4,8 +4,7 @@ function afterDamage(owner, source, target, moveId, primaryDamage, primaryType,
         return
     end
 
-    local restoredHealth = owner:healFromHeldItem(1, 4)
-    if restoredHealth > 0 then
-        owner:consumeHeldItem()
+    if owner:consumeHeldItem() then
+        owner:healFromHeldItem(1, 4)
     end
 end

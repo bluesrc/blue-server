@@ -3366,11 +3366,14 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 			? Pokemon::getExperienceForLevel(pokemonType->info.level_rate, info.level + 1)
 			: currentLevelExperience;
 	}
+	Pokemon* activePokemon = nullptr;
 	if (active && player) {
 		Pokeball* activePokeball = player->getActivePokemon();
-		Pokemon* activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
+		activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
 		if (activePokemon && activePokemon->getID() == info.p_id) {
 			info.stats = activePokemon->getEffectivePokemonStats();
+		} else {
+			activePokemon = nullptr;
 		}
 	}
 
@@ -3462,14 +3465,15 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	msg.addString(ability ? ability->name : "");
 	msg.addString(ability ? ability->description : "");
 
-	const PokemonHeldItemType* heldItem = g_pokemons.getHeldItemById(info.heldItemId);
-	const ItemType& heldItemType = Item::items[info.heldItemId];
-	const bool hasHeldItem = info.heldItemId != 0 && heldItemType.id != 0;
-	msg.add<uint16_t>(hasHeldItem ? info.heldItemId : 0);
+	const uint16_t displayedHeldItemId = activePokemon ? activePokemon->getEffectiveHeldItemId() : info.heldItemId;
+	const PokemonHeldItemType* heldItem = g_pokemons.getHeldItemById(displayedHeldItemId);
+	const ItemType& heldItemType = Item::items[displayedHeldItemId];
+	const bool hasHeldItem = displayedHeldItemId != 0 && heldItemType.id != 0;
+	msg.add<uint16_t>(hasHeldItem ? displayedHeldItemId : 0);
 	msg.add<uint16_t>(hasHeldItem ? heldItemType.clientId : 0);
 	msg.addString(hasHeldItem ? heldItemType.name : "");
 	msg.addString(heldItem ? heldItem->description : "");
-	msg.add<bool>(heldItem != nullptr);
+	msg.add<bool>(heldItem && (!activePokemon || activePokemon->isHeldItemEffectActive()));
 
 	writeToOutputBuffer(msg);
 }

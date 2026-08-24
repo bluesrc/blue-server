@@ -6240,7 +6240,11 @@ void Game::playerEquipPokemonHeldItem(Player* player, uint16_t inventorySlot, co
 	if (!player || inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
 		return;
 	}
-	if (player->hasCondition(CONDITION_INFIGHT) && player->getZone() != ZONE_PROTECTION) {
+	Pokeball* activePokeball = player->getActivePokemon();
+	Pokemon* activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
+	if (player->getZone() != ZONE_PROTECTION &&
+			(player->hasCondition(CONDITION_INFIGHT) || player->isPokemonCombatLocked() ||
+				(activePokemon && activePokemon->isInPokemonCombat()))) {
 		player->sendCancelMessage("You cannot change held items while in combat outside a protection zone.");
 		return;
 	}
@@ -6318,7 +6322,11 @@ void Game::playerRemovePokemonHeldItem(Player* player, uint16_t inventorySlot)
 	if (!player || inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
 		return;
 	}
-	if (player->hasCondition(CONDITION_INFIGHT) && player->getZone() != ZONE_PROTECTION) {
+	Pokeball* activePokeball = player->getActivePokemon();
+	Pokemon* activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
+	if (player->getZone() != ZONE_PROTECTION &&
+			(player->hasCondition(CONDITION_INFIGHT) || player->isPokemonCombatLocked() ||
+				(activePokemon && activePokemon->isInPokemonCombat()))) {
 		player->sendCancelMessage("You cannot change held items while in combat outside a protection zone.");
 		return;
 	}
