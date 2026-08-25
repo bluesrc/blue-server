@@ -752,7 +752,7 @@ void Pokemon::markCombatActivity(Creature* opponent)
 	}
 	lastCombatActivity = now;
 	if (Player* player = master ? master->getPlayer() : nullptr) {
-		player->setPokemonCombatTicks(now + POKEMON_COMBAT_ACTIVITY_TIMEOUT);
+		player->markPokemonCombat(now + POKEMON_COMBAT_ACTIVITY_TIMEOUT);
 	}
 	if (enteringCombat) {
 		abilityCombatActive = true;

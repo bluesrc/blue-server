@@ -292,7 +292,7 @@ void ProtocolGame::logout(bool displayEffect, bool forced)
 					return;
 				}
 
-				if (!player->getTile()->hasFlag(TILESTATE_PROTECTIONZONE) && player->hasCondition(CONDITION_INFIGHT)) {
+				if (!player->getTile()->hasFlag(TILESTATE_PROTECTIONZONE) && player->isCombatLocked()) {
 					player->sendCancelMessage(RETURNVALUE_YOUMAYNOTLOGOUTDURINGAFIGHT);
 					return;
 				}

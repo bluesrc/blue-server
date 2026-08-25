@@ -2842,6 +2842,8 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "hasChaseMode", LuaScriptInterface::luaPlayerHasChaseMode);
 	registerMethod("Player", "hasSecureMode", LuaScriptInterface::luaPlayerHasSecureMode);
 	registerMethod("Player", "getFightMode", LuaScriptInterface::luaPlayerGetFightMode);
+	registerMethod("Player", "isInCombat", LuaScriptInterface::luaPlayerIsInCombat);
+	registerMethod("Player", "isInPokemonCombat", LuaScriptInterface::luaPlayerIsInPokemonCombat);
 
 	registerMethod("Player", "getStoreInbox", LuaScriptInterface::luaPlayerGetStoreInbox);
 
@@ -10861,6 +10863,22 @@ int LuaScriptInterface::luaPlayerGetFightMode(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerIsInCombat(lua_State* L)
+{
+	// player:isInCombat()
+	const Player* player = getUserdata<const Player>(L, 1);
+	pushBoolean(L, player && player->isCombatLocked());
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerIsInPokemonCombat(lua_State* L)
+{
+	// player:isInPokemonCombat()
+	const Player* player = getUserdata<const Player>(L, 1);
+	pushBoolean(L, player && player->isInPokemonCombat());
 	return 1;
 }
 

@@ -1042,6 +1042,8 @@ class LuaScriptInterface
 		static int luaPlayerHasChaseMode(lua_State* L);
 		static int luaPlayerHasSecureMode(lua_State* L);
 		static int luaPlayerGetFightMode(lua_State* L);
+		static int luaPlayerIsInCombat(lua_State* L);
+		static int luaPlayerIsInPokemonCombat(lua_State* L);
 
 		static int luaPlayerGetStoreInbox(lua_State* L);
 

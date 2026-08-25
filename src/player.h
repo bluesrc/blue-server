@@ -1207,13 +1207,9 @@ class Player final : public Creature, public Cylinder
 		}
 
 		bool canTryCatch() const { return tryCatchTicks <= OTSYS_TIME(); }
-		void setPokemonCombatTicks(int64_t time)
-		{
-			if (time > pokemonCombatTicks) {
-				pokemonCombatTicks = time;
-			}
-		}
-		bool isPokemonCombatLocked() const { return pokemonCombatTicks > OTSYS_TIME(); }
+		void markPokemonCombat(int64_t expiresAt);
+		bool isInPokemonCombat() const { return pokemonCombatTicks > OTSYS_TIME(); }
+		bool isCombatLocked() const { return hasCondition(CONDITION_INFIGHT) || isInPokemonCombat(); }
 
 		bool hasActivePokemon() { return activePokemon != nullptr; }
 		Pokeball* getActivePokemon() { return activePokemon; }

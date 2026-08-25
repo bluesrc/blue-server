@@ -395,6 +395,9 @@ uint16_t Player::getClientIcons() const
 			icons |= condition->getIcons();
 		}
 	}
+	if (isInPokemonCombat()) {
+		icons |= ICON_SWORDS;
+	}
 
 	if (pzLocked) {
 		icons |= ICON_REDSWORDS;
@@ -1602,6 +1605,10 @@ uint32_t Player::getNextActionTime() const
 void Player::onThink(uint32_t interval)
 {
 	Creature::onThink(interval);
+	if (pokemonCombatTicks != 0 && pokemonCombatTicks <= OTSYS_TIME()) {
+		pokemonCombatTicks = 0;
+		sendIcons();
+	}
 
 	sendPing();
 
@@ -1628,6 +1635,17 @@ void Player::onThink(uint32_t interval)
 	addOfflineTrainingTime(interval);
 	if (lastStatsTrainingTime != getOfflineTrainingTime() / 60 / 1000) {
 		sendStats();
+	}
+}
+
+void Player::markPokemonCombat(int64_t expiresAt)
+{
+	const bool wasInPokemonCombat = isInPokemonCombat();
+	if (expiresAt > pokemonCombatTicks) {
+		pokemonCombatTicks = expiresAt;
+	}
+	if (!wasInPokemonCombat && isInPokemonCombat()) {
+		sendIcons();
 	}
 }
 
@@ -4856,7 +4874,7 @@ bool Player::setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16
 		sendCancelMessage("Return this Pokemon before changing its active moves.");
 		return false;
 	}
-	if (hasCondition(CONDITION_INFIGHT)) {
+	if (isCombatLocked()) {
 		sendCancelMessage("You cannot change Pokemon moves while in combat.");
 		return false;
 	}
