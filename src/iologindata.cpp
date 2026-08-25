@@ -1067,12 +1067,12 @@ void IOLoginData::updatePremiumTime(uint32_t accountId, time_t endTime)
 bool IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t pokemonUID)
 {
 	Database& db = Database::getInstance();
-	DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `nature`, `friendship`, `combat_friendship_time`, `shiny`, `ability_id`, `held_item_id`,"
+	DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `nature`, `friendship`, `combat_friendship_time`, `shiny`, `ability_id`, `ability_slot`, `held_item_id`, `evolution_seed`, `pending_evolution`,"
 		"`iv_hp`, `iv_attack`, `iv_defense`, `iv_sp_attack`, `iv_sp_defense`, `iv_speed`, `ev_hp`, `ev_attack`, `ev_defense`, `ev_sp_attack`, `ev_sp_defense`, `ev_speed`) VALUES ");
 
 	auto pInfo = pokeball->getPokemonInfo();
 
-	if (!pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
+	if (!pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
 		pokemonUID,
 		playerId,
 		db.escapeString(pInfo.name),
@@ -1086,7 +1086,10 @@ bool IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t po
 		pInfo.combatFriendshipTime,
 		pInfo.shiny,
 		pInfo.abilityId,
+		pInfo.abilitySlot,
 		pInfo.heldItemId,
+		pInfo.evolutionSeed,
+		db.escapeString(pInfo.pendingEvolution),
 		pInfo.ivs.hp,
 		pInfo.ivs.attack,
 		pInfo.ivs.defense,
@@ -1127,7 +1130,7 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 	Database& db = Database::getInstance();
 
 	DBResult_ptr p_result = db.storeQuery(fmt::format(
-		"SELECT `uid`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `nature`, `friendship`, `combat_friendship_time`, `shiny`, `ability_id`, `held_item_id`, "
+		"SELECT `uid`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `nature`, `friendship`, `combat_friendship_time`, `shiny`, `ability_id`, `ability_slot`, `held_item_id`, `evolution_seed`, `pending_evolution`, "
 		"`iv_hp`, `iv_attack`, `iv_defense`, `iv_sp_attack`, `iv_sp_defense`, `iv_speed`, "
 		"`ev_hp`, `ev_attack`, `ev_defense`, `ev_sp_attack`, `ev_sp_defense`, `ev_speed` "
 		"FROM `pokemons` WHERE `uid` = {:d}", pokemonUID));
@@ -1148,7 +1151,10 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 		pInfo.combatFriendshipTime = p_result->getNumber<uint32_t>("combat_friendship_time");
 		pInfo.shiny = p_result->getNumber<bool>("shiny");
 		pInfo.abilityId = p_result->getNumber<uint16_t>("ability_id");
+		pInfo.abilitySlot = p_result->getNumber<uint8_t>("ability_slot");
 		pInfo.heldItemId = p_result->getNumber<uint16_t>("held_item_id");
+		pInfo.evolutionSeed = p_result->getNumber<uint32_t>("evolution_seed");
+		pInfo.pendingEvolution = p_result->getString("pending_evolution");
 
 		pInfo.ivs.hp = p_result->getNumber<uint32_t>("iv_hp");
 		pInfo.ivs.attack = p_result->getNumber<uint32_t>("iv_attack");
@@ -1176,8 +1182,13 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 		}
 
 		auto mType = g_pokemons.getPokemonType(pInfo.name);
-		if (!g_pokemons.isAbilityAvailable(*mType, pInfo.abilityId)) {
-			pInfo.abilityId = g_pokemons.selectAbility(*mType);
+		if (pInfo.abilitySlot == 0) {
+			pInfo.abilitySlot = g_pokemons.getAbilitySlot(*mType, pInfo.abilityId);
+		}
+		pInfo.abilityId = g_pokemons.getAbilityBySlot(*mType, pInfo.abilitySlot);
+		if (pInfo.abilityId == 0) {
+			pInfo.abilitySlot = g_pokemons.selectAbilitySlot(*mType);
+			pInfo.abilityId = g_pokemons.getAbilityBySlot(*mType, pInfo.abilitySlot);
 		}
 		learnPokemonMoves(pInfo, *mType);
 		pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;

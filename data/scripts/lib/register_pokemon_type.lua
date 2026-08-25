@@ -118,18 +118,21 @@ registerPokemonType.abilities = function(mtype, mask)
 		end
 
 		for _, entry in ipairs(mask.abilities) do
-			mtype:addAbility(entry.ability, entry.chance)
+			mtype:addAbility(entry.ability, entry.chance, entry.slot or 0)
 		end
 	end
 end
 
 registerPokemonType.evolution = function(mtype, mask)
+	-- Schema: {trigger, target, item, priority, conditions = {minLevel, friendship,
+	-- gender, time, heldItem, move, partySpecies, statComparison, seedModulo,
+	-- seedMin, seedMax, ability, abilitySlot}}. Legacy type/level fields remain accepted.
 	local evolutions = mask.evolutions or mask.evolution
 	if not evolutions then
 		return
 	end
 
-	if evolutions.type then
+	if evolutions.trigger or evolutions.type then
 		mtype:evolution(evolutions)
 		return
 	end

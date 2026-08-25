@@ -43,9 +43,11 @@ pokemon.abilities = {
 
 pokemon.evolutions = {
 	{
-		type = EVOLVE_LEVEL,
+		trigger = EVOLVE_LEVEL,
 		target = "Wartortle",
-		level = 25
+		conditions = {
+			minLevel = 25
+		}
 	}
 }
 

@@ -44,9 +44,11 @@ pokemon.abilities = {
 
 pokemon.evolutions = {
 	{
-		type = EVOLVE_LEVEL,
+		trigger = EVOLVE_LEVEL,
 		target = "Ivysaur",
-		level = 25
+		conditions = {
+			minLevel = 25
+		}
 	}
 }
 

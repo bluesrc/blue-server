@@ -2223,7 +2223,16 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(EVOLVE_NONE)
 	registerEnum(EVOLVE_LEVEL)
 	registerEnum(EVOLVE_ITEM)
-	registerEnum(EVOLVE_SPECIAL)
+	registerEnum(EVOLVE_TRADE)
+
+	registerEnum(EVOLUTION_TIME_ANY)
+	registerEnum(EVOLUTION_TIME_DAY)
+	registerEnum(EVOLUTION_TIME_NIGHT)
+
+	registerEnum(EVOLUTION_STAT_NONE)
+	registerEnum(EVOLUTION_STAT_ATTACK_GREATER_THAN_DEFENSE)
+	registerEnum(EVOLUTION_STAT_ATTACK_EQUAL_DEFENSE)
+	registerEnum(EVOLUTION_STAT_ATTACK_LESS_THAN_DEFENSE)
 
 	// _G
 	registerGlobalVariable("INDEX_WHEREEVER", INDEX_WHEREEVER);
@@ -11066,13 +11075,8 @@ int LuaScriptInterface::luaPokemonEvolve(lua_State* L)
 		return 1;
 	}
 
-	const EvolveTypes_t type = static_cast<EvolveTypes_t>(getNumber<uint8_t>(L, 2));
-	if (type == EVOLVE_SPECIAL) {
-		const std::string special = lua_isstring(L, 3) ? getString(L, 3) : std::string();
-		pushBoolean(L, pokemon->evolve(type, 0, special));
-	} else {
-		pushBoolean(L, pokemon->evolve(type, getNumber<uint32_t>(L, 3, 0)));
-	}
+	const EvolveTypes_t trigger = static_cast<EvolveTypes_t>(getNumber<uint8_t>(L, 2));
+	pushBoolean(L, pokemon->evolve(trigger, getNumber<uint32_t>(L, 3, 0)));
 	return 1;
 }
 
@@ -14306,11 +14310,18 @@ int LuaScriptInterface::luaPokemonTypeEvolution(lua_State* L)
 
 	PokemonEvolution evolution;
 
-	lua_getfield(L, 2, "type");
+	lua_getfield(L, 2, "trigger");
 	if (lua_isnumber(L, -1)) {
-		evolution.type = static_cast<EvolveTypes_t>(getNumber<uint8_t>(L, -1));
+		evolution.trigger = static_cast<EvolveTypes_t>(getNumber<uint8_t>(L, -1));
 	}
 	lua_pop(L, 1);
+	if (evolution.trigger == EVOLVE_NONE) {
+		lua_getfield(L, 2, "type"); // Backward compatibility.
+		if (lua_isnumber(L, -1)) {
+			evolution.trigger = static_cast<EvolveTypes_t>(getNumber<uint8_t>(L, -1));
+		}
+		lua_pop(L, 1);
+	}
 
 	lua_getfield(L, 2, "target");
 	if (lua_isstring(L, -1)) {
@@ -14318,53 +14329,191 @@ int LuaScriptInterface::luaPokemonTypeEvolution(lua_State* L)
 	}
 	lua_pop(L, 1);
 
-	switch (evolution.type) {
-		case EVOLVE_LEVEL:
-			lua_getfield(L, 2, "level");
-			if (lua_isnumber(L, -1)) {
-				evolution.level = getNumber<uint8_t>(L, -1);
-			}
-			lua_pop(L, 1);
-			break;
+	lua_getfield(L, 2, "priority");
+	if (lua_isnumber(L, -1)) {
+		evolution.priority = getNumber<int16_t>(L, -1);
+	}
+	lua_pop(L, 1);
 
-		case EVOLVE_ITEM: {
-			lua_getfield(L, 2, "item");
-			if (lua_isnumber(L, -1)) {
-				evolution.itemId = getNumber<uint16_t>(L, -1);
-			} else if (lua_isstring(L, -1)) {
-				evolution.itemId = Item::items.getItemIdByName(getString(L, -1));
-			}
-			lua_pop(L, 1);
-
-			if (evolution.itemId == 0) {
-				lua_getfield(L, 2, "itemId");
-				if (lua_isnumber(L, -1)) {
-					evolution.itemId = getNumber<uint16_t>(L, -1);
-				}
-				lua_pop(L, 1);
-			}
-			break;
+	auto readItem = [&](int32_t tableIndex, const char* name, const char* idName, uint16_t& value) {
+		bool specified = false;
+		lua_getfield(L, tableIndex, name);
+		if (lua_isnumber(L, -1)) {
+			specified = true;
+			value = getNumber<uint16_t>(L, -1);
+		} else if (lua_isstring(L, -1)) {
+			specified = true;
+			value = Item::items.getItemIdByName(getString(L, -1));
 		}
-
-		case EVOLVE_SPECIAL:
-			lua_getfield(L, 2, "special");
-			if (lua_isstring(L, -1)) {
-				evolution.special = getString(L, -1);
+		lua_pop(L, 1);
+		if (value == 0 && idName) {
+			lua_getfield(L, tableIndex, idName);
+			if (lua_isnumber(L, -1)) {
+				specified = true;
+				value = getNumber<uint16_t>(L, -1);
 			}
 			lua_pop(L, 1);
-			break;
+		}
+		return !specified || value != 0;
+	};
 
-		case EVOLVE_NONE:
-		default:
-			pushBoolean(L, false);
-			return 1;
+	bool validReferences = true;
+	bool validConditions = true;
+	if (evolution.trigger == EVOLVE_ITEM) {
+		validReferences = readItem(2, "item", "itemId", evolution.triggerItemId);
 	}
 
-	const bool validRequirement =
-		(evolution.type == EVOLVE_LEVEL && evolution.level > 0) ||
-		(evolution.type == EVOLVE_ITEM && evolution.itemId > 0) ||
-		(evolution.type == EVOLVE_SPECIAL && !evolution.special.empty());
-	if (evolution.target.empty() || !validRequirement) {
+	int32_t conditionsIndex = 2;
+	bool hasConditionsTable = false;
+	lua_getfield(L, 2, "conditions");
+	if (lua_istable(L, -1)) {
+		conditionsIndex = lua_gettop(L);
+		hasConditionsTable = true;
+	} else {
+		lua_pop(L, 1);
+	}
+
+	PokemonEvolutionConditions& conditions = evolution.conditions;
+	lua_getfield(L, conditionsIndex, "minLevel");
+	if (lua_isnumber(L, -1)) {
+		conditions.minLevel = getNumber<uint8_t>(L, -1);
+	}
+	lua_pop(L, 1);
+	if (conditions.minLevel == 0) {
+		lua_getfield(L, conditionsIndex, "level");
+		if (lua_isnumber(L, -1)) {
+			conditions.minLevel = getNumber<uint8_t>(L, -1);
+		}
+		lua_pop(L, 1);
+	}
+
+	lua_getfield(L, conditionsIndex, "friendship");
+	if (lua_isnumber(L, -1)) {
+		conditions.friendship = getNumber<uint8_t>(L, -1);
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, conditionsIndex, "gender");
+	if (lua_isnumber(L, -1)) {
+		conditions.gender = static_cast<PokemonGenders_t>(getNumber<uint8_t>(L, -1));
+	} else if (lua_isstring(L, -1)) {
+		const std::string gender = asLowerCaseString(getString(L, -1));
+		if (gender == "male") conditions.gender = GENDER_MALE;
+		else if (gender == "female") conditions.gender = GENDER_FEMALE;
+		else if (gender == "genderless") conditions.gender = GENDER_UNDEFINED;
+		else validConditions = false;
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, conditionsIndex, "time");
+	if (lua_isnumber(L, -1)) {
+		conditions.time = static_cast<EvolutionTime_t>(getNumber<uint8_t>(L, -1));
+	} else if (lua_isstring(L, -1)) {
+		const std::string time = asLowerCaseString(getString(L, -1));
+		if (time == "day") conditions.time = EVOLUTION_TIME_DAY;
+		else if (time == "night") conditions.time = EVOLUTION_TIME_NIGHT;
+		else if (time != "any") validConditions = false;
+	}
+	lua_pop(L, 1);
+
+	validReferences = readItem(conditionsIndex, "heldItem", "heldItemId", conditions.heldItemId) && validReferences;
+
+	lua_getfield(L, conditionsIndex, "move");
+	const bool moveSpecified = lua_isnumber(L, -1) || lua_isstring(L, -1);
+	if (lua_isnumber(L, -1)) {
+		conditions.knownMoveId = getNumber<uint16_t>(L, -1);
+	} else if (lua_isstring(L, -1)) {
+		if (const PokemonMoveType* move = g_pokemons.getMoveByName(getString(L, -1))) {
+			conditions.knownMoveId = move->id;
+		}
+	}
+	lua_pop(L, 1);
+	if (conditions.knownMoveId == 0) {
+		lua_getfield(L, conditionsIndex, "moveId");
+		const bool moveIdSpecified = lua_isnumber(L, -1);
+		if (lua_isnumber(L, -1)) {
+			conditions.knownMoveId = getNumber<uint16_t>(L, -1);
+		}
+		lua_pop(L, 1);
+		if (moveIdSpecified && conditions.knownMoveId == 0) {
+			validReferences = false;
+		}
+	}
+	if ((moveSpecified && conditions.knownMoveId == 0) ||
+			(conditions.knownMoveId != 0 && !g_pokemons.getMoveById(conditions.knownMoveId))) {
+		validReferences = false;
+	}
+
+	lua_getfield(L, conditionsIndex, "partySpecies");
+	if (lua_isstring(L, -1)) {
+		conditions.partySpecies = getString(L, -1);
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, conditionsIndex, "statComparison");
+	if (lua_isnumber(L, -1)) {
+		conditions.statComparison = static_cast<EvolutionStatComparison_t>(getNumber<uint8_t>(L, -1));
+	} else if (lua_isstring(L, -1)) {
+		const std::string comparison = asLowerCaseString(getString(L, -1));
+		if (comparison == "attack>defense" || comparison == "attack_greater_than_defense") {
+			conditions.statComparison = EVOLUTION_STAT_ATTACK_GREATER_THAN_DEFENSE;
+		} else if (comparison == "attack=defense" || comparison == "attack_equal_defense") {
+			conditions.statComparison = EVOLUTION_STAT_ATTACK_EQUAL_DEFENSE;
+		} else if (comparison == "attack<defense" || comparison == "attack_less_than_defense") {
+			conditions.statComparison = EVOLUTION_STAT_ATTACK_LESS_THAN_DEFENSE;
+		} else if (comparison != "none") {
+			validConditions = false;
+		}
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, conditionsIndex, "seedModulo");
+	const bool seedModuloSpecified = lua_isnumber(L, -1);
+	if (lua_isnumber(L, -1)) conditions.seedModulo = getNumber<uint32_t>(L, -1);
+	lua_pop(L, 1);
+	lua_getfield(L, conditionsIndex, "seedMin");
+	const bool seedMinSpecified = lua_isnumber(L, -1);
+	if (lua_isnumber(L, -1)) conditions.seedMin = getNumber<uint32_t>(L, -1);
+	lua_pop(L, 1);
+	lua_getfield(L, conditionsIndex, "seedMax");
+	const bool seedMaxSpecified = lua_isnumber(L, -1);
+	if (lua_isnumber(L, -1)) conditions.seedMax = getNumber<uint32_t>(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, conditionsIndex, "ability");
+	const bool abilitySpecified = lua_isnumber(L, -1) || lua_isstring(L, -1);
+	if (lua_isnumber(L, -1)) {
+		conditions.abilityId = getNumber<uint16_t>(L, -1);
+	} else if (lua_isstring(L, -1)) {
+		if (const PokemonAbilityType* ability = g_pokemons.getAbilityByName(getString(L, -1))) {
+			conditions.abilityId = ability->id;
+		}
+	}
+	lua_pop(L, 1);
+	if (abilitySpecified && conditions.abilityId == 0) {
+		validReferences = false;
+	}
+	if (conditions.abilityId != 0 && !g_pokemons.getAbilityById(conditions.abilityId)) {
+		validReferences = false;
+	}
+	lua_getfield(L, conditionsIndex, "abilitySlot");
+	if (lua_isnumber(L, -1)) conditions.abilitySlot = getNumber<uint8_t>(L, -1);
+	lua_pop(L, 1);
+
+	if (hasConditionsTable) {
+		lua_pop(L, 1);
+	}
+
+	const bool validTrigger = evolution.trigger == EVOLVE_LEVEL || evolution.trigger == EVOLVE_ITEM ||
+		evolution.trigger == EVOLVE_TRADE;
+	const bool seedConfigured = seedModuloSpecified || seedMinSpecified || seedMaxSpecified;
+	const bool validSeed = !seedConfigured || (conditions.seedModulo != 0 &&
+		conditions.seedMin <= conditions.seedMax && conditions.seedMax < conditions.seedModulo);
+	if (evolution.target.empty() || !validTrigger || !validReferences || !validConditions ||
+			(evolution.trigger == EVOLVE_ITEM && evolution.triggerItemId == 0) ||
+			conditions.time > EVOLUTION_TIME_NIGHT || conditions.gender > GENDER_UNDEFINED ||
+			conditions.statComparison > EVOLUTION_STAT_ATTACK_LESS_THAN_DEFENSE ||
+			conditions.abilitySlot > 3 || !validSeed) {
 		pushBoolean(L, false);
 		return 1;
 	}
@@ -14695,14 +14844,15 @@ int LuaScriptInterface::luaPokemonTypeAddLearnMove(lua_State* L)
 
 int LuaScriptInterface::luaPokemonTypeAddAbility(lua_State* L)
 {
-	// pokemonType:addAbility(abilityName, chance)
+	// pokemonType:addAbility(abilityName, chance[, slot])
 	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
 	if (!pokemonType) {
 		lua_pushnil(L);
 		return 1;
 	}
 
-	pushBoolean(L, g_pokemons.addAbility(pokemonType, getString(L, 2), getNumber<uint32_t>(L, 3)));
+	pushBoolean(L, g_pokemons.addAbility(pokemonType, getString(L, 2), getNumber<uint32_t>(L, 3),
+		getNumber<uint8_t>(L, 4, 0)));
 	return 1;
 }
 

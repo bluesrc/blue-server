@@ -211,14 +211,17 @@ class Pokemon final : public Creature
 		bool setLevel(uint8_t level, bool fullHealth = true);
 		uint8_t addExperience(uint64_t experience, bool sendText = false);
 		bool addLevel(bool sendText = false);
-		bool canEvolve(EvolveTypes_t type, uint32_t requirement = 0, const std::string& special = {}) const;
-		bool evolve(EvolveTypes_t type, uint32_t requirement = 0, const std::string& special = {});
+		bool canEvolve(EvolveTypes_t trigger, uint32_t requirement = 0) const;
+		bool evolve(EvolveTypes_t trigger, uint32_t requirement = 0);
 		void applyCreateOptions(const PokemonCreateOptions_t& options, bool fullHealth = true);
 		static uint64_t getExperienceForLevel(LevelRate_t rate, uint8_t level);
 		uint8_t getGender() const { return gender; }
 		bool isShiny() const { return shiny; }
 		uint16_t getAbilityId() const { return abilityId; }
+		uint8_t getAbilitySlot() const { return abilitySlot; }
 		uint16_t getHeldItemId() const { return heldItemId; }
+		uint32_t getEvolutionSeed() const { return evolutionSeed; }
+		const std::string& getPendingEvolution() const { return pendingEvolution; }
 		uint16_t getEffectiveHeldItemId() const;
 		uint16_t getConsumedHeldItemId() const { return heldItemBattleState.consumedItemId; }
 		uint16_t getHeldItemLockedMoveId() const { return heldItemBattleState.lockedMoveId; }
@@ -321,6 +324,9 @@ class Pokemon final : public Creature
 		uint64_t experience = 0;
 		bool shiny = false;
 		uint16_t abilityId = 0;
+		uint8_t abilitySlot = 0;
+		uint32_t evolutionSeed = 0;
+		std::string pendingEvolution;
 		bool executingPokemonMove = false;
 		bool processingPokemonMoveUse = false;
 		bool calculatingAbilityStats = false;
@@ -356,9 +362,11 @@ class Pokemon final : public Creature
 		void processHeldItemCombatPulse(uint32_t interval);
 		void processCombatFriendship(uint32_t interval);
 		void gainEVs(const PokemonStats_t& gainedEVs);
-		const PokemonEvolution* getEligibleEvolution(EvolveTypes_t type, uint32_t requirement,
-			const std::string& special) const;
-		void notifyLevelEvolutionAvailable() const;
+		bool meetsEvolutionConditions(const PokemonEvolutionConditions& conditions) const;
+		bool hasPartySpecies(const std::string& species) const;
+		const PokemonEvolution* getEligibleEvolution(EvolveTypes_t trigger, uint32_t requirement = 0) const;
+		const PokemonEvolution* findPendingEvolutionRule() const;
+		void notifyLevelEvolutionAvailable();
 		void processEncounter(Creature* creature);
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;

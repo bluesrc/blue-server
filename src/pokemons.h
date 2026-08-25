@@ -186,6 +186,7 @@ struct PokemonHeldItemType {
 struct PokemonAbilityOption {
 	uint16_t abilityId = 0;
 	uint32_t chance = 0;
+	uint8_t slot = 0;
 };
 
 struct moveBlock_t {
@@ -220,12 +221,28 @@ struct voiceBlock_t {
 	bool yellText;
 };
 
+struct PokemonEvolutionConditions {
+	uint8_t minLevel = 0;
+	uint8_t friendship = 0;
+	PokemonGenders_t gender = GENDER_NONE;
+	EvolutionTime_t time = EVOLUTION_TIME_ANY;
+	uint16_t heldItemId = 0;
+	uint16_t knownMoveId = 0;
+	std::string partySpecies;
+	EvolutionStatComparison_t statComparison = EVOLUTION_STAT_NONE;
+	uint32_t seedModulo = 0;
+	uint32_t seedMin = 0;
+	uint32_t seedMax = 0;
+	uint16_t abilityId = 0;
+	uint8_t abilitySlot = 0;
+};
+
 struct PokemonEvolution {
-	EvolveTypes_t type = EVOLVE_NONE;
+	EvolveTypes_t trigger = EVOLVE_NONE;
 	std::string target;
-	uint8_t level = 0;
-	uint16_t itemId = 0;
-	std::string special;
+	uint16_t triggerItemId = 0;
+	int16_t priority = 0;
+	PokemonEvolutionConditions conditions;
 };
 
 class PokemonType
@@ -402,8 +419,11 @@ class Pokemons
 		const PokemonAbilityType* getAbilityByName(const std::string& name) const;
 		const PokemonHeldItemType* getHeldItemById(uint16_t itemId) const;
 		bool addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level);
-		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance);
+		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance, uint8_t slot = 0);
 		uint16_t selectAbility(const PokemonType& pokemonType) const;
+		uint8_t selectAbilitySlot(const PokemonType& pokemonType) const;
+		uint16_t getAbilityBySlot(const PokemonType& pokemonType, uint8_t slot) const;
+		uint8_t getAbilitySlot(const PokemonType& pokemonType, uint16_t abilityId) const;
 		bool isAbilityAvailable(const PokemonType& pokemonType, uint16_t abilityId) const;
 		PokemonStats_t executeAbilityCalculateStats(Pokemon* owner, const PokemonStats_t& stats);
 		void executeAbilitySpawn(Pokemon* owner);
@@ -516,7 +536,10 @@ struct PokemonInfo_t
 	uint32_t combatFriendshipTime;
 	bool shiny;
 	uint16_t abilityId {0};
+	uint8_t abilitySlot {0};
 	uint16_t heldItemId {0};
+	uint32_t evolutionSeed {0};
+	std::string pendingEvolution;
 
 	PokemonStats_t stats;
 	PokemonStats_t ivs;

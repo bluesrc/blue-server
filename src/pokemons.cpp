@@ -559,7 +559,7 @@ bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveNam
 	return true;
 }
 
-bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance)
+bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance, uint8_t slot)
 {
 	if (!pokemonType || chance == 0 || chance > 100) {
 		return false;
@@ -582,6 +582,24 @@ bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityNa
 		return false;
 	}
 
+	if (slot == 0) {
+		for (uint8_t candidate = 1; candidate <= 3; ++candidate) {
+			if (std::none_of(abilityOptions.begin(), abilityOptions.end(), [candidate](const PokemonAbilityOption& option) {
+				return option.slot == candidate;
+			})) {
+				slot = candidate;
+				break;
+			}
+		}
+	}
+	if (slot > 3 || std::any_of(abilityOptions.begin(), abilityOptions.end(), [slot](const PokemonAbilityOption& option) {
+		return option.slot == slot;
+	})) {
+		std::cout << "[Warning - Pokemons::addAbility] Invalid or duplicate ability slot for "
+		          << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
 	uint64_t totalChance = chance;
 	for (const PokemonAbilityOption& option : abilityOptions) {
 		totalChance += option.chance;
@@ -592,11 +610,16 @@ bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityNa
 		return false;
 	}
 
-	abilityOptions.push_back({ability->id, chance});
+	abilityOptions.push_back({ability->id, chance, slot});
 	return true;
 }
 
 uint16_t Pokemons::selectAbility(const PokemonType& pokemonType) const
+{
+	return getAbilityBySlot(pokemonType, selectAbilitySlot(pokemonType));
+}
+
+uint8_t Pokemons::selectAbilitySlot(const PokemonType& pokemonType) const
 {
 	uint32_t totalChance = 0;
 	for (const PokemonAbilityOption& option : pokemonType.info.abilities) {
@@ -609,11 +632,25 @@ uint16_t Pokemons::selectAbility(const PokemonType& pokemonType) const
 	uint32_t roll = static_cast<uint32_t>(uniform_random(1, 100));
 	for (const PokemonAbilityOption& option : pokemonType.info.abilities) {
 		if (roll <= option.chance) {
-			return option.abilityId;
+			return option.slot;
 		}
 		roll -= option.chance;
 	}
 	return 0;
+}
+
+uint16_t Pokemons::getAbilityBySlot(const PokemonType& pokemonType, uint8_t slot) const
+{
+	const auto it = std::find_if(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
+		[slot](const PokemonAbilityOption& option) { return option.slot == slot; });
+	return it != pokemonType.info.abilities.end() ? it->abilityId : 0;
+}
+
+uint8_t Pokemons::getAbilitySlot(const PokemonType& pokemonType, uint16_t abilityId) const
+{
+	const auto it = std::find_if(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
+		[abilityId](const PokemonAbilityOption& option) { return option.abilityId == abilityId; });
+	return it != pokemonType.info.abilities.end() ? it->slot : 0;
 }
 
 bool Pokemons::isAbilityAvailable(const PokemonType& pokemonType, uint16_t abilityId) const
