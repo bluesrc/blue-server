@@ -799,7 +799,9 @@ bool IOLoginData::savePlayer(Player* player)
 			if (pokeball)
 			{
 				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
-				savePokemon(player->getGUID(), pokeball, p_uid);
+				if (!savePokemon(player->getGUID(), pokeball, p_uid)) {
+					return false;
+				}
 			}
 		}
 	}
@@ -824,7 +826,9 @@ bool IOLoginData::savePlayer(Player* player)
 			if (pokeball)
 			{
 				auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
-				savePokemon(player->getGUID(), pokeball, p_uid);
+				if (!savePokemon(player->getGUID(), pokeball, p_uid)) {
+					return false;
+				}
 			}
 		}
 	}
@@ -848,7 +852,9 @@ bool IOLoginData::savePlayer(Player* player)
 		if (pokeball)
 		{
 			auto p_uid = boost::get<std::int64_t>(item->getCustomAttribute("p_uid")->value);
-			savePokemon(player->getGUID(), pokeball, p_uid);
+			if (!savePokemon(player->getGUID(), pokeball, p_uid)) {
+				return false;
+			}
 		}
 	}
 
@@ -1058,7 +1064,7 @@ void IOLoginData::updatePremiumTime(uint32_t accountId, time_t endTime)
 	Database::getInstance().executeQuery(fmt::format("UPDATE `accounts` SET `premium_ends_at` = {:d} WHERE `id` = {:d}", endTime, accountId));
 }
 
-void IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t pokemonUID)
+bool IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t pokemonUID)
 {
 	Database& db = Database::getInstance();
 	DBInsert pokemonQuery("INSERT INTO `pokemons` (`uid`, `player_id`, `name`, `health`, `fainted`, `level`, `experience`, `gender`, `nature`, `friendship`, `combat_friendship_time`, `shiny`, `ability_id`, `held_item_id`,"
@@ -1066,7 +1072,7 @@ void IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t po
 
 	auto pInfo = pokeball->getPokemonInfo();
 
-	pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
+	if (!pokemonQuery.addRow(fmt::format("{:d}, {:d}, {:s}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}, {:d}",
 		pokemonUID,
 		playerId,
 		db.escapeString(pInfo.name),
@@ -1093,18 +1099,27 @@ void IOLoginData::savePokemon(uint32_t playerId, Pokeball* pokeball, uint32_t po
 		pInfo.evs.sp_attack,
 		pInfo.evs.sp_defense,
 		pInfo.evs.speed
-		));
+		))) {
+		return false;
+	}
 
-	pokemonQuery.execute();
+	if (!pokemonQuery.execute()) {
+		return false;
+	}
 
 	if (!pInfo.moves.empty()) {
 		DBInsert movesQuery("INSERT INTO `pokemon_moves` (`pokemon_uid`, `move_id`, `active_slot`) VALUES ");
 		for (const PokemonMoveState& move : pInfo.moves) {
 			const std::string activeSlot = move.activeSlot == 0 ? "NULL" : std::to_string(move.activeSlot);
-			movesQuery.addRow(fmt::format("{:d}, {:d}, {:s}", pokemonUID, move.moveId, activeSlot));
+			if (!movesQuery.addRow(fmt::format("{:d}, {:d}, {:s}", pokemonUID, move.moveId, activeSlot))) {
+				return false;
+			}
 		}
-		movesQuery.execute();
+		if (!movesQuery.execute()) {
+			return false;
+		}
 	}
+	return true;
 }
 
 void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)

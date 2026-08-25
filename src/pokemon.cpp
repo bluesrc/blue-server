@@ -407,6 +407,130 @@ bool Pokemon::refreshAvailableMoves()
 	return true;
 }
 
+const PokemonEvolution* Pokemon::getEligibleEvolution(EvolveTypes_t type, uint32_t requirement,
+	const std::string& special) const
+{
+	for (const PokemonEvolution& evolution : mType->info.evolutions) {
+		if (evolution.type != type) {
+			continue;
+		}
+
+		bool eligible = false;
+		switch (type) {
+			case EVOLVE_LEVEL:
+				eligible = evolution.level > 0 && level >= evolution.level;
+				break;
+			case EVOLVE_ITEM:
+				eligible = evolution.itemId > 0 && requirement == evolution.itemId;
+				break;
+			case EVOLVE_SPECIAL:
+				eligible = !evolution.special.empty() && special == evolution.special;
+				break;
+			case EVOLVE_NONE:
+			default:
+				break;
+		}
+
+		if (eligible) {
+			return &evolution;
+		}
+	}
+	return nullptr;
+}
+
+bool Pokemon::canEvolve(EvolveTypes_t type, uint32_t requirement, const std::string& special) const
+{
+	const PokemonEvolution* evolution = getEligibleEvolution(type, requirement, special);
+	if (!evolution) {
+		return false;
+	}
+
+	const PokemonType* evolvedType = g_pokemons.getPokemonType(evolution->target);
+	return evolvedType && evolvedType != mType;
+}
+
+void Pokemon::notifyLevelEvolutionAvailable() const
+{
+	if (!canEvolve(EVOLVE_LEVEL)) {
+		return;
+	}
+
+	Player* player = master ? master->getPlayer() : nullptr;
+	if (!player) {
+		return;
+	}
+
+	player->sendTextMessage(MESSAGE_EVENT_ADVANCE,
+		fmt::format("Your {} can evolve now. Use /evolve when you are ready.", getName()));
+}
+
+bool Pokemon::evolve(EvolveTypes_t type, uint32_t requirement, const std::string& special)
+{
+	const PokemonEvolution* selectedEvolution = getEligibleEvolution(type, requirement, special);
+
+	if (!selectedEvolution) {
+		return false;
+	}
+
+	PokemonType* evolvedType = g_pokemons.getPokemonType(selectedEvolution->target);
+	if (!evolvedType || evolvedType == mType) {
+		return false;
+	}
+
+	PokemonType* previousType = mType;
+	const uint32_t eventRequirement = type == EVOLVE_LEVEL ? selectedEvolution->level : requirement;
+
+	for (const std::string& scriptName : previousType->info.scripts) {
+		unregisterCreatureEvent(scriptName);
+	}
+
+	mType = evolvedType;
+	nameDescription = evolvedType->nameDescription;
+	defaultOutfit = evolvedType->info.outfit;
+	skull = evolvedType->info.skull;
+	internalLight = evolvedType->info.light;
+	hiddenHealth = evolvedType->info.hiddenHealth;
+	abilityState.clear();
+	if (!g_pokemons.isAbilityAvailable(*evolvedType, abilityId)) {
+		abilityId = g_pokemons.selectAbility(*evolvedType);
+	}
+
+	learnAvailableMoves(true);
+	updateStats(true);
+
+	for (const std::string& scriptName : evolvedType->info.scripts) {
+		if (!registerCreatureEvent(scriptName)) {
+			std::cout << "[Warning - Pokemon::evolve] Unknown event name: " << scriptName << std::endl;
+		}
+	}
+
+	if (getTile()) {
+		g_game.internalCreatureChangeOutfit(this, defaultOutfit);
+		g_game.changeSpeed(this, 0);
+		g_game.changeLight(this);
+		g_game.addCreatureHealth(this);
+
+		SpectatorVec spectators;
+		g_game.map.getSpectators(spectators, position, true, true);
+		for (Creature* spectator : spectators) {
+			if (Player* spectatorPlayer = spectator->getPlayer()) {
+				spectatorPlayer->sendUpdateTileCreature(this);
+			}
+		}
+		g_game.addMagicEffect(position, CONST_ME_MAGIC_GREEN);
+	}
+
+	g_pokemons.executeAbilityEvolution(this, type, eventRequirement);
+	g_pokemons.executeHeldItemEvolution(this, type, eventRequirement);
+	syncPokeball();
+
+	if (Player* player = master ? master->getPlayer() : nullptr) {
+		player->sendTextMessage(MESSAGE_EVENT_ADVANCE,
+			fmt::format("Your {} evolved into {}!", previousType->name, evolvedType->name));
+	}
+	return true;
+}
+
 void Pokemon::updateStats(bool preserveHealth)
 {
 	stats = calculatePokemonStats(mType->info.base_stats, level, ivs, evs, nature);
@@ -459,6 +583,8 @@ void Pokemon::syncPokeball()
 	}
 
 	PokemonInfo_t info = pokeball->getPokemonInfo();
+	info.name = mType->name;
+	info.number = mType->info.number;
 	info.health = health;
 	info.maxHealth = healthMax;
 	info.level = level;
@@ -922,7 +1048,6 @@ uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 		changeFriendship(level - previousLevel);
 		learnAvailableMoves(true);
 		updateStats(true);
-		processEvolutionEvent(previousLevel);
 		g_game.changeSpeed(this, 0);
 		g_game.addCreatureHealth(this);
 		g_game.addMagicEffect(this->getPosition(), CONST_ME_HOLYDAMAGE);
@@ -947,6 +1072,7 @@ uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 		if (Player* player = master ? master->getPlayer() : nullptr) {
 			player->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Your {} advanced from Level {:d} to Level {:d}.", getName(), previousLevel, level));
 		}
+		notifyLevelEvolutionAvailable();
 	}
 
 	return level - previousLevel;
@@ -974,7 +1100,6 @@ bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
 	experience = getExperienceForLevel(mType->info.level_rate, level);
 	learnAvailableMoves();
 	updateStats(!fullHealth);
-	processEvolutionEvent(previousLevel);
 	if (fullHealth) {
 		health = healthMax;
 	}
@@ -984,6 +1109,9 @@ bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
 		g_game.addCreatureHealth(this);
 	}
 	syncPokeball();
+	if (level > previousLevel) {
+		notifyLevelEvolutionAvailable();
+	}
 	return true;
 }
 
@@ -1160,16 +1288,6 @@ void Pokemon::onCreatureAppear(Creature* creature, bool isLogin)
 		updateIdleStatus();
 	} else {
 		onCreatureEnter(creature);
-	}
-}
-
-void Pokemon::processEvolutionEvent(uint8_t previousLevel)
-{
-	const auto& evolution = mType->info.evolution;
-	if (evolution.type == EVOLVE_LEVEL && evolution.level > 0 &&
-			previousLevel < evolution.level && level >= evolution.level) {
-		g_pokemons.executeAbilityEvolution(this, evolution.type, evolution.level);
-		g_pokemons.executeHeldItemEvolution(this, evolution.type, evolution.level);
 	}
 }
 

@@ -211,6 +211,8 @@ class Pokemon final : public Creature
 		bool setLevel(uint8_t level, bool fullHealth = true);
 		uint8_t addExperience(uint64_t experience, bool sendText = false);
 		bool addLevel(bool sendText = false);
+		bool canEvolve(EvolveTypes_t type, uint32_t requirement = 0, const std::string& special = {}) const;
+		bool evolve(EvolveTypes_t type, uint32_t requirement = 0, const std::string& special = {});
 		void applyCreateOptions(const PokemonCreateOptions_t& options, bool fullHealth = true);
 		static uint64_t getExperienceForLevel(LevelRate_t rate, uint8_t level);
 		uint8_t getGender() const { return gender; }
@@ -354,7 +356,9 @@ class Pokemon final : public Creature
 		void processHeldItemCombatPulse(uint32_t interval);
 		void processCombatFriendship(uint32_t interval);
 		void gainEVs(const PokemonStats_t& gainedEVs);
-		void processEvolutionEvent(uint8_t previousLevel);
+		const PokemonEvolution* getEligibleEvolution(EvolveTypes_t type, uint32_t requirement,
+			const std::string& special) const;
+		void notifyLevelEvolutionAvailable() const;
 		void processEncounter(Creature* creature);
 		void learnAvailableMoves(bool notify = false);
 		int32_t calculateMoveDamage(const PokemonMoveType& move, const Creature* target) const;

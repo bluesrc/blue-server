@@ -86,6 +86,8 @@ end
 function onFriendshipChange(owner, oldValue, newValue, delta)
 end
 
+-- Called after the owner successfully changes species. Requirement is the
+-- configured level for EVOLVE_LEVEL or the consumed item id for EVOLVE_ITEM.
 function onEvolution(owner, evolutionType, requirement)
 end
 

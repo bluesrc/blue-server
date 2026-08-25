@@ -220,6 +220,14 @@ struct voiceBlock_t {
 	bool yellText;
 };
 
+struct PokemonEvolution {
+	EvolveTypes_t type = EVOLVE_NONE;
+	std::string target;
+	uint8_t level = 0;
+	uint16_t itemId = 0;
+	std::string special;
+};
+
 class PokemonType
 {
 	struct PokemonInfo {
@@ -306,13 +314,7 @@ class PokemonType
 		uint8_t egg_cycles {0};
 		uint8_t base_friendship {0};
 
-		struct evolution {
-			EvolveTypes_t type = EVOLVE_NONE;
-			union {
-				uint8_t level;
-				uint32_t itemId;
-			};
-		}evolution;
+		std::vector<PokemonEvolution> evolutions;
 	};
 
 	public:

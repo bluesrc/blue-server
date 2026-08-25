@@ -124,8 +124,18 @@ registerPokemonType.abilities = function(mtype, mask)
 end
 
 registerPokemonType.evolution = function(mtype, mask)
-	if mask.evolution then
-		mtype:evolution(mask.evolution)
+	local evolutions = mask.evolutions or mask.evolution
+	if not evolutions then
+		return
+	end
+
+	if evolutions.type then
+		mtype:evolution(evolutions)
+		return
+	end
+
+	for _, evolution in ipairs(evolutions) do
+		mtype:evolution(evolution)
 	end
 end
 

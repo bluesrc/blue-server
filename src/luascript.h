@@ -1061,6 +1061,7 @@ class LuaScriptInterface
 		static int luaPokemonSetLevel(lua_State* L);
 		static int luaPokemonAddExperience(lua_State* L);
 		static int luaPokemonAddLevel(lua_State* L);
+		static int luaPokemonEvolve(lua_State* L);
 		static int luaPokemonGetFriendship(lua_State* L);
 		static int luaPokemonAddFriendship(lua_State* L);
 		static int luaPokemonGetMoves(lua_State* L);

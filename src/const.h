@@ -650,7 +650,7 @@ enum EvolveTypes_t : uint8_t {
 	EVOLVE_NONE,
 	EVOLVE_LEVEL,
 	EVOLVE_ITEM,
-	EVOLTE_SPECIAL,
+	EVOLVE_SPECIAL,
 };
 
 static constexpr int32_t CHANNEL_GUILD = 0x00;

@@ -1,57 +1,48 @@
-local mType = Game.createPokemonType("Charmander")
+local mType = Game.createPokemonType("Wartortle")
 local pokemon = {}
-pokemon.description = "a charmander"
+pokemon.description = "a wartortle"
 
-pokemon.number = 4
-pokemon.outfit = { lookType = POKEMON_OUTFIT_NUMBER + pokemon.number }
-pokemon.types = { TYPE_FIRE }
+pokemon.number = 8
+-- Temporary fallback until Wartortle has its own client outfit.
+pokemon.outfit = { lookType = POKEMON_OUTFIT_NUMBER }
+pokemon.types = { TYPE_WATER }
 pokemon.catch_rate = 45
 
 pokemon.level_rate = RATE_MEDIUM_SLOW
-pokemon.base_experience = 65
-pokemon.ev_yield = { speed = 1 }
+pokemon.base_experience = 142
+pokemon.ev_yield = { defense = 1, sp_defense = 1 }
 
-pokemon.height = 0.6
-pokemon.weight = 8.5
+pokemon.height = 1.0
+pokemon.weight = 22.5
 
-pokemon.gender_ratio = { male = 87.5, female = 12.5}
-pokemon.egg_group = { EGG_MONSTER, EGG_DRAGON }
+pokemon.gender_ratio = { male = 87.5, female = 12.5 }
+pokemon.egg_group = { EGG_WATER1, EGG_MONSTER }
 pokemon.egg_cycles = 20
-
 pokemon.base_friendship = 70
 
 pokemon.base_stats = {
-    hp= 39,
-    attack= 52,
-    defense= 43,
-    sp_attack= 60,
-    sp_defense= 50,
-    speed = 65
+	hp = 59,
+	attack = 63,
+	defense = 80,
+	sp_attack = 65,
+	sp_defense = 80,
+	speed = 58
 }
 
 pokemon.learnset = {
-	{move = "scratch", level = 1},
-	{move = "growl", level = 3},
-	{move = "ember", level = 7},
-	{move = "smokescreen", level = 10},
-	{move = "will_o_wisp", level = 13},
-	{move = "bite", level = 15},
+	{move = "tackle", level = 1},
+	{move = "tail_whip", level = 4},
+	{move = "water_gun", level = 7},
+	{move = "withdraw", level = 10},
+	{move = "ice_beam", level = 13},
 }
 
 pokemon.abilities = {
-	{ability = "blaze", chance = 100},
-}
-
-pokemon.evolutions = {
-	{
-		type = EVOLVE_LEVEL,
-		target = "Charmeleon",
-		level = 25
-	}
+	{ability = "torrent", chance = 100},
 }
 
 pokemon.changeTarget = {
-	interval = 4*1000,
+	interval = 4 * 1000,
 	chance = 20
 }
 

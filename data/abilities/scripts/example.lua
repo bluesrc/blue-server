@@ -70,8 +70,8 @@ end
 function onFriendshipChange(owner, oldValue, newValue, delta)
 end
 
--- The current evolution data only defines the trigger type and requirement.
--- For level evolutions this fires once when the configured level is crossed.
+-- Called after the owner successfully changes species. Requirement is the
+-- configured level for EVOLVE_LEVEL or the consumed item id for EVOLVE_ITEM.
 function onEvolution(owner, evolutionType, requirement)
 end
 

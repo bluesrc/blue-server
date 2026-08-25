@@ -41,9 +41,12 @@ pokemon.abilities = {
 	{ability = "torrent", chance = 100},
 }
 
-pokemon.evolution = {
-    type= EVOLVE_LEVEL,
-    level= 25
+pokemon.evolutions = {
+	{
+		type = EVOLVE_LEVEL,
+		target = "Wartortle",
+		level = 25
+	}
 }
 
 pokemon.changeTarget = {

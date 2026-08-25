@@ -42,9 +42,12 @@ pokemon.abilities = {
 	{ability = "overgrow", chance = 100},
 }
 
-pokemon.evolution = {
-    type= EVOLVE_LEVEL,
-    level= 25
+pokemon.evolutions = {
+	{
+		type = EVOLVE_LEVEL,
+		target = "Ivysaur",
+		level = 25
+	}
 }
 
 pokemon.changeTarget = {
