@@ -381,6 +381,7 @@ CREATE TABLE IF NOT EXISTS `pokemons` (
   `combat_friendship_time` int unsigned NOT NULL DEFAULT 0,
   `shiny` boolean NOT NULL DEFAULT 0,
   `ability_id` smallint unsigned NOT NULL DEFAULT 0,
+  `held_item_id` smallint unsigned NOT NULL DEFAULT 0,
   
   `iv_hp` int NOT NULL,
   `iv_attack` int NOT NULL,
@@ -409,7 +410,7 @@ CREATE TABLE IF NOT EXISTS `pokemon_moves` (
   FOREIGN KEY (`pokemon_uid`) REFERENCES `pokemons` (`uid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 
-INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '36'), ('motd_hash', ''), ('motd_num', '0'), ('players_record', '0'), ('pokemon_uid', '0');
+INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '37'), ('motd_hash', ''), ('motd_num', '0'), ('players_record', '0'), ('pokemon_uid', '0');
 
 DROP TRIGGER IF EXISTS `ondelete_players`;
 DROP TRIGGER IF EXISTS `oncreate_guilds`;

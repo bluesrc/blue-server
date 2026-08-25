@@ -543,6 +543,9 @@ class Game
 		void savePokemonUID() const;
 
 	private:
+		void playerEquipPokemonHeldItem(Player* player, uint16_t inventorySlot, const Position& fromPos,
+			uint8_t fromStackPos, uint16_t spriteId);
+		void playerRemovePokemonHeldItem(Player* player, uint16_t inventorySlot);
 		bool playerSayMove(Player* player, SpeakClasses type, const std::string& text);
 		void playerWhisper(Player* player, const std::string& text);
 		bool playerYell(Player* player, const std::string& text);

@@ -75,6 +75,14 @@ enum PokemonMoveFlag_t : uint32_t {
 	POKEMON_MOVE_FLAG_ESCAPE = 1u << 14,
 };
 
+enum PokemonHeldItemSuppression_t : uint32_t {
+	HELD_ITEM_SUPPRESSION_NONE = 0,
+	HELD_ITEM_SUPPRESSION_ABILITY = 1u << 0,
+	HELD_ITEM_SUPPRESSION_EMBARGO = 1u << 1,
+	HELD_ITEM_SUPPRESSION_MAGIC_ROOM = 1u << 2,
+	HELD_ITEM_SUPPRESSION_REMOVED = 1u << 3,
+};
+
 struct PokemonMoveType {
 	uint16_t id = 0;
 	std::string key;
@@ -146,6 +154,33 @@ struct PokemonAbilityType {
 	int32_t faintEvent = -1;
 	int32_t beforeHealEvent = -1;
 	int32_t afterHealEvent = -1;
+};
+
+struct PokemonHeldItemType {
+	uint16_t itemId = 0;
+	std::string key;
+	std::string description;
+	std::string script;
+	bool consumable = false;
+	int32_t calculateStatsEvent = -1;
+	int32_t combatEnterEvent = -1;
+	int32_t combatExitEvent = -1;
+	int32_t combatPulseEvent = -1;
+	int32_t beforeMoveUseEvent = -1;
+	int32_t afterMoveUseEvent = -1;
+	int32_t beforeMoveDamageEvent = -1;
+	int32_t beforeDamageEvent = -1;
+	int32_t afterDamageEvent = -1;
+	int32_t beforeStatusEvent = -1;
+	int32_t afterStatusEvent = -1;
+	int32_t beforeHealEvent = -1;
+	int32_t afterHealEvent = -1;
+	int32_t knockoutEvent = -1;
+	int32_t faintEvent = -1;
+	int32_t experienceGainEvent = -1;
+	int32_t evGainEvent = -1;
+	int32_t friendshipChangeEvent = -1;
+	int32_t evolutionEvent = -1;
 };
 
 struct PokemonAbilityOption {
@@ -363,6 +398,7 @@ class Pokemons
 		const PokemonMoveType* getMoveByName(const std::string& name) const;
 		const PokemonAbilityType* getAbilityById(uint16_t id) const;
 		const PokemonAbilityType* getAbilityByName(const std::string& name) const;
+		const PokemonHeldItemType* getHeldItemById(uint16_t itemId) const;
 		bool addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level);
 		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance);
 		uint16_t selectAbility(const PokemonType& pokemonType) const;
@@ -393,6 +429,32 @@ class Pokemons
 			PokemonStatusCondition_t& status, uint32_t& duration);
 		void executeAbilityAfterDamage(Pokemon* owner, Creature* source, Creature* target,
 			const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource);
+		PokemonStats_t executeHeldItemCalculateStats(Pokemon* owner, const PokemonStats_t& stats);
+		void executeHeldItemCombatEnter(Pokemon* owner, Creature* opponent);
+		void executeHeldItemCombatExit(Pokemon* owner);
+		void executeHeldItemCombatPulse(Pokemon* owner, uint32_t interval);
+		bool executeHeldItemBeforeMoveUse(Pokemon* owner, Creature* target, const PokemonMoveType& move);
+		void executeHeldItemAfterMoveUse(Pokemon* owner, Creature* target,
+			const PokemonMoveType& move, bool success);
+		int32_t executeHeldItemBeforeMoveDamage(Pokemon* owner, Creature* target,
+			const PokemonMoveType& move, int32_t damage);
+		bool executeHeldItemBeforeDamage(Pokemon* owner, Creature* source,
+			const PokemonMoveType* move, CombatDamage& damage);
+		void executeHeldItemAfterDamage(Pokemon* owner, Creature* source, Creature* target,
+			const PokemonMoveType* move, const CombatDamage& damage, bool ownerIsSource);
+		bool executeHeldItemBeforeStatus(Pokemon* owner, Creature* source,
+			PokemonStatusCondition_t& status, uint32_t& duration);
+		void executeHeldItemAfterStatus(Pokemon* owner, Creature* source, PokemonStatusCondition_t status);
+		int32_t executeHeldItemBeforeHeal(Pokemon* owner, Creature* source, Creature* target,
+			const PokemonMoveType* move, int32_t amount, bool ownerIsSource);
+		void executeHeldItemAfterHeal(Pokemon* owner, Creature* source, Creature* target,
+			const PokemonMoveType* move, int32_t amount, bool ownerIsSource);
+		void executeHeldItemKnockout(Pokemon* owner, Creature* target, const PokemonMoveType* move);
+		void executeHeldItemFaint(Pokemon* owner, Creature* source, const PokemonMoveType* move);
+		uint64_t executeHeldItemExperienceGain(Pokemon* owner, uint64_t experience);
+		PokemonStats_t executeHeldItemEVGain(Pokemon* owner, const PokemonStats_t& evs);
+		void executeHeldItemFriendshipChange(Pokemon* owner, uint8_t oldValue, uint8_t newValue, int32_t delta);
+		void executeHeldItemEvolution(Pokemon* owner, EvolveTypes_t type, uint32_t requirement);
 		void executeAbilityKnockout(Pokemon* owner, Creature* target, const PokemonMoveType* move);
 		void executeAbilityFaint(Pokemon* owner, Creature* source, const PokemonMoveType* move);
 		int32_t executeAbilityBeforeHeal(Pokemon* owner, Creature* source, Creature* target,
@@ -406,7 +468,12 @@ class Pokemons
 
 	private:
 		bool loadAbilities();
+		bool loadHeldItems();
 		bool loadMoves();
+		const PokemonHeldItemType* getHeldItemForEvent(const Pokemon* owner) const;
+		bool prepareHeldItemEvent(Pokemon* owner, int32_t eventId, const char* eventName);
+		void finishHeldItemEvent(Pokemon* owner);
+		void callHeldItemVoidFunction(Pokemon* owner, int32_t parameterCount);
 		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
 		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
 		bool deserializeMove(const pugi::xml_node& node, moveBlock_t& sb, const std::string& description = "");
@@ -421,7 +488,10 @@ class Pokemons
 		std::map<std::string, uint16_t> moveNames;
 		std::map<uint16_t, PokemonAbilityType> abilities;
 		std::map<std::string, uint16_t> abilityNames;
+		std::map<uint16_t, PokemonHeldItemType> heldItems;
 		std::unique_ptr<LuaScriptInterface> abilityScriptInterface;
+		std::unique_ptr<LuaScriptInterface> heldItemScriptInterface;
+		std::unordered_set<const Pokemon*> processingHeldItemEvents;
 
 		bool loaded = false;
 };
@@ -444,6 +514,7 @@ struct PokemonInfo_t
 	uint32_t combatFriendshipTime;
 	bool shiny;
 	uint16_t abilityId {0};
+	uint16_t heldItemId {0};
 
 	PokemonStats_t stats;
 	PokemonStats_t ivs;

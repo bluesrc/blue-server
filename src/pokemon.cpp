@@ -97,6 +97,46 @@ void Pokemon::clearAbilityState()
 	refreshAbilityStats();
 }
 
+const PokemonHeldItemStateValue* Pokemon::getHeldItemState(const std::string& key) const
+{
+	auto it = heldItemState.find(key);
+	return it != heldItemState.end() ? &it->second : nullptr;
+}
+
+void Pokemon::setHeldItemState(std::string key, PokemonHeldItemStateValue value)
+{
+	heldItemState.insert_or_assign(std::move(key), std::move(value));
+	const PokemonHeldItemType* heldItem = isHeldItemEffectActive() ?
+		g_pokemons.getHeldItemById(getEffectiveHeldItemId()) : nullptr;
+	if (heldItem && heldItem->calculateStatsEvent != -1) {
+		refreshAbilityStats();
+	}
+}
+
+bool Pokemon::clearHeldItemState(const std::string& key)
+{
+	const bool removed = heldItemState.erase(key) != 0;
+	const PokemonHeldItemType* heldItem = isHeldItemEffectActive() ?
+		g_pokemons.getHeldItemById(getEffectiveHeldItemId()) : nullptr;
+	if (removed && heldItem && heldItem->calculateStatsEvent != -1) {
+		refreshAbilityStats();
+	}
+	return removed;
+}
+
+void Pokemon::clearHeldItemState()
+{
+	if (heldItemState.empty()) {
+		return;
+	}
+	heldItemState.clear();
+	const PokemonHeldItemType* heldItem = isHeldItemEffectActive() ?
+		g_pokemons.getHeldItemById(getEffectiveHeldItemId()) : nullptr;
+	if (heldItem && heldItem->calculateStatsEvent != -1) {
+		refreshAbilityStats();
+	}
+}
+
 Pokemon::Pokemon(PokemonType* mType) :
 	Creature(),
 	nameDescription(mType->nameDescription),
@@ -190,6 +230,7 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	gender = pInfo.gender;
 	abilityId = g_pokemons.isAbilityAvailable(*mType, pInfo.abilityId) ?
 		pInfo.abilityId : g_pokemons.selectAbility(*mType);
+	heldItemId = pInfo.heldItemId;
 
 	updateStats();
 	health = std::clamp(pInfo.health, 0, healthMax);
@@ -379,7 +420,8 @@ void Pokemon::refreshAbilityStats(bool preserveHealth, bool notify)
 	}
 
 	calculatingAbilityStats = true;
-	const PokemonStats_t calculatedStats = g_pokemons.executeAbilityCalculateStats(this, stats);
+	PokemonStats_t calculatedStats = g_pokemons.executeAbilityCalculateStats(this, stats);
+	calculatedStats = g_pokemons.executeHeldItemCalculateStats(this, calculatedStats);
 	calculatingAbilityStats = false;
 
 	const bool statsChanged = abilityStats.hp != calculatedStats.hp ||
@@ -430,9 +472,242 @@ void Pokemon::syncPokeball()
 	info.gender = gender;
 	info.shiny = shiny;
 	info.abilityId = abilityId;
+	info.heldItemId = heldItemId;
 	info.moves = knownMoves;
 	pokeball->setPokemonInfo(info);
 	player->updatePokemonInfo(pokeball);
+}
+
+uint16_t Pokemon::getEffectiveHeldItemId() const
+{
+	return heldItemBattleState.hasTemporaryItem ? heldItemBattleState.temporaryItemId : heldItemId;
+}
+
+bool Pokemon::isHeldItemSuppressed(uint32_t reason) const
+{
+	if (reason == HELD_ITEM_SUPPRESSION_NONE) {
+		return heldItemBattleState.suppressionReasons != HELD_ITEM_SUPPRESSION_NONE;
+	}
+	return (heldItemBattleState.suppressionReasons & reason) != 0;
+}
+
+bool Pokemon::isHeldItemEffectActive() const
+{
+	return !isHeldItemSuppressed() && g_pokemons.getHeldItemById(getEffectiveHeldItemId()) != nullptr;
+}
+
+void Pokemon::refreshHeldItemTransition()
+{
+	refreshAbilityStats(true);
+	syncPokeball();
+}
+
+void Pokemon::resetHeldItemBattleState()
+{
+	heldItemBattleState = {};
+	heldItemState.clear();
+	heldItemCombatPulseElapsed = 0;
+}
+
+bool Pokemon::consumeHeldItem()
+{
+	const uint16_t effectiveItemId = getEffectiveHeldItemId();
+	const PokemonHeldItemType* heldItem = g_pokemons.getHeldItemById(effectiveItemId);
+	if (!heldItem || !heldItem->consumable || isHeldItemSuppressed()) {
+		return false;
+	}
+
+	heldItemBattleState.consumedItemId = effectiveItemId;
+	heldItemBattleState.consumedTemporaryItem = heldItemBattleState.hasTemporaryItem;
+	if (heldItemBattleState.hasTemporaryItem) {
+		heldItemBattleState.temporaryItemId = 0;
+	} else {
+		heldItemId = 0;
+	}
+	heldItemBattleState.lockedMoveId = 0;
+	heldItemState.clear();
+	heldItemCombatPulseElapsed = 0;
+	refreshHeldItemTransition();
+	return true;
+}
+
+int32_t Pokemon::healFromHeldItem(uint32_t numerator, uint32_t denominator)
+{
+	if (numerator == 0 || denominator == 0 || getHealth() <= 0) {
+		return 0;
+	}
+
+	const int64_t calculatedAmount = std::max<int64_t>(1,
+		(static_cast<int64_t>(getMaxHealth()) * numerator) / denominator);
+	CombatDamage damage;
+	damage.primary.type = COMBAT_HEALING;
+	damage.primary.value = static_cast<int32_t>(std::min<int64_t>(
+		calculatedAmount, std::numeric_limits<int32_t>::max()));
+	const int32_t previousHealth = getHealth();
+	g_game.combatChangeHealth(this, this, damage);
+	const int32_t restoredHealth = std::max<int32_t>(0, getHealth() - previousHealth);
+	if (restoredHealth > 0) {
+		syncPokeball();
+	}
+	return restoredHealth;
+}
+
+bool Pokemon::restoreConsumedHeldItem()
+{
+	const uint16_t consumedItemId = heldItemBattleState.consumedItemId;
+	if (consumedItemId == 0 || !g_pokemons.getHeldItemById(consumedItemId)) {
+		return false;
+	}
+
+	if (heldItemBattleState.consumedTemporaryItem) {
+		if (!heldItemBattleState.hasTemporaryItem || heldItemBattleState.temporaryItemId != 0) {
+			return false;
+		}
+		heldItemBattleState.temporaryItemId = consumedItemId;
+	} else {
+		if (heldItemId != 0 || heldItemBattleState.hasTemporaryItem) {
+			return false;
+		}
+		heldItemId = consumedItemId;
+	}
+
+	heldItemBattleState.consumedItemId = 0;
+	heldItemBattleState.consumedTemporaryItem = false;
+	refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::suppressHeldItem(uint32_t reason)
+{
+	if (reason == HELD_ITEM_SUPPRESSION_NONE ||
+			(heldItemBattleState.suppressionReasons & reason) == reason) {
+		return false;
+	}
+	heldItemBattleState.suppressionReasons |= reason;
+	refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::unsuppressHeldItem(uint32_t reason)
+{
+	if (reason == HELD_ITEM_SUPPRESSION_NONE ||
+			(heldItemBattleState.suppressionReasons & reason) == 0) {
+		return false;
+	}
+	heldItemBattleState.suppressionReasons &= ~reason;
+	refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::setTemporaryHeldItemId(uint16_t itemId)
+{
+	if (!abilityCombatActive || (itemId != 0 && !g_pokemons.getHeldItemById(itemId))) {
+		return false;
+	}
+	if (heldItemBattleState.hasTemporaryItem && heldItemBattleState.temporaryItemId == itemId) {
+		return false;
+	}
+
+	heldItemBattleState.hasTemporaryItem = true;
+	heldItemBattleState.temporaryItemId = itemId;
+	heldItemBattleState.lockedMoveId = 0;
+	heldItemState.clear();
+	heldItemCombatPulseElapsed = 0;
+	refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::clearTemporaryHeldItem()
+{
+	if (!heldItemBattleState.hasTemporaryItem) {
+		return false;
+	}
+	heldItemBattleState.hasTemporaryItem = false;
+	heldItemBattleState.temporaryItemId = 0;
+	heldItemBattleState.lockedMoveId = 0;
+	heldItemState.clear();
+	heldItemCombatPulseElapsed = 0;
+	refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::exchangeHeldItemsForBattle(Pokemon* other)
+{
+	if (!other || other == this) {
+		return false;
+	}
+	markCombatActivity(other);
+	other->markCombatActivity(this);
+	const uint16_t ownItemId = getEffectiveHeldItemId();
+	const uint16_t otherItemId = other->getEffectiveHeldItemId();
+	if (ownItemId == otherItemId) {
+		return false;
+	}
+
+	heldItemBattleState.hasTemporaryItem = true;
+	heldItemBattleState.temporaryItemId = otherItemId;
+	heldItemBattleState.lockedMoveId = 0;
+	heldItemState.clear();
+	heldItemCombatPulseElapsed = 0;
+	other->heldItemBattleState.hasTemporaryItem = true;
+	other->heldItemBattleState.temporaryItemId = ownItemId;
+	other->heldItemBattleState.lockedMoveId = 0;
+	other->heldItemState.clear();
+	other->heldItemCombatPulseElapsed = 0;
+	refreshHeldItemTransition();
+	other->refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::stealHeldItemForBattle(Pokemon* other)
+{
+	if (!other || other == this || getEffectiveHeldItemId() != 0) {
+		return false;
+	}
+	markCombatActivity(other);
+	other->markCombatActivity(this);
+	const uint16_t stolenItemId = other->getEffectiveHeldItemId();
+	if (stolenItemId == 0) {
+		return false;
+	}
+
+	heldItemBattleState.hasTemporaryItem = true;
+	heldItemBattleState.temporaryItemId = stolenItemId;
+	heldItemBattleState.lockedMoveId = 0;
+	heldItemState.clear();
+	heldItemCombatPulseElapsed = 0;
+	other->heldItemBattleState.hasTemporaryItem = true;
+	other->heldItemBattleState.temporaryItemId = 0;
+	other->heldItemBattleState.lockedMoveId = 0;
+	other->heldItemState.clear();
+	other->heldItemCombatPulseElapsed = 0;
+	refreshHeldItemTransition();
+	other->refreshHeldItemTransition();
+	return true;
+}
+
+bool Pokemon::setHeldItemLockedMoveId(uint16_t moveId)
+{
+	if (moveId != 0 && !g_pokemons.getMoveById(moveId)) {
+		return false;
+	}
+	if (heldItemBattleState.lockedMoveId == moveId) {
+		return false;
+	}
+	heldItemBattleState.lockedMoveId = moveId;
+	return true;
+}
+
+void Pokemon::setHeldItemId(uint16_t itemId)
+{
+	if (heldItemId == itemId && !heldItemBattleState.hasTemporaryItem &&
+			heldItemBattleState.suppressionReasons == HELD_ITEM_SUPPRESSION_NONE) {
+		return;
+	}
+
+	heldItemId = itemId;
+	resetHeldItemBattleState();
+	refreshHeldItemTransition();
 }
 
 uint8_t Pokemon::changeFriendship(int32_t amount)
@@ -446,6 +721,8 @@ uint8_t Pokemon::changeFriendship(int32_t amount)
 	if (friendship != previousFriendship && !processingFriendshipChange) {
 		processingFriendshipChange = true;
 		g_pokemons.executeAbilityFriendshipChange(
+			this, previousFriendship, friendship, static_cast<int32_t>(friendship) - previousFriendship);
+		g_pokemons.executeHeldItemFriendshipChange(
 			this, previousFriendship, friendship, static_cast<int32_t>(friendship) - previousFriendship);
 		processingFriendshipChange = false;
 	}
@@ -474,9 +751,14 @@ void Pokemon::markCombatActivity(Creature* opponent)
 		abilityCombatOpponentIds.insert(opponent->getID());
 	}
 	lastCombatActivity = now;
+	if (Player* player = master ? master->getPlayer() : nullptr) {
+		player->markPokemonCombat(now + POKEMON_COMBAT_ACTIVITY_TIMEOUT);
+	}
 	if (enteringCombat) {
 		abilityCombatActive = true;
+		heldItemCombatPulseElapsed = 0;
 		g_pokemons.executeAbilityCombatEnter(this, opponent);
+		g_pokemons.executeHeldItemCombatEnter(this, opponent);
 	}
 }
 
@@ -489,12 +771,35 @@ void Pokemon::processAbilityCombatState()
 
 void Pokemon::leaveAbilityCombat()
 {
+	const uint16_t previousEffectiveHeldItemId = getEffectiveHeldItemId();
+	const uint32_t previousSuppressionReasons = heldItemBattleState.suppressionReasons;
 	if (abilityCombatActive) {
 		abilityCombatActive = false;
 		g_pokemons.executeAbilityCombatExit(this);
+		g_pokemons.executeHeldItemCombatExit(this);
 	}
 	abilityCombatOpponentIds.clear();
 	clearAbilityState();
+	resetHeldItemBattleState();
+	if (previousEffectiveHeldItemId != getEffectiveHeldItemId() ||
+			previousSuppressionReasons != HELD_ITEM_SUPPRESSION_NONE) {
+		refreshHeldItemTransition();
+	}
+}
+
+void Pokemon::processHeldItemCombatPulse(uint32_t interval)
+{
+	if (!abilityCombatActive) {
+		return;
+	}
+
+	heldItemCombatPulseElapsed = static_cast<uint32_t>(std::min<uint64_t>(
+		static_cast<uint64_t>(heldItemCombatPulseElapsed) + interval,
+		std::numeric_limits<uint32_t>::max() - 1000));
+	while (heldItemCombatPulseElapsed >= 1000 && abilityCombatActive) {
+		heldItemCombatPulseElapsed -= 1000;
+		g_pokemons.executeHeldItemCombatPulse(this, 1000);
+	}
 }
 
 bool Pokemon::canEscapeCombat(const PokemonMoveType& move)
@@ -711,8 +1016,40 @@ void Pokemon::onGainExperience(uint64_t gainExp, Creature* target)
 		return;
 	}
 
-	addExperience(gainExp, true);
+	const uint64_t modifiedExperience = g_pokemons.executeHeldItemExperienceGain(this, gainExp);
+	if (Pokemon* defeatedPokemon = target ? target->getPokemon() : nullptr) {
+		gainEVs(g_pokemons.executeHeldItemEVGain(this, defeatedPokemon->getPokemonTypeData()->info.ev_yield));
+	}
+	addExperience(modifiedExperience, true);
 	master->onGainExperience(gainExp / 2, target);
+}
+
+void Pokemon::gainEVs(const PokemonStats_t& gainedEVs)
+{
+	uint16_t remaining = 510 - std::min<uint16_t>(510,
+		static_cast<uint16_t>(evs.hp) + evs.attack + evs.defense + evs.sp_attack + evs.sp_defense + evs.speed);
+	bool changed = false;
+	const auto addEV = [&remaining, &changed](uint8_t& current, uint8_t gain) {
+		const uint16_t statCapacity = current < 252 ? 252 - current : 0;
+		const uint16_t added = std::min<uint16_t>({gain, statCapacity, remaining});
+		if (added == 0) {
+			return;
+		}
+		current = static_cast<uint8_t>(current + added);
+		remaining -= added;
+		changed = true;
+	};
+
+	addEV(evs.hp, gainedEVs.hp);
+	addEV(evs.attack, gainedEVs.attack);
+	addEV(evs.defense, gainedEVs.defense);
+	addEV(evs.sp_attack, gainedEVs.sp_attack);
+	addEV(evs.sp_defense, gainedEVs.sp_defense);
+	addEV(evs.speed, gainedEVs.speed);
+	if (changed) {
+		updateStats(true);
+		syncPokeball();
+	}
 }
 
 void Pokemon::addList()
@@ -832,6 +1169,7 @@ void Pokemon::processEvolutionEvent(uint8_t previousLevel)
 	if (evolution.type == EVOLVE_LEVEL && evolution.level > 0 &&
 			previousLevel < evolution.level && level >= evolution.level) {
 		g_pokemons.executeAbilityEvolution(this, evolution.type, evolution.level);
+		g_pokemons.executeHeldItemEvolution(this, evolution.type, evolution.level);
 	}
 }
 
@@ -1432,6 +1770,7 @@ void Pokemon::onThink(uint32_t interval)
 {
 	Creature::onThink(interval);
 	processAbilityCombatState();
+	processHeldItemCombatPulse(interval);
 	processPokemonBattleState();
 	processCombatFriendship(interval);
 
@@ -1668,6 +2007,9 @@ bool Pokemon::applyStatusCondition(PokemonStatusCondition_t status, uint32_t dur
 	if (!g_pokemons.executeAbilityBeforeStatus(this, source, status, duration)) {
 		return false;
 	}
+	if (!g_pokemons.executeHeldItemBeforeStatus(this, source, status, duration)) {
+		return false;
+	}
 
 	const auto hasType = [this](PokemonTypes_t type) {
 		return std::find(mType->info.types.begin(), mType->info.types.end(), type) != mType->info.types.end();
@@ -1689,6 +2031,7 @@ bool Pokemon::applyStatusCondition(PokemonStatusCondition_t status, uint32_t dur
 	notifyBattleStateChanged();
 
 	g_game.addMagicEffect(getPosition(), getPokemonStatusEffect(status));
+	g_pokemons.executeHeldItemAfterStatus(this, source, status);
 	return true;
 }
 
@@ -1700,6 +2043,17 @@ void Pokemon::clearPokemonStatus()
 	pokemonStatusSourceId = 0;
 	refreshAbilityStats(false, false);
 	notifyBattleStateChanged();
+}
+
+bool Pokemon::cureStatusCondition()
+{
+	if (pokemonStatus == POKEMON_STATUS_NONE) {
+		return false;
+	}
+
+	clearPokemonStatus();
+	syncPokeball();
+	return true;
 }
 
 bool Pokemon::applyFlinch(uint32_t duration)
@@ -1867,7 +2221,11 @@ int32_t Pokemon::getExecutingMoveDamage(Creature* target)
 	}
 
 	const int32_t damage = calculateMoveDamage(*executingMove, target);
-	return target ? g_pokemons.executeAbilityBeforeMoveDamage(this, target, *executingMove, damage) : damage;
+	if (!target) {
+		return damage;
+	}
+	const int32_t abilityDamage = g_pokemons.executeAbilityBeforeMoveDamage(this, target, *executingMove, damage);
+	return g_pokemons.executeHeldItemBeforeMoveDamage(this, target, *executingMove, abilityDamage);
 }
 
 bool Pokemon::rollExecutingMoveHit(const Creature* target) const
@@ -1928,9 +2286,18 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 
 	Creature* combatTarget = move->target == POKEMON_MOVE_TARGET_SELF ? this :
 		(needTarget ? target : attackedCreature);
+	Creature* combatOpponent = combatTarget && isOpponent(combatTarget) ? combatTarget :
+		(attackedCreature && isOpponent(attackedCreature) ? attackedCreature : nullptr);
 	const uint32_t combatTargetId = combatTarget ? combatTarget->getID() : 0;
 	processingPokemonMoveUse = true;
 	if (!g_pokemons.executeAbilityBeforeMoveUse(this, combatTarget, *move)) {
+		processingPokemonMoveUse = false;
+		return false;
+	}
+	if (!g_pokemons.executeHeldItemBeforeMoveUse(this, combatTarget, *move)) {
+		if (Player* player = master ? master->getPlayer() : nullptr) {
+			player->sendCancelMessage("Your held item prevents this move.");
+		}
 		processingPokemonMoveUse = false;
 		return false;
 	}
@@ -1938,10 +2305,14 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 		startCooldown();
 		Creature* currentCombatTarget = combatTargetId != 0 ? g_game.getCreatureByID(combatTargetId) : nullptr;
 		g_pokemons.executeAbilityAfterMoveUse(this, currentCombatTarget, *move, false);
+		g_pokemons.executeHeldItemAfterMoveUse(this, currentCombatTarget, *move, false);
 		processingPokemonMoveUse = false;
 		return false;
 	}
 
+	if (!move->hasFlag(POKEMON_MOVE_FLAG_ESCAPE) && combatOpponent) {
+		markCombatActivity(combatOpponent);
+	}
 	executingPokemonMove = true;
 	executingMove = move;
 	const bool result = needTarget ? effect->castMove(this, target) : effect->castMove(this);
@@ -1949,12 +2320,10 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 	executingPokemonMove = false;
 	if (result) {
 		startCooldown();
-		if (!move->hasFlag(POKEMON_MOVE_FLAG_ESCAPE) && combatTarget && isOpponent(combatTarget)) {
-			markCombatActivity(combatTarget);
-		}
 	}
 	Creature* currentCombatTarget = combatTargetId != 0 ? g_game.getCreatureByID(combatTargetId) : nullptr;
 	g_pokemons.executeAbilityAfterMoveUse(this, currentCombatTarget, *move, result);
+	g_pokemons.executeHeldItemAfterMoveUse(this, currentCombatTarget, *move, result);
 	if (result && move->hasFlag(POKEMON_MOVE_FLAG_ESCAPE)) {
 		completeCombatEscape();
 	}

@@ -1042,6 +1042,8 @@ class LuaScriptInterface
 		static int luaPlayerHasChaseMode(lua_State* L);
 		static int luaPlayerHasSecureMode(lua_State* L);
 		static int luaPlayerGetFightMode(lua_State* L);
+		static int luaPlayerIsInCombat(lua_State* L);
+		static int luaPlayerIsInPokemonCombat(lua_State* L);
 
 		static int luaPlayerGetStoreInbox(lua_State* L);
 
@@ -1063,6 +1065,25 @@ class LuaScriptInterface
 		static int luaPokemonAddFriendship(lua_State* L);
 		static int luaPokemonGetMoves(lua_State* L);
 		static int luaPokemonGetAbility(lua_State* L);
+		static int luaPokemonGetHeldItem(lua_State* L);
+		static int luaPokemonGetEffectiveHeldItem(lua_State* L);
+		static int luaPokemonIsInCombat(lua_State* L);
+		static int luaPokemonConsumeHeldItem(lua_State* L);
+		static int luaPokemonGetConsumedHeldItemId(lua_State* L);
+		static int luaPokemonRestoreConsumedHeldItem(lua_State* L);
+		static int luaPokemonIsHeldItemSuppressed(lua_State* L);
+		static int luaPokemonSuppressHeldItem(lua_State* L);
+		static int luaPokemonUnsuppressHeldItem(lua_State* L);
+		static int luaPokemonSetTemporaryHeldItem(lua_State* L);
+		static int luaPokemonClearTemporaryHeldItem(lua_State* L);
+		static int luaPokemonExchangeHeldItemsForBattle(lua_State* L);
+		static int luaPokemonStealHeldItemForBattle(lua_State* L);
+		static int luaPokemonGetHeldItemLockedMoveId(lua_State* L);
+		static int luaPokemonSetHeldItemLockedMoveId(lua_State* L);
+		static int luaPokemonHealFromHeldItem(lua_State* L);
+		static int luaPokemonGetHeldItemState(lua_State* L);
+		static int luaPokemonSetHeldItemState(lua_State* L);
+		static int luaPokemonClearHeldItemState(lua_State* L);
 		static int luaPokemonGetAbilityState(lua_State* L);
 		static int luaPokemonSetAbilityState(lua_State* L);
 		static int luaPokemonClearAbilityState(lua_State* L);
@@ -1071,6 +1092,7 @@ class LuaScriptInterface
 		static int luaPokemonUseMove(lua_State* L);
 		static int luaPokemonModifyBattleStatStage(lua_State* L);
 		static int luaPokemonApplyStatusCondition(lua_State* L);
+		static int luaPokemonCureStatusCondition(lua_State* L);
 		static int luaPokemonApplyFlinch(lua_State* L);
 
 		static int luaPokemonRename(lua_State* L);
