@@ -39,7 +39,8 @@ pokemon.learnset = {
 }
 
 pokemon.abilities = {
-	{ability = "blaze", chance = 100},
+	{ability = "blaze", slot = 1, chance = 50},
+	{ability = "blaze", slot = 2, chance = 50},
 }
 
 pokemon.evolutions = {

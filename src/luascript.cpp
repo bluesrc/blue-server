@@ -1013,6 +1013,25 @@ PokemonCreateOptions_t LuaScriptInterface::getPokemonCreateOptions(lua_State* L,
 		options.nature = static_cast<int8_t>(std::clamp<int16_t>(nature, NATURE_NONE, NATURE_QUIRKY));
 	}
 
+	auto readAbilitySlot = [L, arg](const char* key) -> int8_t {
+		lua_getfield(L, arg, key);
+		int8_t slot = -1;
+		if (lua_isnumber(L, -1)) {
+			slot = static_cast<int8_t>(std::clamp<lua_Integer>(lua_tointeger(L, -1), 1, 3));
+		} else if (lua_isstring(L, -1)) {
+			const std::string value = asLowerCaseString(lua_tostring(L, -1));
+			if (value == "primary" || value == "first" || value == "1") slot = 1;
+			else if (value == "secondary" || value == "second" || value == "2") slot = 2;
+			else if (value == "hidden" || value == "ha" || value == "3") slot = 3;
+		}
+		lua_pop(L, 1);
+		return slot;
+	};
+	options.abilitySlot = readAbilitySlot("abilitySlot");
+	if (options.abilitySlot < 0) {
+		options.abilitySlot = readAbilitySlot("ability_slot");
+	}
+
 	readStats("ivs", options.ivs);
 	readStats("evs", options.evs);
 	auto applyIntegerField = [&getIntegerField](int16_t& target, const char* key) {
@@ -3202,6 +3221,7 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("PokemonType", "addLearnMove", LuaScriptInterface::luaPokemonTypeAddLearnMove);
 	registerMethod("PokemonType", "addAbility", LuaScriptInterface::luaPokemonTypeAddAbility);
+	registerMethod("PokemonType", "hiddenAbilityChance", LuaScriptInterface::luaPokemonTypeHiddenAbilityChance);
 
 	registerMethod("PokemonType", "getDefenseList", LuaScriptInterface::luaPokemonTypeGetDefenseList);
 	registerMethod("PokemonType", "addDefense", LuaScriptInterface::luaPokemonTypeAddDefense);
@@ -14856,6 +14876,23 @@ int LuaScriptInterface::luaPokemonTypeAddAbility(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaPokemonTypeHiddenAbilityChance(lua_State* L)
+{
+	// get: pokemonType:hiddenAbilityChance() set: pokemonType:hiddenAbilityChance(chance)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (!pokemonType) {
+		lua_pushnil(L);
+		return 1;
+	}
+	if (lua_gettop(L) == 1) {
+		lua_pushnumber(L, pokemonType->info.hiddenAbilityChance);
+	} else {
+		pushBoolean(L, g_pokemons.setHiddenAbilityChance(pokemonType,
+			getNumber<uint32_t>(L, 2)));
+	}
+	return 1;
+}
+
 int LuaScriptInterface::luaPokemonGetMoves(lua_State* L)
 {
 	// pokemon:getMoves()
@@ -14905,11 +14942,13 @@ int LuaScriptInterface::luaPokemonGetAbility(lua_State* L)
 		return 1;
 	}
 
-	lua_createtable(L, 0, 4);
+	lua_createtable(L, 0, 6);
 	setField(L, "id", ability->id);
 	setField(L, "key", ability->key);
 	setField(L, "name", ability->name);
 	setField(L, "description", ability->description);
+	setField(L, "slot", pokemon->getAbilitySlot());
+	setField(L, "hidden", pokemon->getAbilitySlot() == 3);
 	return 1;
 }
 

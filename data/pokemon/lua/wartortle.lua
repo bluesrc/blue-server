@@ -38,7 +38,8 @@ pokemon.learnset = {
 }
 
 pokemon.abilities = {
-	{ability = "torrent", chance = 100},
+	{ability = "torrent", slot = 1, chance = 50},
+	{ability = "torrent", slot = 2, chance = 50},
 }
 
 pokemon.changeTarget = {

@@ -39,7 +39,8 @@ pokemon.learnset = {
 }
 
 pokemon.abilities = {
-	{ability = "overgrow", chance = 100},
+	{ability = "overgrow", slot = 1, chance = 50},
+	{ability = "overgrow", slot = 2, chance = 50},
 }
 
 pokemon.evolutions = {

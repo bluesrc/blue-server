@@ -240,13 +240,12 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	combatFriendshipTime = std::min<uint32_t>(pInfo.combatFriendshipTime, POKEMON_COMBAT_FRIENDSHIP_INTERVAL - 1);
 	shiny = pInfo.shiny;
 	gender = pInfo.gender;
-	abilitySlot = pInfo.abilitySlot != 0 ? pInfo.abilitySlot :
+	abilitySlot = pInfo.abilitySlot >= 1 && pInfo.abilitySlot <= 3 ? pInfo.abilitySlot :
 		g_pokemons.getAbilitySlot(*mType, pInfo.abilityId);
-	abilityId = g_pokemons.getAbilityBySlot(*mType, abilitySlot);
-	if (abilityId == 0) {
+	if (abilitySlot == 0) {
 		abilitySlot = g_pokemons.selectAbilitySlot(*mType);
-		abilityId = g_pokemons.getAbilityBySlot(*mType, abilitySlot);
 	}
+	abilityId = g_pokemons.getAbilityBySlot(*mType, abilitySlot);
 	heldItemId = pInfo.heldItemId;
 	evolutionSeed = pInfo.evolutionSeed != 0 ? pInfo.evolutionSeed : createEvolutionSeed();
 	pendingEvolution = std::move(pInfo.pendingEvolution);
@@ -369,6 +368,18 @@ void Pokemon::applyCreateOptions(const PokemonCreateOptions_t& options, bool ful
 	if (options.nature >= 0) {
 		nature = static_cast<PokemonNatures_t>(std::clamp<int16_t>(options.nature, NATURE_NONE, NATURE_QUIRKY));
 		statsChanged = true;
+	}
+
+	if (options.abilitySlot >= 1 && options.abilitySlot <= 3) {
+		const uint8_t requestedSlot = static_cast<uint8_t>(options.abilitySlot);
+		const uint16_t requestedAbility = g_pokemons.hasAbilitySlot(*mType, requestedSlot) ?
+			g_pokemons.getAbilityBySlot(*mType, requestedSlot) : 0;
+		if (requestedAbility != 0 && (abilitySlot != requestedSlot || abilityId != requestedAbility)) {
+			abilityState.clear();
+			abilitySlot = requestedSlot;
+			abilityId = requestedAbility;
+			statsChanged = true;
+		}
 	}
 
 	if (statsChanged) {
@@ -555,6 +566,21 @@ bool Pokemon::canEvolve(EvolveTypes_t trigger, uint32_t requirement) const
 	return evolvedType && evolvedType != mType;
 }
 
+std::string Pokemon::getLevelEvolutionTarget() const
+{
+	const PokemonEvolution* evolution = findPendingEvolutionRule();
+	if (!evolution) {
+		evolution = getEligibleEvolution(EVOLVE_LEVEL);
+	}
+	if (!evolution || (evolution->conditions.heldItemId != 0 &&
+			heldItemId != evolution->conditions.heldItemId)) {
+		return {};
+	}
+
+	const PokemonType* evolvedType = g_pokemons.getPokemonType(evolution->target);
+	return evolvedType && evolvedType != mType ? evolution->target : std::string();
+}
+
 void Pokemon::notifyLevelEvolutionAvailable()
 {
 	const PokemonEvolution* evolution = findPendingEvolutionRule();
@@ -614,8 +640,8 @@ bool Pokemon::evolve(EvolveTypes_t trigger, uint32_t requirement)
 	abilityState.clear();
 	abilityId = g_pokemons.getAbilityBySlot(*evolvedType, abilitySlot);
 	if (abilityId == 0) {
-		abilitySlot = g_pokemons.selectAbilitySlot(*evolvedType);
-		abilityId = g_pokemons.getAbilityBySlot(*evolvedType, abilitySlot);
+		std::cout << "[Warning - Pokemon::evolve] " << evolvedType->name
+		          << " has no Ability compatible with slot " << static_cast<uint32_t>(abilitySlot) << '.' << std::endl;
 	}
 
 	learnAvailableMoves(true);

@@ -222,6 +222,7 @@ class Pokemon final : public Creature
 		uint16_t getHeldItemId() const { return heldItemId; }
 		uint32_t getEvolutionSeed() const { return evolutionSeed; }
 		const std::string& getPendingEvolution() const { return pendingEvolution; }
+		std::string getLevelEvolutionTarget() const;
 		uint16_t getEffectiveHeldItemId() const;
 		uint16_t getConsumedHeldItemId() const { return heldItemBattleState.consumedItemId; }
 		uint16_t getHeldItemLockedMoveId() const { return heldItemBattleState.lockedMoveId; }

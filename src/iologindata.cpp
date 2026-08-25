@@ -1185,11 +1185,10 @@ void IOLoginData::loadPokemon(Pokeball * pokeball, uint32_t pokemonUID)
 		if (pInfo.abilitySlot == 0) {
 			pInfo.abilitySlot = g_pokemons.getAbilitySlot(*mType, pInfo.abilityId);
 		}
-		pInfo.abilityId = g_pokemons.getAbilityBySlot(*mType, pInfo.abilitySlot);
-		if (pInfo.abilityId == 0) {
+		if (pInfo.abilitySlot == 0 || pInfo.abilitySlot > 3) {
 			pInfo.abilitySlot = g_pokemons.selectAbilitySlot(*mType);
-			pInfo.abilityId = g_pokemons.getAbilityBySlot(*mType, pInfo.abilitySlot);
 		}
+		pInfo.abilityId = g_pokemons.getAbilityBySlot(*mType, pInfo.abilitySlot);
 		learnPokemonMoves(pInfo, *mType);
 		pInfo.maxHealth = std::floor((((2 * mType->info.base_stats.hp) + pInfo.ivs.hp + (pInfo.evs.hp / 4)) * pInfo.level) / 100) + pInfo.level + 10;
 		pInfo.number = mType->info.number;

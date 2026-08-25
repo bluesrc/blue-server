@@ -561,7 +561,7 @@ bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveNam
 
 bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance, uint8_t slot)
 {
-	if (!pokemonType || chance == 0 || chance > 100) {
+	if (!pokemonType || chance > 100) {
 		return false;
 	}
 
@@ -573,15 +573,6 @@ bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityNa
 	}
 
 	auto& abilityOptions = pokemonType->info.abilities;
-	const auto duplicate = std::find_if(abilityOptions.begin(), abilityOptions.end(), [ability](const PokemonAbilityOption& option) {
-		return option.abilityId == ability->id;
-	});
-	if (duplicate != abilityOptions.end()) {
-		std::cout << "[Warning - Pokemons::addAbility] Duplicate ability " << ability->name
-		          << " for " << pokemonType->name << '.' << std::endl;
-		return false;
-	}
-
 	if (slot == 0) {
 		for (uint8_t candidate = 1; candidate <= 3; ++candidate) {
 			if (std::none_of(abilityOptions.begin(), abilityOptions.end(), [candidate](const PokemonAbilityOption& option) {
@@ -599,10 +590,17 @@ bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityNa
 		          << pokemonType->name << '.' << std::endl;
 		return false;
 	}
+	if (slot <= 2 && chance == 0) {
+		std::cout << "[Warning - Pokemons::addAbility] A normal ability requires a positive chance for "
+		          << pokemonType->name << '.' << std::endl;
+		return false;
+	}
 
-	uint64_t totalChance = chance;
+	uint64_t totalChance = slot <= 2 ? chance : 0;
 	for (const PokemonAbilityOption& option : abilityOptions) {
-		totalChance += option.chance;
+		if (option.slot <= 2) {
+			totalChance += option.chance;
+		}
 	}
 	if (totalChance > 100) {
 		std::cout << "[Warning - Pokemons::addAbility] Total ability chance exceeds 100 for "
@@ -614,6 +612,15 @@ bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityNa
 	return true;
 }
 
+bool Pokemons::setHiddenAbilityChance(PokemonType* pokemonType, uint32_t chance)
+{
+	if (!pokemonType || chance > 100) {
+		return false;
+	}
+	pokemonType->info.hiddenAbilityChance = static_cast<uint8_t>(chance);
+	return true;
+}
+
 uint16_t Pokemons::selectAbility(const PokemonType& pokemonType) const
 {
 	return getAbilityBySlot(pokemonType, selectAbilitySlot(pokemonType));
@@ -621,9 +628,16 @@ uint16_t Pokemons::selectAbility(const PokemonType& pokemonType) const
 
 uint8_t Pokemons::selectAbilitySlot(const PokemonType& pokemonType) const
 {
+	if (pokemonType.info.hiddenAbilityChance > 0 && hasAbilitySlot(pokemonType, 3) &&
+			uniform_random(1, 100) <= pokemonType.info.hiddenAbilityChance) {
+		return 3;
+	}
+
 	uint32_t totalChance = 0;
 	for (const PokemonAbilityOption& option : pokemonType.info.abilities) {
-		totalChance += option.chance;
+		if (option.slot <= 2) {
+			totalChance += option.chance;
+		}
 	}
 	if (totalChance == 0) {
 		return 0;
@@ -631,6 +645,9 @@ uint8_t Pokemons::selectAbilitySlot(const PokemonType& pokemonType) const
 
 	uint32_t roll = static_cast<uint32_t>(uniform_random(1, 100));
 	for (const PokemonAbilityOption& option : pokemonType.info.abilities) {
+		if (option.slot > 2) {
+			continue;
+		}
 		if (roll <= option.chance) {
 			return option.slot;
 		}
@@ -641,9 +658,36 @@ uint8_t Pokemons::selectAbilitySlot(const PokemonType& pokemonType) const
 
 uint16_t Pokemons::getAbilityBySlot(const PokemonType& pokemonType, uint8_t slot) const
 {
-	const auto it = std::find_if(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
+	if (slot < 1 || slot > 3) {
+		return 0;
+	}
+	const auto findSlot = [&pokemonType](uint8_t candidate) {
+		return std::find_if(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
+			[candidate](const PokemonAbilityOption& option) { return option.slot == candidate; });
+	};
+	const auto it = findSlot(slot);
+	if (it != pokemonType.info.abilities.end()) {
+		return it->abilityId;
+	}
+
+	// A species can expose the same visible Ability through multiple logical slots.
+	// Keep the logical slot on the individual and only fall back for presentation/effects.
+	for (uint8_t normalSlot = 1; normalSlot <= 2; ++normalSlot) {
+		if (normalSlot == slot) {
+			continue;
+		}
+		const auto normal = findSlot(normalSlot);
+		if (normal != pokemonType.info.abilities.end()) {
+			return normal->abilityId;
+		}
+	}
+	return 0;
+}
+
+bool Pokemons::hasAbilitySlot(const PokemonType& pokemonType, uint8_t slot) const
+{
+	return std::any_of(pokemonType.info.abilities.begin(), pokemonType.info.abilities.end(),
 		[slot](const PokemonAbilityOption& option) { return option.slot == slot; });
-	return it != pokemonType.info.abilities.end() ? it->abilityId : 0;
 }
 
 uint8_t Pokemons::getAbilitySlot(const PokemonType& pokemonType, uint16_t abilityId) const

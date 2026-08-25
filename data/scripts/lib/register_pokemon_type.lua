@@ -102,14 +102,33 @@ registerPokemonType.learnset = function(mtype, mask)
 end
 
 registerPokemonType.abilities = function(mtype, mask)
+	-- Slots 1 and 2 are normal; slot 3 (or hidden = true) is the Hidden Ability.
+	-- Hidden acquisition uses mask.hidden_ability_chance and is not part of the
+	-- normal 100% distribution. Repeated ability names in different slots are valid.
 	if type(mask.abilities) == "table" then
 		local totalChance = 0
+		local occupiedSlots = {}
 		for _, entry in ipairs(mask.abilities) do
-			if not entry.ability or type(entry.chance) ~= "number" or entry.chance % 1 ~= 0 or entry.chance < 1 or entry.chance > 100 then
+			local slot = entry.hidden and 3 or entry.slot
+			local chance = entry.chance
+			if not entry.ability or (slot and (type(slot) ~= "number" or slot % 1 ~= 0 or slot < 1 or slot > 3)) then
+				print(string.format("[Warning - registerPokemonType.abilities] Invalid ability slot for %s.", mtype:name() or "Pokemon"))
+				return
+			end
+			if slot and occupiedSlots[slot] then
+				print(string.format("[Warning - registerPokemonType.abilities] Duplicate ability slot for %s.", mtype:name() or "Pokemon"))
+				return
+			end
+			if slot then
+				occupiedSlots[slot] = true
+			end
+			if slot ~= 3 and (type(chance) ~= "number" or chance % 1 ~= 0 or chance < 1 or chance > 100) then
 				print(string.format("[Warning - registerPokemonType.abilities] Invalid ability chance for %s.", mtype:name() or "Pokemon"))
 				return
 			end
-			totalChance = totalChance + entry.chance
+			if slot ~= 3 then
+				totalChance = totalChance + chance
+			end
 		end
 
 		if totalChance ~= 100 then
@@ -118,8 +137,20 @@ registerPokemonType.abilities = function(mtype, mask)
 		end
 
 		for _, entry in ipairs(mask.abilities) do
-			mtype:addAbility(entry.ability, entry.chance, entry.slot or 0)
+			local slot = entry.hidden and 3 or (entry.slot or 0)
+			mtype:addAbility(entry.ability, entry.chance or 0, slot)
 		end
+	end
+end
+
+registerPokemonType.hidden_ability_chance = function(mtype, mask)
+	local chance = mask.hidden_ability_chance or mask.hiddenAbilityChance
+	if chance ~= nil then
+		if type(chance) ~= "number" or chance % 1 ~= 0 or chance < 0 or chance > 100 then
+			print(string.format("[Warning - registerPokemonType.hidden_ability_chance] Invalid chance for %s.", mtype:name() or "Pokemon"))
+			return
+		end
+		mtype:hiddenAbilityChance(chance)
 	end
 end
 

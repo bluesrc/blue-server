@@ -1378,6 +1378,7 @@ class LuaScriptInterface
 
 		static int luaPokemonTypeAddLearnMove(lua_State* L);
 		static int luaPokemonTypeAddAbility(lua_State* L);
+		static int luaPokemonTypeHiddenAbilityChance(lua_State* L);
 
 		static int luaPokemonTypeGetDefenseList(lua_State* L);
 		static int luaPokemonTypeAddDefense(lua_State* L);
