@@ -10,6 +10,7 @@
 #include "game.h"
 #include "pugicast.h"
 #include "moves.h"
+#include "pokeball.h"
 #include "pokemon.h"
 #include <fmt/format.h>
 
@@ -442,6 +443,19 @@ bool Actions::useItemEx(Player* player, const Position& fromPos, const Position&
 		{
 			player->tryCatch(item->getThrowablePokeball(), pokemon);
 			return true;
+		}
+	}
+
+	if (creature) {
+		Pokemon* targetPokemon = creature->getPokemon();
+		Pokeball* activePokeball = player->getActivePokemon();
+		if (targetPokemon && activePokeball && activePokeball->getPokemon() == targetPokemon &&
+				targetPokemon->canEvolve(EVOLVE_ITEM, item->getID())) {
+			const uint16_t itemId = item->getID();
+			if (g_game.internalRemoveItem(item, 1) != RETURNVALUE_NOERROR) {
+				return false;
+			}
+			return targetPokemon->evolve(EVOLVE_ITEM, itemId);
 		}
 	}
 

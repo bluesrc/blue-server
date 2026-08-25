@@ -12,7 +12,7 @@ function logCommand(player, words, param)
 end
 
 local pokemonNatureNames = "none, hardy, lonely, brave, adamant, naughty, bold, docile, relaxed, impish, lax, timid, hasty, serious, jolly, naive, modest, mild, quiet, bashful, rash, calm, gentle, sassy, careful or quirky"
-local pokemonOptionUsage = "Options: level=1-100, shiny=true/false, happiness=0-255, nature=<name>, ivs=0-31, evs=0-252, gender=male/female, iv_hp/iv_attack/iv_defense/iv_sp_attack/iv_sp_defense/iv_speed, ev_hp/ev_attack/ev_defense/ev_sp_attack/ev_sp_defense/ev_speed. Valid natures: " .. pokemonNatureNames .. "."
+local pokemonOptionUsage = "Options: level=1-100, shiny=true/false, happiness=0-255, nature=<name>, ability_slot=1/2/hidden, ivs=0-31, evs=0-252, gender=male/female, iv_hp/iv_attack/iv_defense/iv_sp_attack/iv_sp_defense/iv_speed, ev_hp/ev_attack/ev_defense/ev_sp_attack/ev_sp_defense/ev_speed. Valid natures: " .. pokemonNatureNames .. "."
 
 local pokemonNatures = {
 	none = NATURE_NONE,
@@ -162,6 +162,13 @@ function parsePokemonCreateOptions(split, startIndex)
 						return nil, "Pokemon gender must be male, female, none or undefined."
 					end
 					options.gender = gender
+				elseif key == "ability" or key == "ability_slot" or key == "abilityslot" then
+					local ability = value:lower()
+					local slot = ({primary = 1, first = 1, secondary = 2, second = 2, hidden = 3, ha = 3})[ability] or tonumber(ability)
+					if not slot or slot % 1 ~= 0 or slot < 1 or slot > 3 then
+						return nil, "Pokemon ability slot must be 1, 2 or hidden."
+					end
+					options.abilitySlot = slot
 				else
 					local statType, statName = key:match("^(iv)_([%w_]+)$")
 					if not statType then

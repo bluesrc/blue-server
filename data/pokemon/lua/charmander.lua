@@ -39,12 +39,18 @@ pokemon.learnset = {
 }
 
 pokemon.abilities = {
-	{ability = "blaze", chance = 100},
+	{ability = "blaze", slot = 1, chance = 50},
+	{ability = "blaze", slot = 2, chance = 50},
 }
 
-pokemon.evolution = {
-    type= EVOLVE_LEVEL,
-    level= 25
+pokemon.evolutions = {
+	{
+		trigger = EVOLVE_LEVEL,
+		target = "Charmeleon",
+		conditions = {
+			minLevel = 25
+		}
+	}
 }
 
 pokemon.changeTarget = {

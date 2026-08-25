@@ -112,7 +112,12 @@ PokemonInfo_t Pokeball::createNewPokemon(std::string pokemon, const PokemonCreat
 	pInfo.health = pInfo.maxHealth;
 	pInfo.number = mType->info.number;
 	learnPokemonMoves(pInfo, *mType);
-	pInfo.abilityId = g_pokemons.selectAbility(*mType);
+	const uint8_t requestedAbilitySlot = options.abilitySlot >= 1 && options.abilitySlot <= 3 ?
+		static_cast<uint8_t>(options.abilitySlot) : 0;
+	pInfo.abilitySlot = requestedAbilitySlot != 0 && g_pokemons.hasAbilitySlot(*mType, requestedAbilitySlot) ?
+		requestedAbilitySlot : g_pokemons.selectAbilitySlot(*mType);
+	pInfo.abilityId = g_pokemons.getAbilityBySlot(*mType, pInfo.abilitySlot);
+	pInfo.evolutionSeed = static_cast<uint32_t>(uniform_random(1, std::numeric_limits<int32_t>::max()));
 
 
 	pInfo.friendship = options.friendship >= 0 ? static_cast<uint8_t>(std::clamp<int16_t>(options.friendship, 0, 255)) : mType->info.base_friendship;
@@ -164,7 +169,10 @@ PokemonInfo_t Pokeball::createPokeballFromPokemon(Pokemon* pokemon)
 	pInfo.gender = (PokemonGenders_t)pokemon->getGender();
 	pInfo.shiny = pokemon->isShiny();
 	pInfo.abilityId = pokemon->getAbilityId();
+	pInfo.abilitySlot = pokemon->getAbilitySlot();
 	pInfo.heldItemId = pokemon->getHeldItemId();
+	pInfo.evolutionSeed = pokemon->getEvolutionSeed();
+	pInfo.pendingEvolution = pokemon->getPendingEvolution();
 	pInfo.moves = pokemon->getMoves();
 
 	return pInfo;

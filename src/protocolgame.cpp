@@ -3474,6 +3474,7 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	msg.addString(hasHeldItem ? heldItemType.name : "");
 	msg.addString(heldItem ? heldItem->description : "");
 	msg.add<bool>(heldItem && (!activePokemon || activePokemon->isHeldItemEffectActive()));
+	msg.addString(activePokemon ? activePokemon->getLevelEvolutionTarget() : std::string());
 
 	writeToOutputBuffer(msg);
 }

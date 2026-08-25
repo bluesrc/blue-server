@@ -1,60 +1,50 @@
-local mType = Game.createPokemonType("Bulbasaur")
+local mType = Game.createPokemonType("Charmeleon")
 local pokemon = {}
-pokemon.description = "a bulbasaur"
+pokemon.description = "a charmeleon"
 
-pokemon.number = 1
-pokemon.outfit = { lookType = POKEMON_OUTFIT_NUMBER + pokemon.number }
-pokemon.types = { TYPE_GRASS, TYPE_POISON }
+pokemon.number = 5
+-- Temporary fallback until Charmeleon has its own client outfit.
+pokemon.outfit = { lookType = POKEMON_OUTFIT_NUMBER }
+pokemon.types = { TYPE_FIRE }
 pokemon.catch_rate = 45
 
 pokemon.level_rate = RATE_MEDIUM_SLOW
-pokemon.base_experience = 64
-pokemon.ev_yield = { sp_attack = 1 }
+pokemon.base_experience = 142
+pokemon.ev_yield = { sp_attack = 1, speed = 1 }
 
-pokemon.height = 0.7
-pokemon.weight = 6.9
+pokemon.height = 1.1
+pokemon.weight = 19.0
 
-pokemon.gender_ratio = { male = 87.5, female = 12.5}
-pokemon.egg_group = { EGG_GRASS, EGG_MONSTER}
+pokemon.gender_ratio = { male = 87.5, female = 12.5 }
+pokemon.egg_group = { EGG_MONSTER, EGG_DRAGON }
 pokemon.egg_cycles = 20
-
 pokemon.base_friendship = 70
 
 pokemon.base_stats = {
-    hp= 45,
-    attack= 49,
-    defense= 49,
-    sp_attack= 65,
-    sp_defense= 65,
-    speed = 45
+	hp = 58,
+	attack = 64,
+	defense = 58,
+	sp_attack = 80,
+	sp_defense = 65,
+	speed = 80
 }
 
 pokemon.learnset = {
-	{move = "tackle", level = 1},
+	{move = "scratch", level = 1},
 	{move = "growl", level = 3},
-	{move = "vine_whip", level = 7},
-	{move = "growth", level = 10},
-	{move = "poison_powder", level = 13},
-	{move = "sleep_powder", level = 15},
+	{move = "ember", level = 7},
+	{move = "smokescreen", level = 10},
+	{move = "will_o_wisp", level = 13},
+	{move = "bite", level = 15},
 }
 
 pokemon.abilities = {
-	{ability = "overgrow", slot = 1, chance = 50},
-	{ability = "overgrow", slot = 2, chance = 50},
-}
-
-pokemon.evolutions = {
-	{
-		trigger = EVOLVE_LEVEL,
-		target = "Ivysaur",
-		conditions = {
-			minLevel = 25
-		}
-	}
+	{ability = "blaze", slot = 1, chance = 50},
+	{ability = "blaze", slot = 2, chance = 50},
 }
 
 pokemon.changeTarget = {
-	interval = 4*1000,
+	interval = 4 * 1000,
 	chance = 20
 }
 

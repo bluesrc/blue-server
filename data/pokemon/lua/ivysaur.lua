@@ -1,32 +1,32 @@
-local mType = Game.createPokemonType("Bulbasaur")
+local mType = Game.createPokemonType("Ivysaur")
 local pokemon = {}
-pokemon.description = "a bulbasaur"
+pokemon.description = "an ivysaur"
 
-pokemon.number = 1
-pokemon.outfit = { lookType = POKEMON_OUTFIT_NUMBER + pokemon.number }
+pokemon.number = 2
+-- Temporary fallback until Ivysaur has its own client outfit.
+pokemon.outfit = { lookType = POKEMON_OUTFIT_NUMBER }
 pokemon.types = { TYPE_GRASS, TYPE_POISON }
 pokemon.catch_rate = 45
 
 pokemon.level_rate = RATE_MEDIUM_SLOW
-pokemon.base_experience = 64
-pokemon.ev_yield = { sp_attack = 1 }
+pokemon.base_experience = 142
+pokemon.ev_yield = { sp_attack = 1, sp_defense = 1 }
 
-pokemon.height = 0.7
-pokemon.weight = 6.9
+pokemon.height = 1.0
+pokemon.weight = 13.0
 
-pokemon.gender_ratio = { male = 87.5, female = 12.5}
-pokemon.egg_group = { EGG_GRASS, EGG_MONSTER}
+pokemon.gender_ratio = { male = 87.5, female = 12.5 }
+pokemon.egg_group = { EGG_GRASS, EGG_MONSTER }
 pokemon.egg_cycles = 20
-
 pokemon.base_friendship = 70
 
 pokemon.base_stats = {
-    hp= 45,
-    attack= 49,
-    defense= 49,
-    sp_attack= 65,
-    sp_defense= 65,
-    speed = 45
+	hp = 60,
+	attack = 62,
+	defense = 63,
+	sp_attack = 80,
+	sp_defense = 80,
+	speed = 60
 }
 
 pokemon.learnset = {
@@ -43,18 +43,8 @@ pokemon.abilities = {
 	{ability = "overgrow", slot = 2, chance = 50},
 }
 
-pokemon.evolutions = {
-	{
-		trigger = EVOLVE_LEVEL,
-		target = "Ivysaur",
-		conditions = {
-			minLevel = 25
-		}
-	}
-}
-
 pokemon.changeTarget = {
-	interval = 4*1000,
+	interval = 4 * 1000,
 	chance = 20
 }
 
