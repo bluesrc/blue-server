@@ -7,6 +7,8 @@
 
 #include "container.h"
 #include "creature.h"
+#include "depotchest.h"
+#include "pokeball.h"
 
 std::string NetworkMessage::getString(uint16_t stringLen/* = 0*/)
 {
@@ -96,6 +98,8 @@ void NetworkMessage::addItem(uint16_t id, uint8_t count)
 	if (it.isAnimation) {
 		addByte(0xFE); // random phase (0xFF for async)
 	}
+
+	addByte(0); // no custom metadata for an item without an instance
 }
 
 void NetworkMessage::addItem(const Item* item)
@@ -113,6 +117,19 @@ void NetworkMessage::addItem(const Item* item)
 
 	if (it.isAnimation) {
 		addByte(0xFE); // random phase (0xFF for async)
+	}
+
+	const Pokeball* pokeball = item->getPokeball();
+	const uint16_t pokemonNumber = pokeball ? pokeball->getPokemonInfo().number : 0;
+	const DepotChest* playerBox = dynamic_cast<const DepotChest*>(item->getParent());
+	const int32_t boxSlot = playerBox && playerBox->isPlayerBox() ? playerBox->getBoxSlot(*item) : -1;
+	const uint8_t itemMetadataFlags = (pokemonNumber != 0 ? 0x01 : 0x00) | (boxSlot >= 0 ? 0x02 : 0x00);
+	addByte(itemMetadataFlags);
+	if (pokemonNumber != 0) {
+		add<uint16_t>(pokemonNumber);
+	}
+	if (boxSlot >= 0) {
+		addByte(static_cast<uint8_t>(boxSlot));
 	}
 }
 

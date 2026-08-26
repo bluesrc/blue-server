@@ -7,6 +7,11 @@
 #include "creature.h"
 #include "tools.h"
 
+namespace {
+	const std::string BOX_SLOT_ATTRIBUTE = "box_slot";
+	const std::string LEGACY_POKEMON_BOX_SLOT_ATTRIBUTE = "pokemon_box_slot";
+}
+
 DepotChest::DepotChest(uint16_t type, bool paginated /*= true*/, uint16_t depotId /*= NO_DEPOT_ID*/) :
 	Container{type, items[type].maxItems, true, paginated}, depotId{depotId} {}
 
@@ -38,6 +43,111 @@ bool DepotChest::isItemAllowed(const Item& item) const
 bool DepotChest::canModify(const Creature* actor) const
 {
 	return depotId == NO_DEPOT_ID || actor == nullptr || actor->getZone() == ZONE_PROTECTION;
+}
+
+int32_t DepotChest::getBoxSlot(const Item& item) const
+{
+	if (!isPlayerBox()) {
+		return -1;
+	}
+
+	const ItemAttributes::CustomAttribute* attribute = item.getCustomAttribute(BOX_SLOT_ATTRIBUTE);
+	if (!attribute) {
+		attribute = item.getCustomAttribute(LEGACY_POKEMON_BOX_SLOT_ATTRIBUTE);
+	}
+	if (!attribute) {
+		return -1;
+	}
+
+	const int64_t* slot = boost::get<int64_t>(&attribute->value);
+	if (!slot || *slot < 0 || *slot > std::numeric_limits<uint16_t>::max() ||
+			!isValidBoxSlot(static_cast<int32_t>(*slot))) {
+		return -1;
+	}
+	return static_cast<int32_t>(*slot);
+}
+
+Item* DepotChest::getItemByBoxSlot(int32_t slot) const
+{
+	if (!isValidBoxSlot(slot)) {
+		return nullptr;
+	}
+
+	for (Item* item : itemlist) {
+		if (getBoxSlot(*item) == slot) {
+			return item;
+		}
+	}
+	return nullptr;
+}
+
+void DepotChest::setBoxSlot(Item& item, int32_t slot) const
+{
+	item.removeCustomAttribute(LEGACY_POKEMON_BOX_SLOT_ATTRIBUTE);
+	if (!isPlayerBox() || !isValidBoxSlot(slot)) {
+		item.removeCustomAttribute(BOX_SLOT_ATTRIBUTE);
+		return;
+	}
+
+	std::string attributeName = BOX_SLOT_ATTRIBUTE;
+	item.setCustomAttribute(attributeName, static_cast<int64_t>(slot));
+}
+
+void DepotChest::normalizeBoxSlots()
+{
+	if (!isPlayerBox()) {
+		return;
+	}
+
+	std::unordered_set<int32_t> usedSlots;
+	std::vector<Item*> unassignedItems;
+	for (Item* item : itemlist) {
+		const int32_t slot = getBoxSlot(*item);
+		if (slot >= 0 && usedSlots.emplace(slot).second) {
+		} else {
+			setBoxSlot(*item, -1);
+			unassignedItems.push_back(item);
+		}
+	}
+
+	int32_t freeSlot = 0;
+	for (Item* item : unassignedItems) {
+		while (isValidBoxSlot(freeSlot) && usedSlots.find(freeSlot) != usedSlots.end()) {
+			++freeSlot;
+		}
+		if (!isValidBoxSlot(freeSlot)) {
+			break;
+		}
+
+		setBoxSlot(*item, freeSlot);
+		usedSlots.emplace(freeSlot);
+	}
+}
+
+int32_t DepotChest::getNextBoxSlot()
+{
+	normalizeBoxSlots();
+	std::unordered_set<int32_t> usedSlots;
+	int32_t lastUsedSlot = -1;
+	for (Item* item : itemlist) {
+		const int32_t slot = getBoxSlot(*item);
+		if (slot >= 0) {
+			usedSlots.emplace(slot);
+			lastUsedSlot = std::max(lastUsedSlot, slot);
+		}
+	}
+
+	for (int32_t slot = lastUsedSlot + 1; isValidBoxSlot(slot); ++slot) {
+		if (usedSlots.find(slot) == usedSlots.end()) {
+			return slot;
+		}
+	}
+	for (int32_t slot = 0; slot <= lastUsedSlot; ++slot) {
+		if (usedSlots.find(slot) == usedSlots.end()) {
+			return slot;
+		}
+	}
+	return -1;
 }
 
 ReturnValue DepotChest::queryAdd(int32_t index, const Thing& thing, uint32_t count,
