@@ -24,7 +24,7 @@ public:
 
 	uint16_t getGobackEffect() { return gobackEffect; }
 
-	PokemonInfo_t getPokemonInfo() { return pInfo;  }
+	PokemonInfo_t getPokemonInfo() const { return pInfo; }
 	void setPokemonInfo(PokemonInfo_t info) { pInfo = info; }
 
 	int32_t getPokemonHealth() { return pInfo.health; }

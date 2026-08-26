@@ -11,6 +11,7 @@
 #include "creature.h"
 #include "creatureevent.h"
 #include "databasetasks.h"
+#include "depotchest.h"
 #include "events.h"
 #include "game.h"
 #include "globalevent.h"
@@ -1078,12 +1079,59 @@ void Game::playerMoveItem(Player* player, const Position& fromPos,
 ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder, int32_t index,
                                    Item* item, uint32_t count, Item** _moveItem, uint32_t flags /*= 0*/, Creature* actor/* = nullptr*/, Item* tradeItem/* = nullptr*/, const Position* fromPos /*= nullptr*/, const Position* toPos/*= nullptr*/)
 {
+	const int32_t requestedIndex = index;
 	Player* actorPlayer = actor ? actor->getPlayer() : nullptr;
 	if (actorPlayer && fromPos && toPos) {
 		const ReturnValue ret = g_events->eventPlayerOnMoveItem(actorPlayer, item, count, *fromPos, *toPos, fromCylinder, toCylinder);
 		if (ret != RETURNVALUE_NOERROR) {
 			return ret;
 		}
+	}
+
+	DepotChest* playerBox = dynamic_cast<DepotChest*>(toCylinder);
+	if (fromCylinder == toCylinder && playerBox && playerBox->isPlayerBox() && playerBox->isValidBoxSlot(index)) {
+		const ReturnValue ret = playerBox->queryAdd(INDEX_WHEREEVER, *item, count, flags, actor);
+		if (ret != RETURNVALUE_NOERROR) {
+			return ret;
+		}
+
+		playerBox->normalizeBoxSlots();
+		const int32_t sourceSlot = playerBox->getBoxSlot(*item);
+		if (sourceSlot == index) {
+			return RETURNVALUE_NOERROR;
+		}
+
+		Item* targetItem = playerBox->getItemByBoxSlot(index);
+		const bool canMergeStack = item->isStackable() && targetItem && targetItem != item &&
+			targetItem->equals(item) && targetItem->getItemCount() < 100;
+		const bool movingWholeItem = !item->isStackable() || count >= item->getItemCount();
+		if (!movingWholeItem || canMergeStack) {
+			index = canMergeStack ? playerBox->getThingIndex(targetItem) : INDEX_WHEREEVER;
+		} else {
+			playerBox->setBoxSlot(*item, index);
+			if (targetItem) {
+				playerBox->setBoxSlot(*targetItem, sourceSlot);
+			}
+
+			playerBox->updateThing(item, item->getID(), item->getItemCount());
+			if (targetItem) {
+				playerBox->updateThing(targetItem, targetItem->getID(), targetItem->getItemCount());
+			}
+
+			if (_moveItem) {
+				*_moveItem = item;
+			}
+			if (actorPlayer && fromPos && toPos) {
+				g_events->eventPlayerOnItemMoved(actorPlayer, item, count, *fromPos, *toPos, fromCylinder, toCylinder);
+				if (targetItem) {
+					g_events->eventPlayerOnItemMoved(actorPlayer, targetItem, targetItem->getItemCount(), *toPos, *fromPos, toCylinder, fromCylinder);
+				}
+			}
+			return RETURNVALUE_NOERROR;
+		}
+	}
+	if (fromCylinder != toCylinder && playerBox && playerBox->isPlayerBox()) {
+		index = INDEX_WHEREEVER;
 	}
 
 	Tile* fromTile = fromCylinder->getTile();
@@ -1150,6 +1198,10 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 			if (toCylinder->queryRemove(*toItem, toItem->getItemCount(), flags, actor) == RETURNVALUE_NOERROR) {
 				int32_t oldToItemIndex = toCylinder->getThingIndex(toItem);
 				toCylinder->removeThing(toItem, toItem->getItemCount());
+				if (DepotChest* sourcePlayerBox = dynamic_cast<DepotChest*>(fromCylinder);
+						sourcePlayerBox && sourcePlayerBox->isPlayerBox()) {
+					sourcePlayerBox->setBoxSlot(*toItem, sourcePlayerBox->getBoxSlot(*item));
+				}
 				fromCylinder->addThing(toItem);
 
 				if (oldToItemIndex != -1) {
@@ -1245,6 +1297,20 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 
 	//add item
 	if (moveItem /*m - n > 0*/) {
+		if (DepotChest* destinationPlayerBox = dynamic_cast<DepotChest*>(toCylinder);
+				destinationPlayerBox && destinationPlayerBox->isPlayerBox()) {
+			destinationPlayerBox->setBoxSlot(*moveItem, -1);
+			destinationPlayerBox->normalizeBoxSlots();
+
+			int32_t destinationSlot = requestedIndex;
+			if (!destinationPlayerBox->isValidBoxSlot(destinationSlot) ||
+					destinationPlayerBox->getItemByBoxSlot(destinationSlot)) {
+				destinationSlot = destinationPlayerBox->getNextBoxSlot();
+			}
+			if (destinationSlot >= 0) {
+				destinationPlayerBox->setBoxSlot(*moveItem, destinationSlot);
+			}
+		}
 		toCylinder->addThing(index, moveItem);
 	}
 
@@ -1314,6 +1380,18 @@ ReturnValue Game::internalAddItem(Cylinder* toCylinder, Item* item, int32_t inde
 		return RETURNVALUE_NOTPOSSIBLE;
 	}
 
+	const int32_t requestedIndex = index;
+	if (DepotChest* requestedPlayerBox = dynamic_cast<DepotChest*>(toCylinder);
+			requestedPlayerBox && requestedPlayerBox->isPlayerBox() &&
+			requestedPlayerBox->isValidBoxSlot(index)) {
+		Item* targetItem = requestedPlayerBox->getItemByBoxSlot(index);
+		if (item->isStackable() && targetItem && targetItem->equals(item) && targetItem->getItemCount() < 100) {
+			index = requestedPlayerBox->getThingIndex(targetItem);
+		} else {
+			index = INDEX_WHEREEVER;
+		}
+	}
+
 	Cylinder* destCylinder = toCylinder;
 	Item* toItem = nullptr;
 	toCylinder = toCylinder->queryDestination(index, *item, &toItem, flags);
@@ -1339,6 +1417,24 @@ ReturnValue Game::internalAddItem(Cylinder* toCylinder, Item* item, int32_t inde
 		return RETURNVALUE_NOERROR;
 	}
 
+	auto preparePlayerBoxSlot = [requestedIndex](Cylinder* destination, Item* addedItem) {
+		DepotChest* destinationPlayerBox = dynamic_cast<DepotChest*>(destination);
+		if (!destinationPlayerBox || !destinationPlayerBox->isPlayerBox()) {
+			return;
+		}
+
+		destinationPlayerBox->setBoxSlot(*addedItem, -1);
+		destinationPlayerBox->normalizeBoxSlots();
+		int32_t destinationSlot = requestedIndex;
+		if (!destinationPlayerBox->isValidBoxSlot(destinationSlot) ||
+				destinationPlayerBox->getItemByBoxSlot(destinationSlot)) {
+			destinationSlot = destinationPlayerBox->getNextBoxSlot();
+		}
+		if (destinationSlot >= 0) {
+			destinationPlayerBox->setBoxSlot(*addedItem, destinationSlot);
+		}
+	};
+
 	if (item->isStackable() && item->equals(toItem)) {
 		uint32_t m = std::min<uint32_t>(item->getItemCount(), maxQueryCount);
 		uint32_t n = std::min<uint32_t>(100 - toItem->getItemCount(), m);
@@ -1355,6 +1451,7 @@ ReturnValue Game::internalAddItem(Cylinder* toCylinder, Item* item, int32_t inde
 					remainderCount = count;
 				}
 			} else {
+				preparePlayerBoxSlot(toCylinder, item);
 				toCylinder->addThing(index, item);
 
 				int32_t itemIndex = toCylinder->getThingIndex(item);
@@ -1373,6 +1470,7 @@ ReturnValue Game::internalAddItem(Cylinder* toCylinder, Item* item, int32_t inde
 			}
 		}
 	} else {
+		preparePlayerBoxSlot(toCylinder, item);
 		toCylinder->addThing(index, item);
 
 		int32_t itemIndex = toCylinder->getThingIndex(item);
@@ -6039,6 +6137,8 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	static constexpr uint8_t POKEMON_HELD_ITEM_EXTENDED_OPCODE = 77;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
+	static constexpr uint16_t BOX_POKEMON_INFO_SLOT_BASE = 1000;
+	static constexpr uint16_t BOX_SLOT_COUNT = 32;
 	const auto parseUnsigned = [](const std::string& value, uint64_t& result) {
 		if (value.empty()) {
 			return false;
@@ -6059,6 +6159,38 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 
 	if (opcode == BOX_EXTENDED_OPCODE) {
 		if (buffer.empty()) {
+			return;
+		}
+		if (buffer.rfind("I;", 0) == 0) {
+			const size_t separator = buffer.find(';', 2);
+			if (separator == std::string::npos) {
+				return;
+			}
+
+			uint64_t depotIdValue = 0;
+			uint64_t boxSlotValue = 0;
+			if (!parseUnsigned(buffer.substr(2, separator - 2), depotIdValue) ||
+					!parseUnsigned(buffer.substr(separator + 1), boxSlotValue) ||
+					depotIdValue < 5 || depotIdValue >= BOX_DEPOT_COUNT || boxSlotValue >= BOX_SLOT_COUNT) {
+				return;
+			}
+
+			Container* openContainer = player->getContainerByID(BOX_CONTAINER_ID);
+			DepotChest* pokemonBox = dynamic_cast<DepotChest*>(openContainer);
+			if (!pokemonBox || !pokemonBox->isPokemonBox() || pokemonBox->getDepotId() != depotIdValue) {
+				return;
+			}
+
+			pokemonBox->normalizeBoxSlots();
+			Item* item = pokemonBox->getItemByBoxSlot(static_cast<int32_t>(boxSlotValue));
+			Pokeball* pokeball = item ? item->getPokeball() : nullptr;
+			if (!pokeball) {
+				return;
+			}
+
+			const uint16_t responseSlot = BOX_POKEMON_INFO_SLOT_BASE +
+				static_cast<uint16_t>(depotIdValue * BOX_SLOT_COUNT + boxSlotValue);
+			player->sendBoxPokemonInfo(responseSlot, *pokeball);
 			return;
 		}
 
@@ -6083,6 +6215,11 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 			player->toggleBackpack(PLAYER_BACKPACK_CONTAINER_ID);
 		} else if (buffer == "O" && player->isTradeSessionActive()) {
 			player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		} else if (buffer == "B" && !player->isTradeSessionActive()) {
+			DepotChest* openBox = dynamic_cast<DepotChest*>(player->getContainerByID(BOX_CONTAINER_ID));
+			if (openBox && openBox->isPlayerBox()) {
+				player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
+			}
 		}
 		return;
 	}

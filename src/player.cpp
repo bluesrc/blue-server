@@ -873,6 +873,7 @@ bool Player::openDepotBox(uint32_t depotId, uint8_t containerId)
 	if (!depotChest) {
 		return false;
 	}
+	depotChest->normalizeBoxSlots();
 
 	depotChest->setParent(this);
 
@@ -4925,6 +4926,13 @@ bool Player::setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16
 	return true;
 }
 
+void Player::sendBoxPokemonInfo(uint16_t responseSlot, const Pokeball& pokeball) const
+{
+	if (client) {
+		client->sendPokemonInfo(responseSlot, pokeball.getPokemonInfo());
+	}
+}
+
 void Player::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration)
 {
 	if (client) {
@@ -5172,9 +5180,15 @@ bool Player::sendPokemonToBox(Item* item)
 			continue;
 		}
 
+		const int32_t boxSlot = pokemonBox->getNextBoxSlot();
+		if (boxSlot < 0) {
+			continue;
+		}
+		pokemonBox->setBoxSlot(*item, boxSlot);
 		if (g_game.internalAddItem(pokemonBox, item, INDEX_WHEREEVER) == RETURNVALUE_NOERROR) {
 			return true;
 		}
+		pokemonBox->setBoxSlot(*item, -1);
 	}
 
 	sendCancelMessage(RETURNVALUE_FULLPOKEMONBAG);

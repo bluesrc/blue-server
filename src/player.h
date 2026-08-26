@@ -1220,6 +1220,7 @@ class Player final : public Creature, public Cylinder
 		void addPokemon(uint16_t pokeballId, Pokemon* pokemon);
 		void updatePokemonInfo(Pokeball* pokeball);
 		bool setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16_t, 4>& moveIds);
+		void sendBoxPokemonInfo(uint16_t responseSlot, const Pokeball& pokeball) const;
 		void sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration);
 		void healPokebag();
 		bool registerPokemonCatch(uint16_t pokemonNumber);

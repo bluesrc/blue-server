@@ -645,18 +645,18 @@ class Item : virtual public Thing
 			getAttributes()->setCustomAttribute(key, value);
 		}
 
-		const ItemAttributes::CustomAttribute* getCustomAttribute(int64_t key) {
+		const ItemAttributes::CustomAttribute* getCustomAttribute(int64_t key) const {
 			if (!attributes) {
 				return nullptr;
 			}
-			return getAttributes()->getCustomAttribute(key);
+			return attributes->getCustomAttribute(key);
 		}
 
-		const ItemAttributes::CustomAttribute* getCustomAttribute(const std::string& key) {
+		const ItemAttributes::CustomAttribute* getCustomAttribute(const std::string& key) const {
 			if (!attributes) {
 				return nullptr;
 			}
-			return getAttributes()->getCustomAttribute(key);
+			return attributes->getCustomAttribute(key);
 		}
 
 		bool removeCustomAttribute(int64_t key) {

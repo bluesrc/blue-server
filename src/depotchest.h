@@ -27,6 +27,17 @@ class DepotChest final : public Container
 		bool isPokemonBox() const {
 			return depotId >= 5 && depotId <= 16;
 		}
+		bool isPlayerBox() const {
+			return depotId != NO_DEPOT_ID && depotId <= 16;
+		}
+		bool isValidBoxSlot(int32_t slot) const {
+			return slot >= 0 && slot < static_cast<int32_t>(capacity());
+		}
+		int32_t getBoxSlot(const Item& item) const;
+		Item* getItemByBoxSlot(int32_t slot) const;
+		int32_t getNextBoxSlot();
+		void setBoxSlot(Item& item, int32_t slot) const;
+		void normalizeBoxSlots();
 
 		//cylinder implementations
 		ReturnValue queryAdd(int32_t index, const Thing& thing, uint32_t count,
