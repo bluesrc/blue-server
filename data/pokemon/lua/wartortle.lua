@@ -34,7 +34,10 @@ pokemon.learnset = {
 	{move = "tail_whip", level = 4},
 	{move = "water_gun", level = 7},
 	{move = "withdraw", level = 10},
-	{move = "ice_beam", level = 13},
+}
+
+pokemon.tms = {
+	"ice_beam",
 }
 
 pokemon.abilities = {

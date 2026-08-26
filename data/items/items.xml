@@ -2714,8 +2714,16 @@
 		<attribute key="weight" value="105" />
 		<attribute key="charges" value="2" />
 	</item>
-	<item fromid="2263" toid="2264" article="a" name="move rune">
+	<item id="2263" article="a" name="tm sludge bomb">
 		<attribute key="type" value="rune" />
+		<attribute key="description" value="It teaches Sludge Bomb to a compatible Pokemon." />
+		<attribute key="tmMove" value="sludge_bomb" />
+		<attribute key="weight" value="120" />
+	</item>
+	<item id="2264" article="a" name="tm ice beam">
+		<attribute key="type" value="rune" />
+		<attribute key="description" value="It teaches Ice Beam to a compatible Pokemon." />
+		<attribute key="tmMove" value="ice_beam" />
 		<attribute key="weight" value="120" />
 	</item>
 	<item id="2265" article="an" name="intense healing rune">
@@ -2730,8 +2738,10 @@
 		<attribute key="weight" value="210" />
 		<attribute key="charges" value="1" />
 	</item>
-	<item id="2267" article="a" name="move rune">
+	<item id="2267" article="a" name="tm dragon claw">
 		<attribute key="type" value="rune" />
+		<attribute key="description" value="It teaches Dragon Claw to a compatible Pokemon." />
+		<attribute key="tmMove" value="dragon_claw" />
 		<attribute key="weight" value="120" />
 	</item>
 	<item id="2268" article="a" name="sudden death rune">

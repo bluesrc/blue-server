@@ -38,6 +38,10 @@ pokemon.learnset = {
 	{move = "bite", level = 15},
 }
 
+pokemon.tms = {
+	"dragon_claw",
+}
+
 pokemon.abilities = {
 	{ability = "blaze", slot = 1, chance = 50},
 	{ability = "blaze", slot = 2, chance = 50},

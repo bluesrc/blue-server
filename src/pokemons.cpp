@@ -559,6 +559,34 @@ bool Pokemons::addLearnMove(PokemonType* pokemonType, const std::string& moveNam
 	return true;
 }
 
+bool Pokemons::addTechnicalMachine(PokemonType* pokemonType, const std::string& moveName)
+{
+	if (!pokemonType) {
+		return false;
+	}
+
+	const PokemonMoveType* move = getMoveByName(moveName);
+	if (!move) {
+		std::cout << "[Warning - Pokemons::addTechnicalMachine] Unknown move " << moveName << " for " << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	auto& technicalMachines = pokemonType->info.technicalMachines;
+	if (std::find(technicalMachines.begin(), technicalMachines.end(), move->id) != technicalMachines.end()) {
+		std::cout << "[Warning - Pokemons::addTechnicalMachine] Duplicate move " << move->name << " for " << pokemonType->name << '.' << std::endl;
+		return false;
+	}
+
+	technicalMachines.push_back(move->id);
+	return true;
+}
+
+bool Pokemons::canLearnTechnicalMachine(const PokemonType& pokemonType, uint16_t moveId) const
+{
+	const auto& technicalMachines = pokemonType.info.technicalMachines;
+	return std::find(technicalMachines.begin(), technicalMachines.end(), moveId) != technicalMachines.end();
+}
+
 bool Pokemons::addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance, uint8_t slot)
 {
 	if (!pokemonType || chance > 100) {
@@ -2202,6 +2230,34 @@ std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& 
 		learned.push_back(learnMove.moveId);
 	}
 	return learned;
+}
+
+bool teachPokemonMove(PokemonInfo_t& info, uint16_t moveId)
+{
+	if (!g_pokemons.getMoveById(moveId)) {
+		return false;
+	}
+
+	std::array<bool, 5> occupiedSlots = {};
+	for (const PokemonMoveState& state : info.moves) {
+		if (state.moveId == moveId) {
+			return false;
+		}
+		if (state.activeSlot >= 1 && state.activeSlot <= 4) {
+			occupiedSlots[state.activeSlot] = true;
+		}
+	}
+
+	uint8_t activeSlot = 0;
+	for (uint8_t slot = 1; slot <= 4; ++slot) {
+		if (!occupiedSlots[slot]) {
+			activeSlot = slot;
+			break;
+		}
+	}
+
+	info.moves.push_back({moveId, activeSlot});
+	return true;
 }
 
 double getPokemonTypeEffectiveness(PokemonTypes_t attackingType, PokemonTypes_t defendingType)

@@ -45,6 +45,7 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_TYPE,
 	ITEM_PARSE_DESCRIPTION,
 	ITEM_PARSE_RUNEMOVENAME,
+	ITEM_PARSE_TMMOVENAME,
 	ITEM_PARSE_WEIGHT,
 	ITEM_PARSE_SHOWCOUNT,
 	ITEM_PARSE_ARMOR,
@@ -292,6 +293,7 @@ class ItemType
 		std::string pluralName;
 		std::string description;
 		std::string runeMoveName;
+		std::string tmMoveName;
 		std::string vocationString;
 
 		std::unique_ptr<Abilities> abilities;

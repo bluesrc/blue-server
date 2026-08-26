@@ -855,4 +855,10 @@
 	<instant name="Teleport" words="###pokemon_teleport" group="support" enabled="0" aggressive="0" selftarget="1"
 		pokemonmoveid="17" key="teleport" type="psychic" category="status" power="0" pp="20" accuracy="100" range="0" cooldown="5000" priority="-6" flags="escape"
 		script="pokemon_moves/teleport.lua" />
+	<instant name="Sludge Bomb" words="###pokemon_sludge_bomb" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="18" key="sludge_bomb" type="poison" category="special" power="90" pp="10" accuracy="100" range="4" cooldown="3500" flags="projectile"
+		script="pokemon_moves/sludge_bomb.lua" />
+	<instant name="Dragon Claw" words="###pokemon_dragon_claw" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="19" key="dragon_claw" type="dragon" category="physical" power="80" pp="15" accuracy="100" range="1" cooldown="3000" flags="contact"
+		script="pokemon_moves/dragon_claw.lua" />
 </moves>
