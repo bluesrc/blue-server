@@ -18,6 +18,7 @@ extern Game g_game;
 extern Moves* g_moves;
 extern Actions* g_actions;
 extern ConfigManager g_config;
+extern Pokemons g_pokemons;
 
 Actions::Actions() :
 	scriptInterface("Action Interface")
@@ -399,6 +400,84 @@ static void showUseHotkeyMessage(Player* player, const Item* item, uint32_t coun
 	}
 }
 
+static bool useTechnicalMachine(Player* player, Item* item, const Position& toPos,
+		uint8_t toStackPos, Creature* creature)
+{
+	const ItemType& itemType = Item::items[item->getID()];
+	const PokemonMoveType* move = g_pokemons.getMoveByName(itemType.tmMoveName);
+	if (!move) {
+		player->sendCancelMessage("This TM is not configured with a valid move.");
+		return false;
+	}
+
+	Pokeball* targetPokeball = nullptr;
+	Pokemon* targetPokemon = creature ? creature->getPokemon() : nullptr;
+	if (targetPokemon) {
+		targetPokeball = player->getActivePokemon();
+		if (!targetPokeball || targetPokeball->getPokemon() != targetPokemon) {
+			targetPokeball = nullptr;
+			targetPokemon = nullptr;
+		}
+	} else if (!creature) {
+		Thing* targetThing = g_game.internalGetThing(player, toPos, toStackPos, 0, STACKPOS_USETARGET);
+		Item* targetItem = targetThing ? targetThing->getItem() : nullptr;
+		targetPokeball = targetItem ? targetItem->getPokeball() : nullptr;
+		if (targetPokeball && targetPokeball->getTopParent() != player) {
+			targetPokeball = nullptr;
+		}
+		if (targetPokeball == player->getActivePokemon()) {
+			targetPokemon = targetPokeball->getPokemon();
+		}
+	}
+
+	if (!targetPokeball) {
+		player->sendCancelMessage("Use this TM on one of your Pokemon or its Poke Ball.");
+		return false;
+	}
+
+	PokemonInfo_t info = targetPokeball->getPokemonInfo();
+	if (targetPokemon) {
+		info.moves = targetPokemon->getMoves();
+	}
+
+	const PokemonType* pokemonType = g_pokemons.getPokemonType(info.name);
+	if (!pokemonType) {
+		player->sendCancelMessage("This Pokemon has invalid species data.");
+		return false;
+	}
+
+	learnPokemonMoves(info, *pokemonType);
+	if (!g_pokemons.canLearnTechnicalMachine(*pokemonType, move->id)) {
+		player->sendCancelMessage(fmt::format("{} cannot learn {}.", info.name, move->name));
+		return false;
+	}
+
+	const auto knownMove = std::find_if(info.moves.begin(), info.moves.end(), [move](const PokemonMoveState& state) {
+		return state.moveId == move->id;
+	});
+	if (knownMove != info.moves.end()) {
+		player->sendCancelMessage(fmt::format("{} already knows {}.", info.name, move->name));
+		return false;
+	}
+
+	if (g_game.internalRemoveItem(item, 1) != RETURNVALUE_NOERROR) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return false;
+	}
+
+	if (targetPokemon) {
+		targetPokemon->learnMove(move->id);
+	} else {
+		teachPokemonMove(info, move->id);
+		targetPokeball->setPokemonInfo(info);
+		player->updatePokemonInfo(targetPokeball);
+	}
+
+	player->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Your {} learned {}.", info.name, move->name));
+	g_game.addMagicEffect(player->getPosition(), CONST_ME_MAGIC_GREEN);
+	return true;
+}
+
 bool Actions::useItem(Player* player, const Position& pos, uint8_t index, Item* item, bool isHotkey)
 {
 	player->setNextAction(OTSYS_TIME() + g_config.getNumber(ConfigManager::ACTIONS_DELAY_INTERVAL));
@@ -444,6 +523,15 @@ bool Actions::useItemEx(Player* player, const Position& fromPos, const Position&
 			player->tryCatch(item->getThrowablePokeball(), pokemon);
 			return true;
 		}
+	}
+
+	if (!Item::items[item->getID()].tmMoveName.empty()) {
+		if (isHotkey) {
+			const uint16_t subType = item->getSubType();
+			showUseHotkeyMessage(player, item,
+				player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
+		}
+		return useTechnicalMachine(player, item, toPos, toStackPos, creature);
 	}
 
 	if (creature) {

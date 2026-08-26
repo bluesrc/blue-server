@@ -101,6 +101,14 @@ registerPokemonType.learnset = function(mtype, mask)
 	end
 end
 
+registerPokemonType.tms = function(mtype, mask)
+	if type(mask.tms) == "table" then
+		for _, move in ipairs(mask.tms) do
+			mtype:addTechnicalMachine(move)
+		end
+	end
+end
+
 registerPokemonType.abilities = function(mtype, mask)
 	-- Slots 1 and 2 are normal; slot 3 (or hidden = true) is the Hidden Ability.
 	-- Hidden acquisition uses mask.hidden_ability_chance and is not part of the

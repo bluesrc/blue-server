@@ -38,6 +38,10 @@ pokemon.learnset = {
 	{move = "sleep_powder", level = 15},
 }
 
+pokemon.tms = {
+	"sludge_bomb",
+}
+
 pokemon.abilities = {
 	{ability = "overgrow", slot = 1, chance = 50},
 	{ability = "overgrow", slot = 2, chance = 50},

@@ -3220,6 +3220,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "conditionImmunities", LuaScriptInterface::luaPokemonTypeConditionImmunities);
 
 	registerMethod("PokemonType", "addLearnMove", LuaScriptInterface::luaPokemonTypeAddLearnMove);
+	registerMethod("PokemonType", "addTechnicalMachine", LuaScriptInterface::luaPokemonTypeAddTechnicalMachine);
 	registerMethod("PokemonType", "addAbility", LuaScriptInterface::luaPokemonTypeAddAbility);
 	registerMethod("PokemonType", "hiddenAbilityChance", LuaScriptInterface::luaPokemonTypeHiddenAbilityChance);
 
@@ -5020,6 +5021,7 @@ int LuaScriptInterface::luaGameCreatePokemonType(lua_State* L)
 	} else {
 		pokemonType->info.lootItems.clear();
 		pokemonType->info.learnset.clear();
+		pokemonType->info.technicalMachines.clear();
 		pokemonType->info.defenseMoves.clear();
 		pokemonType->info.scripts.clear();
 		pokemonType->info.thinkEvent = -1;
@@ -14859,6 +14861,19 @@ int LuaScriptInterface::luaPokemonTypeAddLearnMove(lua_State* L)
 	const std::string moveName = getString(L, 2);
 	const uint8_t level = getNumber<uint8_t>(L, 3, 1);
 	pushBoolean(L, g_pokemons.addLearnMove(pokemonType, moveName, level));
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeAddTechnicalMachine(lua_State* L)
+{
+	// pokemonType:addTechnicalMachine(moveName)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (!pokemonType) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	pushBoolean(L, g_pokemons.addTechnicalMachine(pokemonType, getString(L, 2)));
 	return 1;
 }
 

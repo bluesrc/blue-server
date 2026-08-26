@@ -312,6 +312,7 @@ class PokemonType
 		PokemonStats_t ev_yield = {};
 		PokemonStats_t base_stats = {};
 		std::vector<PokemonLearnMove> learnset;
+		std::vector<uint16_t> technicalMachines;
 		std::vector<PokemonAbilityOption> abilities;
 		uint8_t hiddenAbilityChance {0};
 
@@ -420,6 +421,8 @@ class Pokemons
 		const PokemonAbilityType* getAbilityByName(const std::string& name) const;
 		const PokemonHeldItemType* getHeldItemById(uint16_t itemId) const;
 		bool addLearnMove(PokemonType* pokemonType, const std::string& moveName, uint8_t level);
+		bool addTechnicalMachine(PokemonType* pokemonType, const std::string& moveName);
+		bool canLearnTechnicalMachine(const PokemonType& pokemonType, uint16_t moveId) const;
 		bool addAbility(PokemonType* pokemonType, const std::string& abilityName, uint32_t chance, uint8_t slot = 0);
 		bool setHiddenAbilityChance(PokemonType* pokemonType, uint32_t chance);
 		uint16_t selectAbility(const PokemonType& pokemonType) const;
@@ -568,6 +571,7 @@ struct PokemonInfo_t
 };
 
 std::vector<uint16_t> learnPokemonMoves(PokemonInfo_t& info, const PokemonType& pokemonType);
+bool teachPokemonMove(PokemonInfo_t& info, uint16_t moveId);
 double getPokemonTypeEffectiveness(PokemonTypes_t attackingType, PokemonTypes_t defendingType);
 
 struct PokemonNatureModifiers_t

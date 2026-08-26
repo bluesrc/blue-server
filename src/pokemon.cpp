@@ -437,6 +437,19 @@ bool Pokemon::refreshAvailableMoves()
 	return true;
 }
 
+bool Pokemon::learnMove(uint16_t moveId)
+{
+	PokemonInfo_t info;
+	info.moves = knownMoves;
+	if (!teachPokemonMove(info, moveId)) {
+		return false;
+	}
+
+	knownMoves = std::move(info.moves);
+	syncPokeball();
+	return true;
+}
+
 bool Pokemon::hasPartySpecies(const std::string& species) const
 {
 	Player* player = master ? master->getPlayer() : nullptr;
