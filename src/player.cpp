@@ -5059,16 +5059,18 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 	if (!pokeball)
 		return;
 
+	const bool forcedRecall = pz || death;
+
 	if (pokeball->isPokemonFainted() && !death)
 	{
 		sendCancelMessage(RETURNVALUE_CANNOTSENDFAINTEDPOKEMON);
 		return;
 	}
 
-	if (getTile()->hasFlag(TILESTATE_PROTECTIONZONE) && !pz)
+	if (getTile()->hasFlag(TILESTATE_PROTECTIONZONE) && !forcedRecall)
 		return;
 
-	if (!canDoGoback() && !pz)
+	if (!canDoGoback() && !forcedRecall)
 	{
 		sendCancelMessage(RETURNVALUE_CANNOTGOBACK);
 		return;
