@@ -47,6 +47,19 @@ extern Scripts* g_scripts;
 
 static constexpr uint8_t PLAYER_BACKPACK_CONTAINER_ID = 0x0D;
 static constexpr uint8_t TRADE_BACKPACK_CONTAINER_ID = 0x0E;
+static constexpr uint8_t PLAYER_LOOT_BAG_CONTAINER_ID = 0x0C;
+static constexpr uint8_t SECONDARY_LOOT_BAG_CONTAINER_ID = 0x0B;
+
+static bool isLootBagCylinder(const Player* player, const Cylinder* cylinder)
+{
+	const Container* lootBag = player->getLootBag();
+	if (cylinder == lootBag) {
+		return true;
+	}
+
+	const Item* cylinderItem = cylinder ? cylinder->getItem() : nullptr;
+	return cylinderItem && lootBag->isHoldingItem(cylinderItem);
+}
 
 Game::Game()
 {
@@ -1081,6 +1094,10 @@ ReturnValue Game::internalMoveItem(Cylinder* fromCylinder, Cylinder* toCylinder,
 {
 	const int32_t requestedIndex = index;
 	Player* actorPlayer = actor ? actor->getPlayer() : nullptr;
+	if (actorPlayer && isLootBagCylinder(actorPlayer, toCylinder) && !isLootBagCylinder(actorPlayer, fromCylinder)) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
+
 	if (actorPlayer && fromPos && toPos) {
 		const ReturnValue ret = g_events->eventPlayerOnMoveItem(actorPlayer, item, count, *fromPos, *toPos, fromCylinder, toCylinder);
 		if (ret != RETURNVALUE_NOERROR) {
@@ -1567,6 +1584,7 @@ Item* Game::findItemOfType(Cylinder* cylinder, uint16_t itemId,
 	if (depthSearch) {
 		if (Player* player = dynamic_cast<Player*>(cylinder)) {
 			containers.push_back(player->getBackpack());
+			containers.push_back(player->getLootBag());
 		}
 	}
 
@@ -1623,6 +1641,7 @@ bool Game::removeMoney(Cylinder* cylinder, uint64_t money, uint32_t flags /*= 0*
 	std::vector<Container*> containers;
 	if (Player* player = dynamic_cast<Player*>(cylinder)) {
 		containers.push_back(player->getBackpack());
+		containers.push_back(player->getLootBag());
 	}
 
 	std::multimap<uint32_t, Item*> moneyMap;
@@ -3331,11 +3350,13 @@ void Game::playerAcceptTrade(uint32_t playerId)
 		player->setTradeState(TRADE_NONE);
 		player->tradePartner = nullptr;
 		player->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		player->closeBackpack(SECONDARY_LOOT_BAG_CONTAINER_ID);
 		player->sendTradeClose();
 
 		tradePartner->setTradeState(TRADE_NONE);
 		tradePartner->tradePartner = nullptr;
 		tradePartner->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		tradePartner->closeBackpack(SECONDARY_LOOT_BAG_CONTAINER_ID);
 		tradePartner->sendTradeClose();
 	}
 }
@@ -3445,6 +3466,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 		player->sendTextMessage(MESSAGE_STATUS_SMALL, "Trade cancelled.");
 	}
 	player->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+	player->closeBackpack(SECONDARY_LOOT_BAG_CONTAINER_ID);
 	player->sendTradeClose();
 
 	if (tradePartner) {
@@ -3457,6 +3479,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 			tradePartner->sendTextMessage(MESSAGE_STATUS_SMALL, "Trade cancelled.");
 		}
 		tradePartner->closeBackpack(TRADE_BACKPACK_CONTAINER_ID);
+		tradePartner->closeBackpack(SECONDARY_LOOT_BAG_CONTAINER_ID);
 		tradePartner->sendTradeClose();
 	}
 }
@@ -6211,7 +6234,13 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	}
 
 	if (opcode == PLAYER_BACKPACK_EXTENDED_OPCODE) {
-		if (buffer == "T" && !player->isTradeSessionActive()) {
+		if (buffer == "A") {
+			player->openBackpack(PLAYER_BACKPACK_CONTAINER_ID);
+			player->openLootBag(PLAYER_LOOT_BAG_CONTAINER_ID);
+		} else if (buffer == "C") {
+			player->closeBackpack(PLAYER_BACKPACK_CONTAINER_ID);
+			player->closeBackpack(PLAYER_LOOT_BAG_CONTAINER_ID);
+		} else if (buffer == "T" && !player->isTradeSessionActive()) {
 			player->toggleBackpack(PLAYER_BACKPACK_CONTAINER_ID);
 		} else if (buffer == "O" && player->isTradeSessionActive()) {
 			player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
@@ -6219,6 +6248,11 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 			DepotChest* openBox = dynamic_cast<DepotChest*>(player->getContainerByID(BOX_CONTAINER_ID));
 			if (openBox && openBox->isPlayerBox()) {
 				player->openBackpack(TRADE_BACKPACK_CONTAINER_ID);
+			}
+		} else if (buffer == "L") {
+			DepotChest* openBox = dynamic_cast<DepotChest*>(player->getContainerByID(BOX_CONTAINER_ID));
+			if (player->isTradeSessionActive() || (openBox && openBox->isPlayerBox())) {
+				player->openLootBag(SECONDARY_LOOT_BAG_CONTAINER_ID);
 			}
 		}
 		return;

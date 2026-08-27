@@ -768,8 +768,27 @@ bool Creature::dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreatur
 			deathEvent->executeOnDeath(this, corpse, lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
 		}
 
-		if (corpse) {
-			dropLoot(corpse->getContainer(), lastHitCreature);
+		Container* lootContainer = corpse ? corpse->getContainer() : nullptr;
+		std::unique_ptr<Container> virtualLootContainer;
+		if (!lootContainer && getPokemon()) {
+			virtualLootContainer = std::make_unique<Container>(ITEM_BAG, 1000);
+			lootContainer = virtualLootContainer.get();
+
+			if (mostDamageCreature) {
+				Player* lootOwner = mostDamageCreature->getPlayer();
+				if (!lootOwner) {
+					Creature* master = mostDamageCreature->getMaster();
+					lootOwner = master ? master->getPlayer() : nullptr;
+				}
+
+				if (lootOwner) {
+					lootContainer->setCorpseOwner(lootOwner->getID());
+				}
+			}
+		}
+
+		if (lootContainer) {
+			dropLoot(lootContainer, lastHitCreature);
 		}
 	}
 

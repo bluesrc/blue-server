@@ -442,7 +442,9 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 			const std::pair<Item*, int32_t>& pair = it->second;
 			Item* item = pair.first;
 			int32_t pid = pair.second;
-			if (pid == Player::BACKPACK_DB_PID) {
+			if (pid == Player::LOOT_BAG_DB_PID) {
+				player->getLootBag()->internalAddThing(item);
+			} else if (pid == Player::BACKPACK_DB_PID) {
 				player->getBackpack()->internalAddThing(item);
 			} else if (pid == CONST_SLOT_BACKPACK) {
 				// Migrate the legacy equipped backpack without keeping its item shell.
@@ -788,6 +790,9 @@ bool IOLoginData::savePlayer(Player* player)
 	ItemBlockList itemList;
 	for (Item* item : player->getBackpack()->getItemList()) {
 		itemList.emplace_back(Player::BACKPACK_DB_PID, item);
+	}
+	for (Item* item : player->getLootBag()->getItemList()) {
+		itemList.emplace_back(Player::LOOT_BAG_DB_PID, item);
 	}
 
 	for (int32_t slotId = CONST_SLOT_FIRST; slotId <= CONST_SLOT_LAST; ++slotId) {

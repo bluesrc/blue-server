@@ -102,6 +102,8 @@ class Player final : public Creature, public Cylinder
 {
 	public:
 		static constexpr uint16_t BACKPACK_CAPACITY = 30;
+		static constexpr uint16_t LOOT_BAG_CAPACITY = 30;
+		static constexpr int32_t LOOT_BAG_DB_PID = 62;
 		static constexpr int32_t BACKPACK_DB_PID = 63;
 
 		explicit Player(ProtocolGame_ptr p);
@@ -241,6 +243,10 @@ class Player final : public Creature, public Cylinder
 
 		Container* getBackpack() const {
 			return backpack;
+		}
+
+		Container* getLootBag() const {
+			return lootBag;
 		}
 
 		StoreInbox* getStoreInbox() const {
@@ -500,6 +506,7 @@ class Player final : public Creature, public Cylinder
 		DepotChest* getDepotChest(uint32_t depotId, bool autoCreate);
 		bool openDepotBox(uint32_t depotId, uint8_t containerId);
 		bool openBackpack(uint8_t containerId);
+		bool openLootBag(uint8_t containerId);
 		bool toggleBackpack(uint8_t containerId);
 		void closeBackpack(uint8_t containerId);
 		DepotLocker& getDepotLocker();
@@ -1328,6 +1335,7 @@ class Player final : public Creature, public Cylinder
 		Group* group = nullptr;
 		Inbox* inbox;
 		Container* backpack;
+		Container* lootBag;
 		Item* tradeItem = nullptr;
 		std::vector<Item*> tradeOfferItems;
 		std::vector<uint8_t> tradeOfferCounts;
