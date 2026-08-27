@@ -1,5 +1,5 @@
 function onUpdateDatabase()
-	print("> Updating database to version 36 (Pokemon abilities)")
-	db.query("ALTER TABLE `pokemons` ADD `ability_id` SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `shiny`")
+	print("> Updating database to version 36 (Pokemon combat friendship progress)")
+	db.query("ALTER TABLE `pokemons` ADD `combat_friendship_time` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `friendship`")
 	return true
 end
