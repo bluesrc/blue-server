@@ -3476,6 +3476,14 @@ void ProtocolGame::sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool activ
 	msg.add<bool>(heldItem && (!activePokemon || activePokemon->isHeldItemEffectActive()));
 	msg.addString(activePokemon ? activePokemon->getLevelEvolutionTarget() : std::string());
 
+	for (uint8_t stat = POKEMON_BATTLE_STAT_ATTACK; stat < POKEMON_BATTLE_STAT_COUNT; ++stat) {
+		msg.add<int8_t>(activePokemon
+			? activePokemon->getBattleStatStage(static_cast<PokemonBattleStat_t>(stat))
+			: 0);
+	}
+	msg.add<uint8_t>(activePokemon ? activePokemon->getPokemonStatusCondition() : POKEMON_STATUS_NONE);
+	msg.add<uint32_t>(activePokemon ? activePokemon->getFlinchRemaining() : 0);
+
 	writeToOutputBuffer(msg);
 }
 
@@ -3485,6 +3493,15 @@ void ProtocolGame::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uin
 	msg.addByte(0x3B);
 	msg.add<uint32_t>(pokemonId);
 	msg.add<uint8_t>(slot);
+	msg.add<uint32_t>(duration);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPlayerCooldown(PlayerCooldown_t cooldown, uint32_t duration)
+{
+	NetworkMessage msg;
+	msg.addByte(0x3C);
+	msg.add<uint8_t>(cooldown);
 	msg.add<uint32_t>(duration);
 	writeToOutputBuffer(msg);
 }

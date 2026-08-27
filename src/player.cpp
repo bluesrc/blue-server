@@ -20,6 +20,8 @@
 
 #include <fmt/format.h>
 
+#include <limits>
+
 extern ConfigManager g_config;
 extern Game g_game;
 extern Chat* g_chat;
@@ -32,6 +34,11 @@ extern Pokemons g_pokemons;
 MuteCountMap Player::muteCountMap;
 
 uint32_t Player::playerAutoID = 0x10000000;
+
+namespace {
+	constexpr int32_t ACTIVE_POKEMON_TELEPORT_RANGE_X = Map::maxClientViewportX - 1;
+	constexpr int32_t ACTIVE_POKEMON_TELEPORT_RANGE_Y = Map::maxClientViewportY - 1;
+}
 
 Player::Player(ProtocolGame_ptr p) :
 	Creature(), lastPing(OTSYS_TIME()), lastPong(lastPing), inbox(new Inbox(ITEM_INBOX)),
@@ -1248,6 +1255,7 @@ void Player::onCreatureAppear(Creature* creature, bool isLogin)
 
 		g_game.checkPlayersRecord();
 		IOLoginData::updateOnlineStatus(guid, true);
+		sendCombatCooldown();
 	}
 }
 
@@ -1413,6 +1421,25 @@ void Player::onWalk(Direction& dir)
 void Player::onCreatureMove(Creature* creature, const Tile* newTile, const Position& newPos,
                             const Tile* oldTile, const Position& oldPos, bool teleport)
 {
+	if (creature == this && activePokemon) {
+		Pokemon* pokemon = activePokemon->getPokemon();
+		if (pokemon && !pokemon->isRemoved()) {
+			const Position& pokemonPos = pokemon->getPosition();
+			const bool changedFloor = oldPos.z != newPos.z;
+			const bool outsideFollowView =
+				Position::getDistanceX(pokemonPos, newPos) > ACTIVE_POKEMON_TELEPORT_RANGE_X ||
+				Position::getDistanceY(pokemonPos, newPos) > ACTIVE_POKEMON_TELEPORT_RANGE_Y;
+			if (changedFloor || outsideFollowView) {
+				g_game.internalTeleport(pokemon, newPos, false);
+			}
+
+			if (!pokemon->getAttackedCreature()) {
+				pokemon->setFollowCreature(this);
+				pokemon->goToFollowCreature();
+			}
+		}
+	}
+
 	Creature::onCreatureMove(creature, newTile, newPos, oldTile, oldPos, teleport);
 
 	if (hasFollowPath && (creature == followCreature || (creature == this && followCreature))) {
@@ -1626,6 +1653,7 @@ void Player::onThink(uint32_t interval)
 	if (pokemonCombatTicks != 0 && pokemonCombatTicks <= OTSYS_TIME()) {
 		pokemonCombatTicks = 0;
 		sendIcons();
+		sendCombatCooldown();
 	}
 
 	sendPing();
@@ -1661,6 +1689,7 @@ void Player::markPokemonCombat(int64_t expiresAt)
 	const bool wasInPokemonCombat = isInPokemonCombat();
 	if (expiresAt > pokemonCombatTicks) {
 		pokemonCombatTicks = expiresAt;
+		sendCombatCooldown();
 	}
 	if (!wasInPokemonCombat && isInPokemonCombat()) {
 		sendIcons();
@@ -2333,6 +2362,7 @@ void Player::addInFightTicks(bool pzlock /*= false*/)
 
 	Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.getNumber(ConfigManager::PZ_LOCKED), 0);
 	addCondition(condition);
+	sendCombatCooldown();
 }
 
 void Player::removeList()
@@ -3618,6 +3648,9 @@ void Player::onEndCondition(ConditionType_t type)
 	}
 
 	sendIcons();
+	if (type == CONDITION_INFIGHT) {
+		sendCombatCooldown();
+	}
 }
 
 void Player::onCombatRemoveCondition(Condition* condition)
@@ -3792,6 +3825,7 @@ bool Player::onKilledCreature(Creature* target, bool lastHit/* = true*/)
 				pzLocked = true;
 				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.getNumber(ConfigManager::WHITE_SKULL_TIME) * 1000, 0);
 				addCondition(condition);
+				sendCombatCooldown();
 			}
 		}
 	}
@@ -4963,6 +4997,30 @@ void Player::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t 
 	}
 }
 
+void Player::sendPlayerCooldown(PlayerCooldown_t cooldown, uint32_t duration) const
+{
+	if (client) {
+		client->sendPlayerCooldown(cooldown, duration);
+	}
+}
+
+void Player::sendCombatCooldown() const
+{
+	const int64_t now = OTSYS_TIME();
+	int64_t remaining = std::max<int64_t>(0, pokemonCombatTicks - now);
+	if (const Condition* condition = getCondition(CONDITION_INFIGHT)) {
+		if (condition->getTicks() == -1) {
+			remaining = std::numeric_limits<uint32_t>::max();
+		} else {
+			remaining = std::max<int64_t>(remaining, condition->getEndTime() - now);
+		}
+	}
+
+	const uint32_t duration = static_cast<uint32_t>(std::min<int64_t>(
+		std::max<int64_t>(0, remaining), std::numeric_limits<uint32_t>::max()));
+	sendPlayerCooldown(PLAYER_COOLDOWN_COMBAT, duration);
+}
+
 void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)
 {
 	auto item = Item::CreateItem(pokeballId);
@@ -5020,38 +5078,54 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 
 	if (hasActivePokemon())
 	{
-		auto pokemon = activePokemon->getPokemon();
-		const Position pokemonPosition = pokemon->getPosition();
-		g_pokemons.executeAbilityRecall(pokemon, this, death);
-		pokemon->leaveAbilityCombat();
-		activePokemon->setPokemonHealth(pokemon->getHealth());
-
-		g_game.removeCreature(pokemon);
-
-		if (activePokemon == pokeball)
+		Pokeball* recalledPokeball = activePokemon;
+		auto pokemon = recalledPokeball->getPokemon();
+		if (!pokemon || pokemon->isRemoved())
 		{
-			g_game.addMagicEffect(pokemonPosition, pokeball->getGobackEffect());
+			recalledPokeball->setPokemon(nullptr);
 			activePokemon = nullptr;
+			updatePokemonInfo(recalledPokeball);
+		}
+		else
+		{
+			const Position pokemonPosition = pokemon->getPosition();
+			g_pokemons.executeAbilityRecall(pokemon, this, death);
+			pokemon->leaveAbilityCombat();
+			recalledPokeball->setPokemonHealth(pokemon->getHealth());
 
-			auto idx = std::find(std::begin(inventory), std::end(inventory), pokeball);
-			if (idx != std::end(inventory))
+			g_game.removeCreature(pokemon);
+			recalledPokeball->setPokemon(nullptr);
+			activePokemon = nullptr;
+			updatePokemonInfo(recalledPokeball);
+
+			if (recalledPokeball == pokeball)
 			{
-				auto index = std::distance(std::begin(inventory), idx);
-				pokeball->setPokemonId(0);
-				client->sendPokemonInfo(index, pokeball->getPokemonInfo());
+				g_game.addMagicEffect(pokemonPosition, pokeball->getGobackEffect());
+				return;
 			}
-
-			return;
 		}
 	}
 
 	Pokemon* pokemon = Pokemon::createPlayerPokemon(pokeball->getPokemonInfo());
+	if (!pokemon)
+	{
+		sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return;
+	}
+
 	pokeball->setPokemon(pokemon);
 	
 	pokemon->setMaster(this);
-	pokemon->setFollowCreature(this);
 
-	g_game.placeCreature(pokemon, getPosition(), false, false);
+	if (!g_game.placeCreature(pokemon, getPosition(), false, false))
+	{
+		pokeball->setPokemon(nullptr);
+		pokemon->setMaster(nullptr);
+		sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
+		return;
+	}
+	pokemon->setFollowCreature(this);
+	pokemon->goToFollowCreature();
 	g_game.addMagicEffect(pokemon->getPosition(), pokeball->getGobackEffect());
 
 	pokeball->setPokemonId(pokemon->getID());

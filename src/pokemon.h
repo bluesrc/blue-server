@@ -264,6 +264,10 @@ class Pokemon final : public Creature
 		PokemonStats_t getEffectivePokemonStats() const;
 		const PokemonType* getPokemonTypeData() const { return mType; }
 		const std::vector<PokemonMoveState>& getMoves() const { return knownMoves; }
+		int8_t getBattleStatStage(PokemonBattleStat_t stat) const {
+			return stat < POKEMON_BATTLE_STAT_COUNT ? battleStatStages[stat] : 0;
+		}
+		uint32_t getFlinchRemaining() const;
 		bool learnMove(uint16_t moveId);
 		bool refreshAvailableMoves();
 		bool setMoveSlot(uint16_t moveId, uint8_t slot);

@@ -36,8 +36,8 @@ Pokeball::Pokeball(uint16_t id) : Item(id), active{ false }, pokemon{nullptr}
 
 void Pokeball::setPokemon(Pokemon* pokemon)
 {
-	pInfo.p_id = pokemon->getID();
 	this->pokemon = pokemon;
+	pInfo.p_id = pokemon ? pokemon->getID() : 0;
 }
 
 void Pokeball::setPokemonMaxHealth()

@@ -263,6 +263,7 @@ class ProtocolGame final : public Protocol
 		//pokemon
 		void sendPokemonInfo(uint16_t slot, PokemonInfo_t info, bool active = false);
 		void sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration);
+		void sendPlayerCooldown(PlayerCooldown_t cooldown, uint32_t duration);
 
 		//messages
 		void sendModalWindow(const ModalWindow& modalWindow);

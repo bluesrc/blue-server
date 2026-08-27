@@ -20,7 +20,7 @@ public:
 	Pokemon* getPokemon() { return pokemon; }
 	void setPokemon(Pokemon* pokemon);
 
-	void setActive(bool active = true) { active = active; }
+	void setActive(bool active = true) { this->active = active; }
 
 	uint16_t getGobackEffect() { return gobackEffect; }
 
