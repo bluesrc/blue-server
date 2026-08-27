@@ -3488,3 +3488,12 @@ void ProtocolGame::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uin
 	msg.add<uint32_t>(duration);
 	writeToOutputBuffer(msg);
 }
+
+void ProtocolGame::sendPlayerCooldown(PlayerCooldown_t cooldown, uint32_t duration)
+{
+	NetworkMessage msg;
+	msg.addByte(0x3C);
+	msg.add<uint8_t>(cooldown);
+	msg.add<uint32_t>(duration);
+	writeToOutputBuffer(msg);
+}

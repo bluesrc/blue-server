@@ -1175,9 +1175,13 @@ class Player final : public Creature, public Cylinder
 		void postAddNotification(Thing* thing, const Cylinder* oldParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 		void postRemoveNotification(Thing* thing, const Cylinder* newParent, int32_t index, cylinderlink_t link = LINK_OWNER) override;
 
-		void setNextAction(int64_t time) {
+		void setNextAction(int64_t time, bool notifyCooldown = false) {
 			if (time > nextAction) {
 				nextAction = time;
+				if (notifyCooldown) {
+					sendPlayerCooldown(PLAYER_COOLDOWN_ACTION,
+						static_cast<uint32_t>(std::max<int64_t>(0, time - OTSYS_TIME())));
+				}
 			}
 		}
 		bool canDoAction() const {
@@ -1203,14 +1207,20 @@ class Player final : public Creature, public Cylinder
 
 		void setGobackTicks(int64_t time)
 		{
-			if (time > gobackTicks)
+			if (time > gobackTicks) {
 				gobackTicks = time;
+				sendPlayerCooldown(PLAYER_COOLDOWN_GOBACK,
+					static_cast<uint32_t>(std::max<int64_t>(0, time - OTSYS_TIME())));
+			}
 		}
 		bool canDoGoback() const { return gobackTicks <= OTSYS_TIME(); }
 		void setTryCatchTicks(int64_t time)
 		{
-			if (time > tryCatchTicks)
+			if (time > tryCatchTicks) {
 				tryCatchTicks = time;
+				sendPlayerCooldown(PLAYER_COOLDOWN_TRYCATCH,
+					static_cast<uint32_t>(std::max<int64_t>(0, time - OTSYS_TIME())));
+			}
 		}
 
 		bool canTryCatch() const { return tryCatchTicks <= OTSYS_TIME(); }
@@ -1229,6 +1239,8 @@ class Player final : public Creature, public Cylinder
 		bool setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16_t, 4>& moveIds);
 		void sendBoxPokemonInfo(uint16_t responseSlot, const Pokeball& pokeball) const;
 		void sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t duration);
+		void sendPlayerCooldown(PlayerCooldown_t cooldown, uint32_t duration) const;
+		void sendCombatCooldown() const;
 		void healPokebag();
 		bool registerPokemonCatch(uint16_t pokemonNumber);
 		uint32_t getPokedexCount() const { return pokedexCount; }

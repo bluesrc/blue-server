@@ -20,6 +20,8 @@
 
 #include <fmt/format.h>
 
+#include <limits>
+
 extern ConfigManager g_config;
 extern Game g_game;
 extern Chat* g_chat;
@@ -1253,6 +1255,7 @@ void Player::onCreatureAppear(Creature* creature, bool isLogin)
 
 		g_game.checkPlayersRecord();
 		IOLoginData::updateOnlineStatus(guid, true);
+		sendCombatCooldown();
 	}
 }
 
@@ -1650,6 +1653,7 @@ void Player::onThink(uint32_t interval)
 	if (pokemonCombatTicks != 0 && pokemonCombatTicks <= OTSYS_TIME()) {
 		pokemonCombatTicks = 0;
 		sendIcons();
+		sendCombatCooldown();
 	}
 
 	sendPing();
@@ -1685,6 +1689,7 @@ void Player::markPokemonCombat(int64_t expiresAt)
 	const bool wasInPokemonCombat = isInPokemonCombat();
 	if (expiresAt > pokemonCombatTicks) {
 		pokemonCombatTicks = expiresAt;
+		sendCombatCooldown();
 	}
 	if (!wasInPokemonCombat && isInPokemonCombat()) {
 		sendIcons();
@@ -2357,6 +2362,7 @@ void Player::addInFightTicks(bool pzlock /*= false*/)
 
 	Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.getNumber(ConfigManager::PZ_LOCKED), 0);
 	addCondition(condition);
+	sendCombatCooldown();
 }
 
 void Player::removeList()
@@ -3642,6 +3648,9 @@ void Player::onEndCondition(ConditionType_t type)
 	}
 
 	sendIcons();
+	if (type == CONDITION_INFIGHT) {
+		sendCombatCooldown();
+	}
 }
 
 void Player::onCombatRemoveCondition(Condition* condition)
@@ -3816,6 +3825,7 @@ bool Player::onKilledCreature(Creature* target, bool lastHit/* = true*/)
 				pzLocked = true;
 				Condition* condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_INFIGHT, g_config.getNumber(ConfigManager::WHITE_SKULL_TIME) * 1000, 0);
 				addCondition(condition);
+				sendCombatCooldown();
 			}
 		}
 	}
@@ -4985,6 +4995,30 @@ void Player::sendPokemonMoveCooldown(uint32_t pokemonId, uint8_t slot, uint32_t 
 	if (client) {
 		client->sendPokemonMoveCooldown(pokemonId, slot, duration);
 	}
+}
+
+void Player::sendPlayerCooldown(PlayerCooldown_t cooldown, uint32_t duration) const
+{
+	if (client) {
+		client->sendPlayerCooldown(cooldown, duration);
+	}
+}
+
+void Player::sendCombatCooldown() const
+{
+	const int64_t now = OTSYS_TIME();
+	int64_t remaining = std::max<int64_t>(0, pokemonCombatTicks - now);
+	if (const Condition* condition = getCondition(CONDITION_INFIGHT)) {
+		if (condition->getTicks() == -1) {
+			remaining = std::numeric_limits<uint32_t>::max();
+		} else {
+			remaining = std::max<int64_t>(remaining, condition->getEndTime() - now);
+		}
+	}
+
+	const uint32_t duration = static_cast<uint32_t>(std::min<int64_t>(
+		std::max<int64_t>(0, remaining), std::numeric_limits<uint32_t>::max()));
+	sendPlayerCooldown(PLAYER_COOLDOWN_COMBAT, duration);
 }
 
 void Player::addPokemon(uint16_t pokeballId, Pokemon* pokemon)

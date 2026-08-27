@@ -654,6 +654,13 @@ enum EvolveTypes_t : uint8_t {
 	EVOLVE_TRADE,
 };
 
+enum PlayerCooldown_t : uint8_t {
+	PLAYER_COOLDOWN_ACTION = 1,
+	PLAYER_COOLDOWN_GOBACK,
+	PLAYER_COOLDOWN_TRYCATCH,
+	PLAYER_COOLDOWN_COMBAT,
+};
+
 enum EvolutionTime_t : uint8_t {
 	EVOLUTION_TIME_ANY,
 	EVOLUTION_TIME_DAY,
