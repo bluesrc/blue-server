@@ -9,6 +9,7 @@
 #include "events.h"
 #include "configmanager.h"
 #include "pokeball.h"
+#include "party.h"
 
 #include <numeric>
 
@@ -30,6 +31,35 @@ namespace {
 	constexpr int64_t POKEMON_COMBAT_ACTIVITY_TIMEOUT = 10 * 1000;
 	constexpr int16_t EVOLUTION_DAY_START = 4 * 60;
 	constexpr int16_t EVOLUTION_NIGHT_START = 20 * 60;
+
+	void appendLootDescriptions(const Item* item, std::vector<std::string>& descriptions)
+	{
+		const Container* container = item->getContainer();
+		if (container && !container->empty()) {
+			for (const Item* child : container->getItemList()) {
+				appendLootDescriptions(child, descriptions);
+			}
+			return;
+		}
+
+		descriptions.push_back(item->getNameDescription());
+	}
+
+	std::string joinLootDescriptions(const std::vector<std::string>& descriptions)
+	{
+		if (descriptions.empty()) {
+			return "nothing";
+		}
+
+		std::ostringstream result;
+		for (size_t i = 0; i < descriptions.size(); ++i) {
+			if (i != 0) {
+				result << ", ";
+			}
+			result << descriptions[i];
+		}
+		return result.str();
+	}
 
 	uint32_t createEvolutionSeed()
 	{
@@ -3747,6 +3777,54 @@ void Pokemon::dropLoot(Container* corpse, Creature* lastHitCreature)
 			g_pokemons.executeAbilityLoot(sourcePokemon, this, corpse, false);
 		}
 		g_pokemons.executeAbilityLoot(this, this, corpse, true);
+
+		Player* player = g_game.getPlayerByID(corpse->getCorpseOwner());
+		if (!player) {
+			return;
+		}
+
+		Container* lootBag = player->getLootBag();
+		std::vector<std::string> lootedDescriptions;
+		bool lootBagFull = false;
+
+		const ItemDeque lootItems = corpse->getItemList();
+		for (Item* item : lootItems) {
+			uint32_t maxCount = 0;
+			const uint32_t itemCount = item->getItemCount();
+			const ReturnValue roomCheck = lootBag->queryMaxCount(INDEX_WHEREEVER, *item, itemCount, maxCount, 0);
+			if (roomCheck != RETURNVALUE_NOERROR || maxCount == 0 || (item->isStackable() && maxCount < itemCount)) {
+				lootBagFull = true;
+				continue;
+			}
+
+			std::vector<std::string> itemDescriptions;
+			appendLootDescriptions(item, itemDescriptions);
+			if (g_game.internalMoveItem(corpse, lootBag, INDEX_WHEREEVER, item, itemCount, nullptr, 0) == RETURNVALUE_NOERROR) {
+				lootedDescriptions.insert(lootedDescriptions.end(), itemDescriptions.begin(), itemDescriptions.end());
+			} else {
+				lootBagFull = true;
+			}
+		}
+
+		if (lootBagFull) {
+			const char* warning = corpse->getParent()
+				? "Your loot bag does not have enough room. Some loot was left in the corpse."
+				: "Your loot bag does not have enough room. Some loot could not be collected.";
+			player->sendTextMessage(MESSAGE_STATUS_WARNING, warning);
+			return;
+		}
+
+		std::string lootDescription = joinLootDescriptions(lootedDescriptions);
+		if (lootedDescriptions.empty() && player->getStaminaMinutes() <= 840) {
+			lootDescription = "nothing (due to low stamina)";
+		}
+
+		const std::string text = fmt::format("Loot of {:s}: {:s}", getNameDescription(), lootDescription);
+		if (Party* party = player->getParty()) {
+			party->broadcastPartyMessage(MESSAGE_INFO_DESCR, text);
+		} else {
+			player->sendTextMessage(MESSAGE_LOOT, text);
+		}
 	}
 }
 

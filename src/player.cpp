@@ -35,12 +35,15 @@ uint32_t Player::playerAutoID = 0x10000000;
 
 Player::Player(ProtocolGame_ptr p) :
 	Creature(), lastPing(OTSYS_TIME()), lastPong(lastPing), inbox(new Inbox(ITEM_INBOX)),
-	backpack(new Container(ITEM_BACKPACK, BACKPACK_CAPACITY)), storeInbox(new StoreInbox(ITEM_STORE_INBOX)), client(std::move(p))
+	backpack(new Container(ITEM_BACKPACK, BACKPACK_CAPACITY)), lootBag(new Container(ITEM_LOOT_BAG, LOOT_BAG_CAPACITY)),
+	storeInbox(new StoreInbox(ITEM_STORE_INBOX)), client(std::move(p))
 {
 	inbox->incrementReferenceCounter();
 
 	backpack->setParent(this);
 	backpack->incrementReferenceCounter();
+	lootBag->setParent(this);
+	lootBag->incrementReferenceCounter();
 
 	storeInbox->setParent(this);
 	storeInbox->incrementReferenceCounter();
@@ -63,6 +66,8 @@ Player::~Player()
 
 	backpack->setParent(nullptr);
 	backpack->decrementReferenceCounter();
+	lootBag->setParent(nullptr);
+	lootBag->decrementReferenceCounter();
 
 	storeInbox->setParent(nullptr);
 	storeInbox->decrementReferenceCounter();
@@ -437,6 +442,7 @@ void Player::updateInventoryWeight()
 	}
 
 	inventoryWeight += backpack->getWeight() - backpack->getBaseWeight();
+	inventoryWeight += lootBag->getWeight() - lootBag->getBaseWeight();
 
 	if (StoreInbox* storeInbox = getStoreInbox()) {
 		inventoryWeight += storeInbox->getWeight();
@@ -892,14 +898,8 @@ bool Player::openBackpack(uint8_t containerId)
 		return false;
 	}
 
-	const int8_t currentContainerId = getContainerID(backpack);
-	if (currentContainerId >= 0 && currentContainerId != containerId) {
-		onCloseContainer(backpack);
-		closeContainer(static_cast<uint8_t>(currentContainerId));
-	}
-
 	if (Container* previousContainer = getContainerByID(containerId); previousContainer && previousContainer != backpack) {
-		onCloseContainer(previousContainer);
+		sendCloseContainer(containerId);
 		closeContainer(containerId);
 	}
 
@@ -908,11 +908,27 @@ bool Player::openBackpack(uint8_t containerId)
 	return true;
 }
 
+bool Player::openLootBag(uint8_t containerId)
+{
+	if (!lootBag) {
+		return false;
+	}
+
+	if (Container* previousContainer = getContainerByID(containerId); previousContainer && previousContainer != lootBag) {
+		sendCloseContainer(containerId);
+		closeContainer(containerId);
+	}
+
+	addContainer(containerId, lootBag);
+	sendContainer(containerId, lootBag, false, 0);
+	return true;
+}
+
 bool Player::toggleBackpack(uint8_t containerId)
 {
 	if (Container* openContainer = getContainerByID(containerId)) {
 		if (openContainer == backpack || backpack->isHoldingItem(openContainer)) {
-			onCloseContainer(openContainer);
+			sendCloseContainer(containerId);
 			closeContainer(containerId);
 			return true;
 		}
@@ -928,7 +944,7 @@ void Player::closeBackpack(uint8_t containerId)
 		return;
 	}
 
-	onCloseContainer(container);
+	sendCloseContainer(containerId);
 	closeContainer(containerId);
 }
 
@@ -1191,6 +1207,7 @@ void Player::onCreatureAppear(Creature* creature, bool isLogin)
 			}
 		}
 		backpack->startDecaying();
+		lootBag->startDecaying();
 
 		for (Condition* condition : storedConditionList) {
 			addCondition(condition);
@@ -3075,9 +3092,11 @@ size_t Player::getLastIndex() const
 uint32_t Player::getItemTypeCount(uint16_t itemId, int32_t subType /*= -1*/) const
 {
 	uint32_t count = 0;
-	for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-		if ((*it)->getID() == itemId) {
-			count += Item::countByType(*it, subType);
+	for (Container* rootContainer : {backpack, lootBag}) {
+		for (ContainerIterator it = rootContainer->iterator(); it.hasNext(); it.advance()) {
+			if ((*it)->getID() == itemId) {
+				count += Item::countByType(*it, subType);
+			}
 		}
 	}
 
@@ -3111,22 +3130,24 @@ bool Player::removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType,
 	std::vector<Item*> itemList;
 
 	uint32_t count = 0;
-	for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-		Item* backpackItem = *it;
-		if (backpackItem->getID() != itemId) {
-			continue;
-		}
+	for (Container* rootContainer : {backpack, lootBag}) {
+		for (ContainerIterator it = rootContainer->iterator(); it.hasNext(); it.advance()) {
+			Item* containerItem = *it;
+			if (containerItem->getID() != itemId) {
+				continue;
+			}
 
-		uint32_t itemCount = Item::countByType(backpackItem, subType);
-		if (itemCount == 0) {
-			continue;
-		}
+			uint32_t itemCount = Item::countByType(containerItem, subType);
+			if (itemCount == 0) {
+				continue;
+			}
 
-		itemList.push_back(backpackItem);
-		count += itemCount;
-		if (count >= amount) {
-			g_game.internalRemoveItems(std::move(itemList), amount, Item::items[itemId].stackable);
-			return true;
+			itemList.push_back(containerItem);
+			count += itemCount;
+			if (count >= amount) {
+				g_game.internalRemoveItems(std::move(itemList), amount, Item::items[itemId].stackable);
+				return true;
+			}
 		}
 	}
 
@@ -3174,8 +3195,10 @@ bool Player::removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType,
 
 std::map<uint32_t, uint32_t>& Player::getAllItemTypeCount(std::map<uint32_t, uint32_t>& countMap) const
 {
-	for (ContainerIterator it = backpack->iterator(); it.hasNext(); it.advance()) {
-		countMap[(*it)->getID()] += Item::countByType(*it, -1);
+	for (Container* rootContainer : {backpack, lootBag}) {
+		for (ContainerIterator it = rootContainer->iterator(); it.hasNext(); it.advance()) {
+			countMap[(*it)->getID()] += Item::countByType(*it, -1);
+		}
 	}
 
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; i++) {
@@ -4683,7 +4706,7 @@ void Player::sendClosePrivate(uint16_t channelId)
 
 uint64_t Player::getMoney() const
 {
-	std::vector<const Container*> containers{backpack};
+	std::vector<const Container*> containers{backpack, lootBag};
 	uint64_t moneyCount = 0;
 
 	for (int32_t i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; ++i) {
