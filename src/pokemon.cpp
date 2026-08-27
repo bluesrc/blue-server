@@ -2380,7 +2380,13 @@ bool Pokemon::applyFlinch(uint32_t duration)
 	}
 	flinchUntil = std::max<int64_t>(flinchUntil, OTSYS_TIME() + std::max<uint32_t>(1, duration));
 	g_game.addMagicEffect(getPosition(), CONST_ME_BLOCKHIT); // Effect 4
+	notifyBattleStateChanged();
 	return true;
+}
+
+uint32_t Pokemon::getFlinchRemaining() const
+{
+	return static_cast<uint32_t>(std::max<int64_t>(0, flinchUntil - OTSYS_TIME()));
 }
 
 void Pokemon::processPokemonBattleState()
@@ -2420,6 +2426,7 @@ bool Pokemon::canPerformMove()
 	if (flinchUntil > now) {
 		flinchUntil = 0;
 		g_game.addMagicEffect(getPosition(), CONST_ME_BLOCKHIT); // Effect 4
+		notifyBattleStateChanged();
 		return false;
 	}
 	if (pokemonStatus == POKEMON_STATUS_SLEEP) {
