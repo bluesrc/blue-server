@@ -139,7 +139,8 @@ void Creature::onThink(uint32_t interval)
 
 	if (followCreature) {
 		walkUpdateTicks += interval;
-		if (forceUpdateFollowPath || walkUpdateTicks >= 2000) {
+		const uint32_t followPathUpdateInterval = master && master->getPlayer() ? 1000 : 2000;
+		if (forceUpdateFollowPath || walkUpdateTicks >= followPathUpdateInterval) {
 			walkUpdateTicks = 0;
 			forceUpdateFollowPath = false;
 			isUpdatingPath = true;
@@ -251,7 +252,8 @@ void Creature::startAutoWalk()
 		return;
 	}
 
-	addEventWalk(listWalkDir.size() == 1);
+	const bool immediateFirstStep = listWalkDir.size() == 1 || (master && master->getPlayer());
+	addEventWalk(immediateFirstStep);
 }
 
 void Creature::startAutoWalk(Direction direction)
