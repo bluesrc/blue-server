@@ -1,13 +1,13 @@
 function onUpdateDatabase()
-	print("> Updating database to version 34 (known and active Pokemon moves)")
+	print("> Updating database to version 34 (player Pokedex capture progress)")
+	db.query("ALTER TABLE `players` ADD `total_caught` BIGINT UNSIGNED NOT NULL DEFAULT 0 AFTER `balance`")
 	db.query([[
-		CREATE TABLE IF NOT EXISTS `pokemon_moves` (
-		  `pokemon_uid` int NOT NULL,
-		  `move_id` smallint unsigned NOT NULL,
-		  `active_slot` tinyint unsigned NULL,
-		  PRIMARY KEY (`pokemon_uid`, `move_id`),
-		  UNIQUE KEY `pokemon_active_move_slot` (`pokemon_uid`, `active_slot`),
-		  FOREIGN KEY (`pokemon_uid`) REFERENCES `pokemons` (`uid`) ON DELETE CASCADE
+		CREATE TABLE IF NOT EXISTS `player_pokedex` (
+		  `player_id` int NOT NULL,
+		  `pokemon_number` smallint unsigned NOT NULL,
+		  `caught_count` int unsigned NOT NULL DEFAULT 0,
+		  PRIMARY KEY (`player_id`, `pokemon_number`),
+		  FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE
 		) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 	]])
 	return true

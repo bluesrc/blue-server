@@ -413,7 +413,7 @@ CREATE TABLE IF NOT EXISTS `pokemon_moves` (
   FOREIGN KEY (`pokemon_uid`) REFERENCES `pokemons` (`uid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 
-INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '38'), ('motd_hash', ''), ('motd_num', '0'), ('players_record', '0'), ('pokemon_uid', '0');
+INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '39'), ('motd_hash', ''), ('motd_num', '0'), ('players_record', '0'), ('pokemon_uid', '0');
 
 DROP TRIGGER IF EXISTS `ondelete_players`;
 DROP TRIGGER IF EXISTS `oncreate_guilds`;
