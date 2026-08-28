@@ -1,7 +1,7 @@
 function onCastMove(creature, variant, isHotkey)
 	local position = variant:getPosition()
 	local tile = Tile(position)
-	if tile and creature:getSkull() ~= SKULL_BLACK then
+	if tile then
 		local corpse = tile:getTopDownItem()
 		if corpse then
 			local itemType = corpse:getType()

@@ -682,7 +682,7 @@ class Player final : public Creature, public Cylinder
 		void onAttacked() override;
 		void onAttackedCreatureDrainHealth(Creature* target, int32_t points) override;
 		void onTargetCreatureGainHealth(Creature* target, int32_t points) override;
-		bool onKilledCreature(Creature* target, bool lastHit = true) override;
+		void onKilledCreature(Creature* target) override;
 		void onGainExperience(uint64_t gainExp, Creature* target) override;
 		void onGainSharedExperience(uint64_t gainExp, Creature* source);
 		void onAttackedCreatureBlockHit(BlockType_t blockType) override;
@@ -694,23 +694,11 @@ class Player final : public Creature, public Cylinder
 
 		LightInfo getCreatureLight() const override;
 
-		Skulls_t getSkull() const override;
-		Skulls_t getSkullClient(const Creature* creature) const override;
-		int64_t getSkullTicks() const { return skullTicks; }
-		void setSkullTicks(int64_t ticks) { skullTicks = ticks; }
-
-		bool hasAttacked(const Player* attacked) const;
-		void addAttacked(const Player* attacked);
-		void removeAttacked(const Player* attacked);
-		void clearAttacked();
-		void addUnjustifiedDead(const Player* attacked);
 		void sendCreatureSkull(const Creature* creature) const {
 			if (client) {
 				client->sendCreatureSkull(creature);
 			}
 		}
-		void checkSkullTicks(int64_t ticks);
-
 		bool canWear(uint32_t lookType, uint8_t addons) const;
 		bool hasOutfit(uint32_t lookType, uint8_t addons);
 		void addOutfit(uint16_t lookType, uint8_t addons);
@@ -1269,7 +1257,7 @@ class Player final : public Creature, public Cylinder
 		void setNextActionTask(SchedulerTask* task, bool resetIdleTime = true);
 
 		void death(Creature* lastHitCreature) override;
-		bool dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature, bool lastHitUnjustified, bool mostDamageUnjustified) override;
+		bool dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature) override;
 		Item* getCorpse(Creature* lastHitCreature, Creature* mostDamageCreature) override;
 
 		//cylinder implementations
@@ -1299,7 +1287,6 @@ class Player final : public Creature, public Cylinder
 		void internalAddThing(Thing* thing) override;
 		void internalAddThing(uint32_t index, Thing* thing) override;
 
-		std::unordered_set<uint32_t> attackedSet;
 		std::unordered_set<uint32_t> VIPList;
 
 		std::map<uint8_t, OpenContainer> openContainers;
@@ -1334,7 +1321,6 @@ class Player final : public Creature, public Cylinder
 		uint64_t bankBalance = 0;
 		uint64_t lastQuestlogUpdate = 0;
 		int64_t lastFailedFollow = 0;
-		int64_t skullTicks = 0;
 		int64_t lastWalkthroughAttempt = 0;
 		int64_t lastToggleMount = 0;
 		int64_t lastPing;

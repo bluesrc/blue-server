@@ -5,7 +5,7 @@ local config = {
 
 local creatureevent = CreatureEvent("WhiteDeerDeath")
 
-function creatureevent.onDeath(creature, corpse, killer, mostDamageKiller, lastHitUnjustified, mostDamageUnjustified)
+function creatureevent.onDeath(creature, corpse, killer, mostDamageKiller)
 	local targetPokemon = creature:getPokemon()
 	if not targetPokemon or targetPokemon:getMaster() then
 		return true

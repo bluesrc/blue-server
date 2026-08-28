@@ -605,11 +605,6 @@ bool Move::playerMoveCheck(Player* player) const
 		return false;
 	}
 
-	if ((aggressive || pzLock) && (range < 1 || (range > 0 && !player->getAttackedCreature())) && player->getSkull() == SKULL_BLACK) {
-		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
-		return false;
-	}
-
 	if ((aggressive || pzLock) && player->hasCondition(CONDITION_PACIFIED)) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREEXHAUSTED);
 		g_game.addMagicEffect(player->getPosition(), CONST_ME_POFF);

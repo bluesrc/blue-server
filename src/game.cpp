@@ -4551,11 +4551,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		} else {
 			attackerPlayer = nullptr;
 		}
-
 		Player* targetPlayer = target->getPlayer();
-		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-			return false;
-		}
 
 		if (!damage.healingAbilityProcessed) {
 			damage.healingAbilityProcessed = true;
@@ -4693,11 +4689,7 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		} else {
 			attackerPlayer = nullptr;
 		}
-
 		Player* targetPlayer = target->getPlayer();
-		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-			return false;
-		}
 
 		damage.primary.value = std::abs(damage.primary.value);
 		damage.secondary.value = std::abs(damage.secondary.value);
@@ -4978,10 +4970,6 @@ bool Game::combatChangeMana(Creature* attacker, Creature* target, CombatDamage& 
 	int32_t manaChange = damage.primary.value + damage.secondary.value;
 	if (manaChange > 0) {
 		if (attacker) {
-			const Player* attackerPlayer = attacker->getPlayer();
-			if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(target) == SKULL_NONE) {
-				return false;
-			}
 		}
 
 		if (damage.origin != ORIGIN_NONE) {
@@ -5020,10 +5008,6 @@ bool Game::combatChangeMana(Creature* attacker, Creature* target, CombatDamage& 
 			attackerPlayer = attacker->getPlayer();
 		} else {
 			attackerPlayer = nullptr;
-		}
-
-		if (attackerPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
-			return false;
 		}
 
 		int32_t manaLoss = std::min<int32_t>(targetPlayer->getMana(), -manaChange);

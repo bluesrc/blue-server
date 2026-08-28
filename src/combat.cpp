@@ -323,10 +323,6 @@ bool Combat::isProtected(const Player* attacker, const Player* target)
 		return true;
 	}
 
-	if (attacker->getSkull() == SKULL_BLACK && attacker->getSkullClient(target) == SKULL_NONE) {
-		return true;
-	}
-
 	return false;
 }
 
@@ -871,7 +867,7 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 		if (casterPlayer) {
 			Player* targetPlayer = target ? target->getPlayer() : nullptr;
-			if (targetPlayer && casterPlayer != targetPlayer && targetPlayer->getSkull() != SKULL_BLACK && damage.primary.type != COMBAT_HEALING) {
+			if (targetPlayer && casterPlayer != targetPlayer && damage.primary.type != COMBAT_HEALING) {
 				damage.primary.value /= 2;
 				damage.secondary.value /= 2;
 			}
@@ -1052,7 +1048,7 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 		bool playerCombatReduced = false;
 		if ((damageCopy.primary.value < 0 || damageCopy.secondary.value < 0) && caster) {
 			Player* targetPlayer = creature->getPlayer();
-			if (casterPlayer && targetPlayer && casterPlayer != targetPlayer && targetPlayer->getSkull() != SKULL_BLACK) {
+			if (casterPlayer && targetPlayer && casterPlayer != targetPlayer) {
 				damageCopy.primary.value /= 2;
 				damageCopy.secondary.value /= 2;
 				playerCombatReduced = true;

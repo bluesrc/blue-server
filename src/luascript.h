@@ -894,8 +894,6 @@ class LuaScriptInterface
 		static int luaPlayerGetInbox(lua_State* L);
 		static int luaPlayerGetBackpack(lua_State* L);
 
-		static int luaPlayerGetSkullTime(lua_State* L);
-		static int luaPlayerSetSkullTime(lua_State* L);
 		static int luaPlayerGetDeathPenalty(lua_State* L);
 
 		static int luaPlayerGetExperience(lua_State* L);

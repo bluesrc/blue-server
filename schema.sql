@@ -43,8 +43,6 @@ CREATE TABLE IF NOT EXISTS `players` (
   `lastlogin` bigint unsigned NOT NULL DEFAULT '0',
   `lastip` int unsigned NOT NULL DEFAULT '0',
   `save` tinyint NOT NULL DEFAULT '1',
-  `skull` tinyint NOT NULL DEFAULT '0',
-  `skulltime` bigint NOT NULL DEFAULT '0',
   `lastlogout` bigint unsigned NOT NULL DEFAULT '0',
   `blessings` tinyint NOT NULL DEFAULT '0',
   `onlinetime` bigint NOT NULL DEFAULT '0',
@@ -271,8 +269,6 @@ CREATE TABLE IF NOT EXISTS `player_deaths` (
   `is_player` tinyint NOT NULL DEFAULT '1',
   `mostdamage_by` varchar(100) NOT NULL,
   `mostdamage_is_player` tinyint NOT NULL DEFAULT '0',
-  `unjustified` tinyint NOT NULL DEFAULT '0',
-  `mostdamage_unjustified` tinyint NOT NULL DEFAULT '0',
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE CASCADE,
   KEY `killed_by` (`killed_by`),
   KEY `mostdamage_by` (`mostdamage_by`)
@@ -413,7 +409,7 @@ CREATE TABLE IF NOT EXISTS `pokemon_moves` (
   FOREIGN KEY (`pokemon_uid`) REFERENCES `pokemons` (`uid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8;
 
-INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '39'), ('motd_hash', ''), ('motd_num', '0'), ('players_record', '0'), ('pokemon_uid', '0');
+INSERT INTO `server_config` (`config`, `value`) VALUES ('db_version', '40'), ('motd_hash', ''), ('motd_num', '0'), ('players_record', '0'), ('pokemon_uid', '0');
 
 DROP TRIGGER IF EXISTS `ondelete_players`;
 DROP TRIGGER IF EXISTS `oncreate_guilds`;

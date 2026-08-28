@@ -1,24 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <heldItems>
 	<heldItem itemid="2674" key="sitrus_berry"
-		description="Test Sitrus Berry. Restores 25% HP at half health or below."
+		description="Restores 25% HP at half health or below."
 		script="sitrus_berry.lua" consumable="true" />
 	<heldItem itemid="7732" key="miracle_seed"
-		description="Test Miracle Seed. Increases Grass-type move damage by 20%."
+		description="Increases Grass-type move damage by 20%."
 		script="miracle_seed.lua" consumable="false" />
 	<heldItem itemid="2661" key="choice_scarf"
-		description="Test Choice Scarf. Raises Speed by 50% but locks the first selected move during combat."
+		description="Raises Speed by 50% but locks the first selected move during combat."
 		script="choice_scarf.lua" consumable="false" />
 	<heldItem itemid="5909" key="focus_sash"
-		description="Test Focus Sash. At full HP, survives direct lethal move damage with 1 HP."
+		description="At full HP, survives direct lethal move damage with 1 HP."
 		script="focus_sash.lua" consumable="true" />
 	<heldItem itemid="2666" key="leftovers"
-		description="Test Leftovers. Restores 1/16 max HP every 3 seconds during combat."
+		description="Restores 1/16 max HP every 3 seconds during combat."
 		script="leftovers.lua" consumable="false" />
-
-	<!--
-	Register only real held-item assets here. Example:
-	<heldItem itemid="12345" key="held_item_key" description="Held item description."
-		script="held_item.lua" consumable="true" />
-	-->
 </heldItems>

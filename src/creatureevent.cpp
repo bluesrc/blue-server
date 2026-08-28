@@ -355,9 +355,9 @@ bool CreatureEvent::executeOnPrepareDeath(Creature* creature, Creature* killer)
 	return scriptInterface->callFunction(2);
 }
 
-bool CreatureEvent::executeOnDeath(Creature* creature, Item* corpse, Creature* killer, Creature* mostDamageKiller, bool lastHitUnjustified, bool mostDamageUnjustified)
+bool CreatureEvent::executeOnDeath(Creature* creature, Item* corpse, Creature* killer, Creature* mostDamageKiller)
 {
-	//onDeath(creature, corpse, killer, mostDamageKiller, lastHitUnjustified, mostDamageUnjustified)
+	//onDeath(creature, corpse, killer, mostDamageKiller)
 	if (!scriptInterface->reserveScriptEnv()) {
 		std::cout << "[Error - CreatureEvent::executeOnDeath] Call stack overflow" << std::endl;
 		return false;
@@ -388,10 +388,7 @@ bool CreatureEvent::executeOnDeath(Creature* creature, Item* corpse, Creature* k
 		lua_pushnil(L);
 	}
 
-	LuaScriptInterface::pushBoolean(L, lastHitUnjustified);
-	LuaScriptInterface::pushBoolean(L, mostDamageUnjustified);
-
-	return scriptInterface->callFunction(6);
+	return scriptInterface->callFunction(4);
 }
 
 bool CreatureEvent::executeAdvance(Player* player, skills_t skill, uint32_t oldLevel,

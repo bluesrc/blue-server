@@ -2322,8 +2322,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::RATE_MAGIC)
 	registerEnumIn("configKeys", ConfigManager::RATE_SPAWN)
 	registerEnumIn("configKeys", ConfigManager::HOUSE_PRICE)
-	registerEnumIn("configKeys", ConfigManager::KILLS_TO_RED)
-	registerEnumIn("configKeys", ConfigManager::KILLS_TO_BLACK)
 	registerEnumIn("configKeys", ConfigManager::MAX_MESSAGEBUFFER)
 	registerEnumIn("configKeys", ConfigManager::ACTIONS_DELAY_INTERVAL)
 	registerEnumIn("configKeys", ConfigManager::EX_ACTIONS_DELAY_INTERVAL)
@@ -2331,8 +2329,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::PROTECTION_LEVEL)
 	registerEnumIn("configKeys", ConfigManager::DEATH_LOSE_PERCENT)
 	registerEnumIn("configKeys", ConfigManager::STATUSQUERY_TIMEOUT)
-	registerEnumIn("configKeys", ConfigManager::FRAG_TIME)
-	registerEnumIn("configKeys", ConfigManager::WHITE_SKULL_TIME)
 	registerEnumIn("configKeys", ConfigManager::GAME_PORT)
 	registerEnumIn("configKeys", ConfigManager::LOGIN_PORT)
 	registerEnumIn("configKeys", ConfigManager::STATUS_PORT)
@@ -2723,8 +2719,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getInbox", LuaScriptInterface::luaPlayerGetInbox);
 	registerMethod("Player", "getBackpack", LuaScriptInterface::luaPlayerGetBackpack);
 
-	registerMethod("Player", "getSkullTime", LuaScriptInterface::luaPlayerGetSkullTime);
-	registerMethod("Player", "setSkullTime", LuaScriptInterface::luaPlayerSetSkullTime);
 	registerMethod("Player", "getDeathPenalty", LuaScriptInterface::luaPlayerGetDeathPenalty);
 
 	registerMethod("Player", "getExperience", LuaScriptInterface::luaPlayerGetExperience);
@@ -8981,31 +8975,6 @@ int LuaScriptInterface::luaPlayerGetBackpack(lua_State* L)
 	Container* backpack = player->getBackpack();
 	pushUserdata<Item>(L, backpack);
 	setItemMetatable(L, -1, backpack);
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetSkullTime(lua_State* L)
-{
-	// player:getSkullTime()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getSkullTicks());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerSetSkullTime(lua_State* L)
-{
-	// player:setSkullTime(skullTime)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		player->setSkullTicks(getNumber<int64_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
 	return 1;
 }
 

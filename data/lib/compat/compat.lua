@@ -452,7 +452,6 @@ function getPlayerLookDir(cid) local p = Player(cid) return p and p:getDirection
 function getPlayerLight(cid) local p = Player(cid) return p and p:getLight() or false end
 function getPlayerDepotItems(cid, depotId) local p = Player(cid) return p and p:getDepotItems(depotId) or false end
 function getPlayerStamina(cid) local p = Player(cid) return p and p:getStamina() or false end
-function getPlayerSkullType(cid) local p = Player(cid) return p and p:getSkull() or false end
 function getPlayerLossPercent(cid) local p = Player(cid) return p and p:getDeathPenalty() or false end
 function getPlayerMount(cid, mountId) local p = Player(cid) return p and p:hasMount(mountId) or false end
 function getPlayerPremiumDays(cid) local p = Player(cid) return p and p:getPremiumDays() or false end
