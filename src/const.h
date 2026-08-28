@@ -157,7 +157,6 @@ enum ShootType_t : uint8_t {
 	CONST_ANI_SIMPLEARROW = 54,
 
 	// for internal use, don't send to client
-	CONST_ANI_WEAPONTYPE = 0xFE, // 254
 };
 
 enum SpeakClasses : uint8_t {
@@ -344,51 +343,11 @@ enum Icons_t {
 	ICON_BLEEDING = 1 << 15,
 };
 
-enum WeaponType_t : uint8_t {
-	WEAPON_NONE,
-	WEAPON_SWORD,
-	WEAPON_CLUB,
-	WEAPON_AXE,
-	WEAPON_SHIELD,
-	WEAPON_DISTANCE,
-	WEAPON_WAND,
-	WEAPON_AMMO,
-};
-
-enum Ammo_t : uint8_t {
-	AMMO_NONE,
-	AMMO_BOLT,
-	AMMO_ARROW,
-	AMMO_SPEAR,
-	AMMO_THROWINGSTAR,
-	AMMO_THROWINGKNIFE,
-	AMMO_STONE,
-	AMMO_SNOWBALL,
-};
-
-enum WeaponAction_t : uint8_t {
-	WEAPONACTION_NONE,
-	WEAPONACTION_REMOVECOUNT,
-	WEAPONACTION_REMOVECHARGE,
-	WEAPONACTION_MOVE,
-};
-
 enum WieldInfo_t {
 	WIELDINFO_NONE = 0 << 0,
 	WIELDINFO_LEVEL = 1 << 0,
-	WIELDINFO_MAGLV = 1 << 1,
 	WIELDINFO_VOCREQ = 1 << 2,
 	WIELDINFO_PREMIUM = 1 << 3,
-};
-
-enum Skulls_t : uint8_t {
-	SKULL_NONE = 0,
-	SKULL_YELLOW = 1,
-	SKULL_GREEN = 2,
-	SKULL_WHITE = 3,
-	SKULL_RED = 4,
-	SKULL_BLACK = 5,
-	SKULL_ORANGE = 6,
 };
 
 enum PartyShields_t : uint8_t {
@@ -529,7 +488,7 @@ enum PlayerFlags : uint64_t {
 	// PlayerFlag with exponent 32 existed but was deprecated (feature dropped from client).
 	PlayerFlag_IgnoreProtectionZone = static_cast<uint64_t>(1) << 33,
 	PlayerFlag_IgnoreMoveCheck = static_cast<uint64_t>(1) << 34,
-	PlayerFlag_IgnoreWeaponCheck = static_cast<uint64_t>(1) << 35,
+	PlayerFlag_IgnoreEquipmentCheck = static_cast<uint64_t>(1) << 35,
 	PlayerFlag_CannotBeMuted = static_cast<uint64_t>(1) << 36,
 	PlayerFlag_IsAlwaysPremium = static_cast<uint64_t>(1) << 37,
 };
@@ -553,7 +512,6 @@ enum ReloadTypes_t : uint8_t  {
 	RELOAD_TYPE_SCRIPTS,
 	RELOAD_TYPE_MOVES,
 	RELOAD_TYPE_TALKACTIONS,
-	RELOAD_TYPE_WEAPONS,
 };
 
 enum LevelRate_t : uint8_t {

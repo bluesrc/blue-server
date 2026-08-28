@@ -1311,23 +1311,6 @@ void ProtocolGame::sendCreatureShield(const Creature* creature)
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendCreatureSkull(const Creature* creature)
-{
-	if (g_game.getWorldType() != WORLD_TYPE_PVP) {
-		return;
-	}
-
-	if (!canSee(creature)) {
-		return;
-	}
-
-	NetworkMessage msg;
-	msg.addByte(0x90);
-	msg.add<uint32_t>(creature->getID());
-	msg.addByte(player->getSkullClient(creature));
-	writeToOutputBuffer(msg);
-}
-
 void ProtocolGame::sendCreatureType(uint32_t creatureId, uint8_t creatureType)
 {
 	NetworkMessage msg;
@@ -1420,10 +1403,7 @@ void ProtocolGame::sendBasicData()
 		msg.add<uint32_t>(0);
 	}
 	msg.addByte(player->getVocation()->getClientId());
-	msg.add<uint16_t>(0xFF); // number of known moves
-	for (uint8_t moveId = 0x00; moveId < 0xFF; moveId++) {
-		msg.addByte(moveId);
-	}
+	msg.add<uint16_t>(0); // reserved action list; Pokemon moves use their dedicated packet
 	writeToOutputBuffer(msg);
 }
 
@@ -1922,24 +1902,9 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 	msg.addItemId(itemId);
 
 	const ItemType& it = Item::items[itemId];
-	if (it.armor != 0) {
-		msg.addString(std::to_string(it.armor));
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
-
-	if (it.attack != 0) {
-		// TODO: chance to hit, range
-		// example:
-		// "attack +x, chance to hit +y%, z fields"
-		if (it.abilities && it.abilities->elementType != COMBAT_NONE && it.abilities->elementDamage != 0) {
-			msg.addString(fmt::format("{:d} physical +{:d} {:s}", it.attack, it.abilities->elementDamage, getCombatName(it.abilities->elementType)));
-		} else {
-			msg.addString(std::to_string(it.attack));
-		}
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
+	// Retired Tibia armor and attack fields remain empty on the wire.
+	msg.add<uint16_t>(0x00);
+	msg.add<uint16_t>(0x00);
 
 	if (it.isContainer()) {
 		msg.addString(std::to_string(it.maxItems));
@@ -1947,15 +1912,8 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 		msg.add<uint16_t>(0x00);
 	}
 
-	if (it.defense != 0) {
-		if (it.extraDefense != 0) {
-			msg.addString(fmt::format("{:d} {:+d}", it.defense, it.extraDefense));
-		} else {
-			msg.addString(std::to_string(it.defense));
-		}
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
+	// Retired Tibia defense field remains empty on the wire.
+	msg.add<uint16_t>(0x00);
 
 	if (!it.description.empty()) {
 		const std::string& descr = it.description;
@@ -2003,15 +1961,13 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 		msg.add<uint16_t>(0x00);
 	}
 
-	if (it.minReqMagicLevel != 0) {
-		msg.addString(std::to_string(it.minReqMagicLevel));
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
+	// Retired Tibia magic-level requirement field.
+	msg.add<uint16_t>(0x00);
 
 	msg.addString(it.vocationString);
 
-	msg.addString(it.runeMoveName);
+	// Reserved field kept empty for client protocol compatibility.
+	msg.add<uint16_t>(0x00);
 
 	if (it.abilities) {
 		std::ostringstream ss;
@@ -2060,17 +2016,8 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 		msg.add<uint16_t>(0x00);
 	}
 
-	std::string weaponName = getWeaponName(it.weaponType);
-
-	if (it.slotPosition & SLOTP_TWO_HAND) {
-		if (!weaponName.empty()) {
-			weaponName += ", two-handed";
-		} else {
-			weaponName = "two-handed";
-		}
-	}
-
-	msg.addString(weaponName);
+	// Reserved field kept empty for client protocol compatibility.
+	msg.add<uint16_t>(0x00);
 
 	if (it.weight != 0) {
 		std::ostringstream ss;
@@ -2959,24 +2906,6 @@ void ProtocolGame::sendVIPEntries()
 	}
 }
 
-void ProtocolGame::sendMoveCooldown(uint8_t moveId, uint32_t time)
-{
-	NetworkMessage msg;
-	msg.addByte(0xA4);
-	msg.addByte(moveId);
-	msg.add<uint32_t>(time);
-	writeToOutputBuffer(msg);
-}
-
-void ProtocolGame::sendMoveGroupCooldown(MoveGroup_t groupId, uint32_t time)
-{
-	NetworkMessage msg;
-	msg.addByte(0xA5);
-	msg.addByte(groupId);
-	msg.add<uint32_t>(time);
-	writeToOutputBuffer(msg);
-}
-
 void ProtocolGame::sendModalWindow(const ModalWindow& modalWindow)
 {
 	NetworkMessage msg;
@@ -3072,7 +3001,8 @@ void ProtocolGame::AddCreature(NetworkMessage& msg, const Creature* creature, bo
 
 	msg.add<uint16_t>(creature->getStepSpeed() / 2);
 
-	msg.addByte(player->getSkullClient(creature));
+	// Reserved byte retained for protocol alignment.
+	msg.addByte(0x00);
 	msg.addByte(player->getPartyShield(otherPlayer));
 
 	if (!known) {
@@ -3159,10 +3089,6 @@ void ProtocolGame::AddPlayerSkills(NetworkMessage& msg)
 		msg.addByte(player->getSkillPercent(i));
 	}
 
-	for (uint8_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i) {
-		msg.add<uint16_t>(std::min<int32_t>(100, player->varSpecialSkills[i]));
-		msg.add<uint16_t>(0);
-	}
 }
 
 void ProtocolGame::AddOutfit(NetworkMessage& msg, const Outfit_t& outfit)

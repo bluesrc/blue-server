@@ -488,9 +488,6 @@ Direction getDirectionTo(const Position& from, const Position& to)
 using MagicEffectNames = std::unordered_map<std::string, MagicEffectClasses>;
 using ShootTypeNames = std::unordered_map<std::string, ShootType_t>;
 using CombatTypeNames = std::unordered_map<CombatType_t, std::string, std::hash<int32_t>>;
-using AmmoTypeNames = std::unordered_map<std::string, Ammo_t>;
-using WeaponActionNames = std::unordered_map<std::string, WeaponAction_t>;
-using SkullNames = std::unordered_map<std::string, Skulls_t>;
 
 MagicEffectNames magicEffectNames = {
 	{"redspark",		CONST_ME_DRAWBLOOD},
@@ -662,47 +659,7 @@ CombatTypeNames combatTypeNames = {
 	{COMBAT_POKEMON_WATERDAMAGE, "pokemon water"},
 };
 
-AmmoTypeNames ammoTypeNames = {
-	{"spear",		AMMO_SPEAR},
-	{"bolt",		AMMO_BOLT},
-	{"arrow",		AMMO_ARROW},
-	{"poisonarrow",		AMMO_ARROW},
-	{"burstarrow",		AMMO_ARROW},
-	{"throwingstar",	AMMO_THROWINGSTAR},
-	{"throwingknife",	AMMO_THROWINGKNIFE},
-	{"smallstone",		AMMO_STONE},
-	{"largerock",		AMMO_STONE},
-	{"snowball",		AMMO_SNOWBALL},
-	{"powerbolt",		AMMO_BOLT},
-	{"infernalbolt",	AMMO_BOLT},
-	{"huntingspear",	AMMO_SPEAR},
-	{"enchantedspear",	AMMO_SPEAR},
-	{"royalspear",		AMMO_SPEAR},
-	{"sniperarrow",		AMMO_ARROW},
-	{"onyxarrow",		AMMO_ARROW},
-	{"piercingbolt",	AMMO_BOLT},
-	{"etherealspear",	AMMO_SPEAR},
-	{"flasharrow",		AMMO_ARROW},
-	{"flammingarrow",	AMMO_ARROW},
-	{"shiverarrow",		AMMO_ARROW},
-	{"eartharrow",		AMMO_ARROW},
-};
 
-WeaponActionNames weaponActionNames = {
-	{"move",		WEAPONACTION_MOVE},
-	{"removecharge",	WEAPONACTION_REMOVECHARGE},
-	{"removecount",		WEAPONACTION_REMOVECOUNT},
-};
-
-SkullNames skullNames = {
-	{"none",	SKULL_NONE},
-	{"yellow",	SKULL_YELLOW},
-	{"green",	SKULL_GREEN},
-	{"white",	SKULL_WHITE},
-	{"red",		SKULL_RED},
-	{"black",	SKULL_BLACK},
-	{"orange",	SKULL_ORANGE},
-};
 
 MagicEffectClasses getMagicEffect(const std::string& strValue)
 {
@@ -729,59 +686,6 @@ std::string getCombatName(CombatType_t combatType)
 		return combatName->second;
 	}
 	return "unknown";
-}
-
-Ammo_t getAmmoType(const std::string& strValue)
-{
-	auto ammoType = ammoTypeNames.find(strValue);
-	if (ammoType != ammoTypeNames.end()) {
-		return ammoType->second;
-	}
-	return AMMO_NONE;
-}
-
-WeaponAction_t getWeaponAction(const std::string& strValue)
-{
-	auto weaponAction = weaponActionNames.find(strValue);
-	if (weaponAction != weaponActionNames.end()) {
-		return weaponAction->second;
-	}
-	return WEAPONACTION_NONE;
-}
-
-Skulls_t getSkullType(const std::string& strValue)
-{
-	auto skullType = skullNames.find(strValue);
-	if (skullType != skullNames.end()) {
-		return skullType->second;
-	}
-	return SKULL_NONE;
-}
-
-std::string getSpecialSkillName(uint8_t skillid)
-{
-	switch (skillid) {
-		case SPECIALSKILL_CRITICALHITCHANCE:
-			return "critical hit chance";
-
-		case SPECIALSKILL_CRITICALHITAMOUNT:
-			return "critical extra damage";
-
-		case SPECIALSKILL_LIFELEECHCHANCE:
-			return "hitpoints leech chance";
-
-		case SPECIALSKILL_LIFELEECHAMOUNT:
-			return "hitpoints leech amount";
-
-		case SPECIALSKILL_MANALEECHCHANCE:
-			return "manapoints leech chance";
-
-		case SPECIALSKILL_MANALEECHAMOUNT:
-			return "mana points leech amount";
-
-		default:
-			return "unknown";
-	}
 }
 
 std::string getSkillName(uint8_t skillid)
@@ -881,19 +785,6 @@ bool booleanString(const std::string& str)
 
 	char ch = tolower(str.front());
 	return ch != 'f' && ch != 'n' && ch != '0';
-}
-
-std::string getWeaponName(WeaponType_t weaponType)
-{
-	switch (weaponType) {
-		case WEAPON_SWORD: return "sword";
-		case WEAPON_CLUB: return "club";
-		case WEAPON_AXE: return "axe";
-		case WEAPON_DISTANCE: return "distance";
-		case WEAPON_WAND: return "wand";
-		case WEAPON_AMMO: return "ammunition";
-		default: return std::string();
-	}
 }
 
 size_t combatTypeToIndex(CombatType_t combatType)
@@ -1011,18 +902,6 @@ itemAttrTypes stringToItemAttribute(const std::string& str)
 		return ITEM_ATTRIBUTE_PLURALNAME;
 	} else if (str == "weight") {
 		return ITEM_ATTRIBUTE_WEIGHT;
-	} else if (str == "attack") {
-		return ITEM_ATTRIBUTE_ATTACK;
-	} else if (str == "defense") {
-		return ITEM_ATTRIBUTE_DEFENSE;
-	} else if (str == "extradefense") {
-		return ITEM_ATTRIBUTE_EXTRADEFENSE;
-	} else if (str == "armor") {
-		return ITEM_ATTRIBUTE_ARMOR;
-	} else if (str == "hitchance") {
-		return ITEM_ATTRIBUTE_HITCHANCE;
-	} else if (str == "shootrange") {
-		return ITEM_ATTRIBUTE_SHOOTRANGE;
 	} else if (str == "owner") {
 		return ITEM_ATTRIBUTE_OWNER;
 	} else if (str == "duration") {
@@ -1043,8 +922,6 @@ itemAttrTypes stringToItemAttribute(const std::string& str)
 		return ITEM_ATTRIBUTE_WRAPID;
 	} else if (str == "storeitem") {
 		return ITEM_ATTRIBUTE_STOREITEM;
-	} else if (str == "attackspeed") {
-		return ITEM_ATTRIBUTE_ATTACK_SPEED;
 	}
 	return ITEM_ATTRIBUTE_NONE;
 }
@@ -1085,9 +962,6 @@ const char* getReturnMessage(ReturnValue value)
 
 		case RETURNVALUE_PUTTHISOBJECTINBOTHHANDS:
 			return "Put this object in both hands.";
-
-		case RETURNVALUE_CANONLYUSEONEWEAPON:
-			return "You may only use one weapon.";
 
 		case RETURNVALUE_TOOFARAWAY:
 			return "You are too far away.";
@@ -1138,9 +1012,6 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_PLAYERWITHTHISNAMEISNOTONLINE:
 			return "A player with this name is not online.";
 
-		case RETURNVALUE_NOTREQUIREDLEVELTOUSERUNE:
-			return "You do not have the required magic level to use this rune.";
-
 		case RETURNVALUE_YOUAREALREADYTRADING:
 			return "You are already trading. Finish this trade first.";
 
@@ -1156,23 +1027,11 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_NOTENOUGHLEVEL:
 			return "Your level is too low.";
 
-		case RETURNVALUE_NOTENOUGHMAGICLEVEL:
-			return "You do not have enough magic level.";
-
-		case RETURNVALUE_NOTENOUGHMANA:
-			return "You do not have enough mana.";
-
-		case RETURNVALUE_NOTENOUGHSOUL:
-			return "You do not have enough soul.";
-
 		case RETURNVALUE_YOUAREEXHAUSTED:
 			return "You are exhausted.";
 
 		case RETURNVALUE_YOUCANNOTUSEOBJECTSTHATFAST:
 			return "You cannot use objects that fast.";
-
-		case RETURNVALUE_CANONLYUSETHISRUNEONCREATURES:
-			return "You can only use it on creatures.";
 
 		case RETURNVALUE_PLAYERISNOTREACHABLE:
 			return "Player is not reachable.";
@@ -1204,15 +1063,6 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_YOUNEEDPREMIUMACCOUNT:
 			return "You need a premium account.";
 
-		case RETURNVALUE_YOUNEEDTOLEARNTHISMOVE:
-			return "You must learn this move first.";
-
-		case RETURNVALUE_YOURVOCATIONCANNOTUSETHISMOVE:
-			return "You have the wrong vocation to cast this move.";
-
-		case RETURNVALUE_YOUNEEDAWEAPONTOUSETHISMOVE:
-			return "You need to equip a weapon to use this move.";
-
 		case RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE:
 			return "You can not leave a pvp zone after attacking another player.";
 
@@ -1225,20 +1075,8 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_YOUCANNOTLOGOUTHERE:
 			return "You can not logout here.";
 
-		case RETURNVALUE_YOUNEEDAMAGICITEMTOCASTMOVE:
-			return "You need a magic item to cast this move.";
-
-		case RETURNVALUE_CANNOTCONJUREITEMHERE:
-			return "You cannot conjure items here.";
-
-		case RETURNVALUE_YOUNEEDTOSPLITYOURSPEARS:
-			return "You need to split your spears first.";
-
 		case RETURNVALUE_NAMEISTOOAMBIGUOUS:
 			return "Player name is ambiguous.";
-
-		case RETURNVALUE_CANONLYUSEONESHIELD:
-			return "You may use only one shield.";
 
 		case RETURNVALUE_NOPARTYMEMBERSINRANGE:
 			return "No party members in range.";
@@ -1302,22 +1140,6 @@ const char* getReturnMessage(ReturnValue value)
 int64_t OTSYS_TIME()
 {
 	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-MoveGroup_t stringToMoveGroup(const std::string& value)
-{
-	std::string tmpStr = asLowerCaseString(value);
-	if (tmpStr == "attack" || tmpStr == "1") {
-		return MOVEGROUP_ATTACK;
-	} else if (tmpStr == "healing" || tmpStr == "2") {
-		return MOVEGROUP_HEALING;
-	} else if (tmpStr == "support" || tmpStr == "3") {
-		return MOVEGROUP_SUPPORT;
-	} else if (tmpStr == "special" || tmpStr == "4") {
-		return MOVEGROUP_SPECIAL;
-	}
-
-	return MOVEGROUP_NONE;
 }
 
 std::vector<uint16_t> depotBoxes = {

@@ -41,7 +41,7 @@ enum ConditionAttr_t {
 	CONDITIONATTR_SUBID,
 	CONDITIONATTR_ISAGGRESSIVE,
 	CONDITIONATTR_DISABLEDEFENSE,
-	CONDITIONATTR_SPECIALSKILLS,
+	CONDITIONATTR_RESERVED_29,
 
 	//reserved for serialization
 	CONDITIONATTR_END = 254,
@@ -159,11 +159,9 @@ class ConditionAttributes final : public ConditionGeneric
 	private:
 		int32_t skills[SKILL_LAST + 1] = {};
 		int32_t skillsPercent[SKILL_LAST + 1] = {};
-		int32_t specialSkills[SPECIALSKILL_LAST + 1] = {};
 		int32_t stats[STAT_LAST + 1] = {};
 		int32_t statsPercent[STAT_LAST + 1] = {};
 		int32_t currentSkill = 0;
-		int32_t currentSpecialSkill = 0;
 		int32_t currentStat = 0;
 
 		bool disableDefense = false;
@@ -390,34 +388,6 @@ class ConditionLight final : public Condition
 		LightInfo lightInfo;
 		uint32_t internalLightTicks = 0;
 		uint32_t lightChangeInterval = 0;
-};
-
-class ConditionMoveCooldown final : public ConditionGeneric
-{
-	public:
-		ConditionMoveCooldown(ConditionId_t id, ConditionType_t type, int32_t ticks, bool buff = false, uint32_t subId = 0, bool aggressive = false) :
-			ConditionGeneric(id, type, ticks, buff, subId, aggressive) {}
-
-		bool startCondition(Creature* creature) override;
-		void addCondition(Creature* creature, const Condition* condition) override;
-
-		ConditionMoveCooldown* clone() const override {
-			return new ConditionMoveCooldown(*this);
-		}
-};
-
-class ConditionMoveGroupCooldown final : public ConditionGeneric
-{
-	public:
-		ConditionMoveGroupCooldown(ConditionId_t id, ConditionType_t type, int32_t ticks, bool buff = false, uint32_t subId = 0, bool aggressive = false) :
-			ConditionGeneric(id, type, ticks, buff, subId, aggressive) {}
-
-		bool startCondition(Creature* creature) override;
-		void addCondition(Creature* creature, const Condition* condition) override;
-
-		ConditionMoveGroupCooldown* clone() const override {
-			return new ConditionMoveGroupCooldown(*this);
-		}
 };
 
 class ConditionDrunk final : public Condition

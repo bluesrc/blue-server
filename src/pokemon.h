@@ -111,12 +111,6 @@ class Pokemon final : public Creature
 		RaceType_t getRace() const override {
 			return mType->info.race;
 		}
-		int32_t getArmor() const override {
-			return mType->info.armor;
-		}
-		int32_t getDefense() const override {
-			return mType->info.defense;
-		}
 		bool isPushable() const override {
 			return mType->info.pushable && baseSpeed != 0;
 		}
@@ -413,8 +407,6 @@ class Pokemon final : public Creature
 		void onEndCondition(ConditionType_t type) override;
 
 		bool canUseAttack(const Position& pos, const Creature* target) const;
-		bool canUseMove(const Position& pos, const Position& targetPos,
-		                 const moveBlock_t& sb, uint32_t interval, bool& inRange, bool& resetTicks);
 		bool getRandomStep(const Position& creaturePos, Direction& direction) const;
 		bool getDanceStep(const Position& creaturePos, Direction& direction,
 		                  bool keepAttack = true, bool keepDistance = true);

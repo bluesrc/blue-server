@@ -66,7 +66,6 @@ enum AttrTypes_t {
 	ATTR_ITEM = 9,
 	ATTR_DEPOT_ID = 10,
 	//ATTR_EXT_SPAWN_FILE = 11,
-	ATTR_RUNE_CHARGES = 12,
 	//ATTR_EXT_HOUSE_FILE = 13,
 	ATTR_HOUSEDOORID = 14,
 	ATTR_COUNT = 15,
@@ -499,11 +498,9 @@ class ItemAttributes
 		}
 
 		const static uint32_t intAttributeTypes = ITEM_ATTRIBUTE_ACTIONID | ITEM_ATTRIBUTE_UNIQUEID | ITEM_ATTRIBUTE_DATE
-			| ITEM_ATTRIBUTE_WEIGHT | ITEM_ATTRIBUTE_ATTACK | ITEM_ATTRIBUTE_DEFENSE | ITEM_ATTRIBUTE_EXTRADEFENSE
-			| ITEM_ATTRIBUTE_ARMOR | ITEM_ATTRIBUTE_HITCHANCE | ITEM_ATTRIBUTE_SHOOTRANGE | ITEM_ATTRIBUTE_OWNER
+			| ITEM_ATTRIBUTE_WEIGHT | ITEM_ATTRIBUTE_OWNER
 			| ITEM_ATTRIBUTE_DURATION | ITEM_ATTRIBUTE_DECAYSTATE | ITEM_ATTRIBUTE_CORPSEOWNER | ITEM_ATTRIBUTE_CHARGES
-			| ITEM_ATTRIBUTE_FLUIDTYPE | ITEM_ATTRIBUTE_DOORID | ITEM_ATTRIBUTE_DECAYTO | ITEM_ATTRIBUTE_WRAPID | ITEM_ATTRIBUTE_STOREITEM
-			| ITEM_ATTRIBUTE_ATTACK_SPEED;
+			| ITEM_ATTRIBUTE_FLUIDTYPE | ITEM_ATTRIBUTE_DOORID | ITEM_ATTRIBUTE_DECAYTO | ITEM_ATTRIBUTE_WRAPID | ITEM_ATTRIBUTE_STOREITEM;
 		const static uint32_t stringAttributeTypes = ITEM_ATTRIBUTE_DESCRIPTION | ITEM_ATTRIBUTE_TEXT | ITEM_ATTRIBUTE_WRITER
 			| ITEM_ATTRIBUTE_NAME | ITEM_ATTRIBUTE_ARTICLE | ITEM_ATTRIBUTE_PLURALNAME;
 
@@ -837,19 +834,6 @@ class Item : virtual public Thing
 		// Returns the player that is holding this item in his inventory
 		Player* getHoldingPlayer() const;
 
-		WeaponType_t getWeaponType() const {
-			return items[id].weaponType;
-		}
-		Ammo_t getAmmoType() const {
-			return items[id].ammoType;
-		}
-		uint8_t getShootRange() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_SHOOTRANGE)) {
-				return getIntAttr(ITEM_ATTRIBUTE_SHOOTRANGE);
-			}
-			return items[id].shootRange;
-		}
-
 		virtual uint32_t getWeight() const;
 		uint32_t getBaseWeight() const {
 			if (hasAttribute(ITEM_ATTRIBUTE_WEIGHT)) {
@@ -857,46 +841,9 @@ class Item : virtual public Thing
 			}
 			return items[id].weight;
 		}
-		int32_t getAttack() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_ATTACK)) {
-				return getIntAttr(ITEM_ATTRIBUTE_ATTACK);
-			}
-			return items[id].attack;
-		}
-		uint32_t getAttackSpeed() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_ATTACK_SPEED)) {
-				return getIntAttr(ITEM_ATTRIBUTE_ATTACK_SPEED);
-			}
-			return items[id].attackSpeed;
-		}
-		int32_t getArmor() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_ARMOR)) {
-				return getIntAttr(ITEM_ATTRIBUTE_ARMOR);
-			}
-			return items[id].armor;
-		}
-		int32_t getDefense() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_DEFENSE)) {
-				return getIntAttr(ITEM_ATTRIBUTE_DEFENSE);
-			}
-			return items[id].defense;
-		}
-		int32_t getExtraDefense() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_EXTRADEFENSE)) {
-				return getIntAttr(ITEM_ATTRIBUTE_EXTRADEFENSE);
-			}
-			return items[id].extraDefense;
-		}
 		int32_t getSlotPosition() const {
 			return items[id].slotPosition;
 		}
-		int8_t getHitChance() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_HITCHANCE)) {
-				return getIntAttr(ITEM_ATTRIBUTE_HITCHANCE);
-			}
-			return items[id].hitChance;
-		}
-
 		uint32_t getWorth() const;
 		LightInfo getLightInfo() const;
 

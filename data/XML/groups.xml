@@ -51,7 +51,7 @@
 			<flag notgenerateloot="1" />
 			<flag ignoreprotectionzone="1" />
 			<flag ignoremovecheck="1" />
-			<flag ignoreweaponcheck="1" />
+			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
 		</flags>
@@ -92,7 +92,7 @@
 			<flag notgenerateloot="1" />
 			<flag ignoreprotectionzone="1" />
 			<flag ignoremovecheck="1" />
-			<flag ignoreweaponcheck="1" />
+			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
 		</flags>
@@ -133,7 +133,7 @@
 			<flag notgenerateloot="0" />
 			<flag ignoreprotectionzone="1" />
 			<flag ignoremovecheck="1" />
-			<flag ignoreweaponcheck="1" />
+			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
 		</flags>

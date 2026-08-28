@@ -197,17 +197,10 @@ Condition* Condition::createCondition(ConditionId_t id, ConditionType_t type, in
 		case CONDITION_ATTRIBUTES:
 			return new ConditionAttributes(id, type, ticks, buff, subId, aggressive);
 
-		case CONDITION_MOVECOOLDOWN:
-			return new ConditionMoveCooldown(id, type, ticks, buff, subId, aggressive);
-
-		case CONDITION_MOVEGROUPCOOLDOWN:
-			return new ConditionMoveGroupCooldown(id, type, ticks, buff, subId, aggressive);
-
 		case CONDITION_DRUNK:
 			return new ConditionDrunk(id, type, ticks, buff, subId, param, aggressive);
 
 		case CONDITION_INFIGHT:
-		case CONDITION_EXHAUST_WEAPON:
 		case CONDITION_EXHAUST_COMBAT:
 		case CONDITION_EXHAUST_HEAL:
 		case CONDITION_MUTED:
@@ -378,7 +371,6 @@ void ConditionAttributes::addCondition(Creature* creature, const Condition* cond
 
 		//Apply the new one
 		memcpy(skills, conditionAttrs.skills, sizeof(skills));
-		memcpy(specialSkills, conditionAttrs.specialSkills, sizeof(specialSkills));
 		memcpy(skillsPercent, conditionAttrs.skillsPercent, sizeof(skillsPercent));
 		memcpy(stats, conditionAttrs.stats, sizeof(stats));
 		memcpy(statsPercent, conditionAttrs.statsPercent, sizeof(statsPercent));
@@ -397,8 +389,6 @@ bool ConditionAttributes::unserializeProp(ConditionAttr_t attr, PropStream& prop
 {
 	if (attr == CONDITIONATTR_SKILLS) {
 		return propStream.read<int32_t>(skills[currentSkill++]);
-	} else if (attr == CONDITIONATTR_SPECIALSKILLS) {
-		return propStream.read<int32_t>(specialSkills[currentSpecialSkill++]);
 	} else if (attr == CONDITIONATTR_STATS) {
 		return propStream.read<int32_t>(stats[currentStat++]);
 	} else if (attr == CONDITIONATTR_DISABLEDEFENSE) {
@@ -424,10 +414,6 @@ void ConditionAttributes::serialize(PropWriteStream& propWriteStream)
 	propWriteStream.write<uint8_t>(CONDITIONATTR_DISABLEDEFENSE);
 	propWriteStream.write<bool>(disableDefense);
 
-	for (int32_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i) {
-		propWriteStream.write<uint8_t>(CONDITIONATTR_SPECIALSKILLS);
-		propWriteStream.write<int32_t>(specialSkills[i]);
-	}
 }
 
 bool ConditionAttributes::startCondition(Creature* creature)
@@ -510,13 +496,6 @@ void ConditionAttributes::updateSkills(Player* player)
 		}
 	}
 
-	for (int32_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i) {
-		if (specialSkills[i]) {
-			needUpdateSkills = true;
-			player->setVarSpecialSkill(static_cast<SpecialSkills_t>(i), specialSkills[i]);
-		}
-	}
-
 	if (needUpdateSkills) {
 		player->sendSkills();
 	}
@@ -537,13 +516,6 @@ void ConditionAttributes::endCondition(Creature* creature)
 			if (skills[i] || skillsPercent[i]) {
 				needUpdateSkills = true;
 				player->setVarSkill(static_cast<skills_t>(i), -skills[i]);
-			}
-		}
-
-		for (int32_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i) {
-			if (specialSkills[i]) {
-				needUpdateSkills = true;
-				player->setVarSpecialSkill(static_cast<SpecialSkills_t>(i), -specialSkills[i]);
 			}
 		}
 
@@ -694,36 +666,6 @@ bool ConditionAttributes::setParam(ConditionParam_t param, int32_t value)
 			return true;
 		}
 
-		case CONDITION_PARAM_SPECIALSKILL_CRITICALHITCHANCE: {
-			specialSkills[SPECIALSKILL_CRITICALHITCHANCE] = value;
-			return true;
-		}
-
-		case CONDITION_PARAM_SPECIALSKILL_CRITICALHITAMOUNT: {
-			specialSkills[SPECIALSKILL_CRITICALHITAMOUNT] = value;
-			return true;
-		}
-
-		case CONDITION_PARAM_SPECIALSKILL_LIFELEECHCHANCE: {
-			specialSkills[SPECIALSKILL_LIFELEECHCHANCE] = value;
-			return true;
-		}
-
-		case CONDITION_PARAM_SPECIALSKILL_LIFELEECHAMOUNT: {
-			specialSkills[SPECIALSKILL_LIFELEECHAMOUNT] = value;
-			return true;
-		}
-
-		case CONDITION_PARAM_SPECIALSKILL_MANALEECHCHANCE: {
-			specialSkills[SPECIALSKILL_MANALEECHCHANCE] = value;
-			return true;
-		}
-
-		case CONDITION_PARAM_SPECIALSKILL_MANALEECHAMOUNT: {
-			specialSkills[SPECIALSKILL_MANALEECHAMOUNT] = value;
-			return true;
-		}
-
 		case CONDITION_PARAM_AGGRESSIVE: {
 			aggressive = (value != 0);
 			return true;
@@ -799,24 +741,6 @@ int32_t ConditionAttributes::getParam(ConditionParam_t param)
 
 		case CONDITION_PARAM_DISABLE_DEFENSE:
 			return disableDefense ? 1 : 0;
-
-		case CONDITION_PARAM_SPECIALSKILL_CRITICALHITCHANCE:
-			return specialSkills[SPECIALSKILL_CRITICALHITCHANCE];
-
-		case CONDITION_PARAM_SPECIALSKILL_CRITICALHITAMOUNT:
-			return specialSkills[SPECIALSKILL_CRITICALHITAMOUNT];
-
-		case CONDITION_PARAM_SPECIALSKILL_LIFELEECHCHANCE:
-			return specialSkills[SPECIALSKILL_LIFELEECHCHANCE];
-
-		case CONDITION_PARAM_SPECIALSKILL_LIFELEECHAMOUNT:
-			return specialSkills[SPECIALSKILL_LIFELEECHAMOUNT];
-
-		case CONDITION_PARAM_SPECIALSKILL_MANALEECHCHANCE:
-			return specialSkills[SPECIALSKILL_MANALEECHCHANCE];
-
-		case CONDITION_PARAM_SPECIALSKILL_MANALEECHAMOUNT:
-			return specialSkills[SPECIALSKILL_MANALEECHAMOUNT];
 
 		default:
 			return ConditionGeneric::getParam(param);
@@ -1859,64 +1783,6 @@ void ConditionLight::serialize(PropWriteStream& propWriteStream)
 
 	propWriteStream.write<uint8_t>(CONDITIONATTR_LIGHTINTERVAL);
 	propWriteStream.write<uint32_t>(lightChangeInterval);
-}
-
-void ConditionMoveCooldown::addCondition(Creature* creature, const Condition* condition)
-{
-	if (updateCondition(condition)) {
-		setTicks(condition->getTicks());
-
-		if (subId != 0 && ticks > 0) {
-			Player* player = creature->getPlayer();
-			if (player) {
-				player->sendMoveCooldown(subId, ticks);
-			}
-		}
-	}
-}
-
-bool ConditionMoveCooldown::startCondition(Creature* creature)
-{
-	if (!Condition::startCondition(creature)) {
-		return false;
-	}
-
-	if (subId != 0 && ticks > 0) {
-		Player* player = creature->getPlayer();
-		if (player) {
-			player->sendMoveCooldown(subId, ticks);
-		}
-	}
-	return true;
-}
-
-void ConditionMoveGroupCooldown::addCondition(Creature* creature, const Condition* condition)
-{
-	if (updateCondition(condition)) {
-		setTicks(condition->getTicks());
-
-		if (subId != 0 && ticks > 0) {
-			Player* player = creature->getPlayer();
-			if (player) {
-				player->sendMoveGroupCooldown(static_cast<MoveGroup_t>(subId), ticks);
-			}
-		}
-	}
-}
-
-bool ConditionMoveGroupCooldown::startCondition(Creature* creature)
-{
-	if (!Condition::startCondition(creature)) {
-		return false;
-	}
-
-	if (subId != 0 && ticks > 0) {
-		Player* player = creature->getPlayer();
-		if (player) {
-			player->sendMoveGroupCooldown(static_cast<MoveGroup_t>(subId), ticks);
-		}
-	}
-	return true;
 }
 
 bool ConditionDrunk::startCondition(Creature* creature)

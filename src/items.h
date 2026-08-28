@@ -20,7 +20,7 @@ enum SlotPositionBits : uint32_t {
 	SLOTP_LEGS = 1 << 6,
 	SLOTP_FEET = 1 << 7,
 	SLOTP_RING = 1 << 8,
-	SLOTP_AMMO = 1 << 9,
+	SLOTP_UTILITY = 1 << 9,
 	SLOTP_DEPOT = 1 << 10,
 	SLOTP_TWO_HAND = 1 << 11,
 	SLOTP_HAND = (SLOTP_LEFT | SLOTP_RIGHT)
@@ -37,22 +37,15 @@ enum ItemTypes_t {
 	ITEM_TYPE_TELEPORT,
 	ITEM_TYPE_BED,
 	ITEM_TYPE_KEY,
-	ITEM_TYPE_RUNE,
 	ITEM_TYPE_LAST
 };
 
 enum ItemParseAttributes_t {
 	ITEM_PARSE_TYPE,
 	ITEM_PARSE_DESCRIPTION,
-	ITEM_PARSE_RUNEMOVENAME,
 	ITEM_PARSE_TMMOVENAME,
 	ITEM_PARSE_WEIGHT,
 	ITEM_PARSE_SHOWCOUNT,
-	ITEM_PARSE_ARMOR,
-	ITEM_PARSE_DEFENSE,
-	ITEM_PARSE_EXTRADEF,
-	ITEM_PARSE_ATTACK,
-	ITEM_PARSE_ATTACK_SPEED,
 	ITEM_PARSE_ROTATETO,
 	ITEM_PARSE_MOVEABLE,
 	ITEM_PARSE_BLOCKPROJECTILE,
@@ -66,12 +59,8 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_WRITEABLE,
 	ITEM_PARSE_MAXTEXTLEN,
 	ITEM_PARSE_WRITEONCEITEMID,
-	ITEM_PARSE_WEAPONTYPE,
 	ITEM_PARSE_SLOTTYPE,
-	ITEM_PARSE_AMMOTYPE,
-	ITEM_PARSE_SHOOTTYPE,
 	ITEM_PARSE_EFFECT,
-	ITEM_PARSE_RANGE,
 	ITEM_PARSE_STOPDURATION,
 	ITEM_PARSE_DECAYTO,
 	ITEM_PARSE_TRANSFORMEQUIPTO,
@@ -81,8 +70,6 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_CHARGES,
 	ITEM_PARSE_SHOWCHARGES,
 	ITEM_PARSE_SHOWATTRIBUTES,
-	ITEM_PARSE_HITCHANCE,
-	ITEM_PARSE_MAXHITCHANCE,
 	ITEM_PARSE_INVISIBLE,
 	ITEM_PARSE_SPEED,
 	ITEM_PARSE_HEALTHGAIN,
@@ -103,12 +90,6 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_MAXMANAPOINTSPERCENT,
 	ITEM_PARSE_MAGICPOINTS,
 	ITEM_PARSE_MAGICPOINTSPERCENT,
-	ITEM_PARSE_CRITICALHITCHANCE,
-	ITEM_PARSE_CRITICALHITAMOUNT,
-	ITEM_PARSE_LIFELEECHCHANCE,
-	ITEM_PARSE_LIFELEECHAMOUNT,
-	ITEM_PARSE_MANALEECHCHANCE,
-	ITEM_PARSE_MANALEECHAMOUNT,
 	ITEM_PARSE_FIELDABSORBPERCENTENERGY,
 	ITEM_PARSE_FIELDABSORBPERCENTFIRE,
 	ITEM_PARSE_FIELDABSORBPERCENTPOISON,
@@ -171,7 +152,6 @@ struct Abilities {
 
 	//extra skill modifiers
 	std::array<int32_t, SKILL_LAST + 1> skills = {0};
-	std::array<int32_t, SPECIALSKILL_LAST + 1> specialSkills = {0};
 
 	int32_t speed = 0;
 
@@ -241,9 +221,6 @@ class ItemType
 		bool isBed() const {
 			return (type == ITEM_TYPE_BED);
 		}
-		bool isRune() const {
-			return (type == ITEM_TYPE_RUNE);
-		}
 		bool isPickupable() const {
 			return (allowPickupable || pickupable);
 		}
@@ -292,30 +269,20 @@ class ItemType
 		std::string article;
 		std::string pluralName;
 		std::string description;
-		std::string runeMoveName;
 		std::string tmMoveName;
 		std::string vocationString;
 
 		std::unique_ptr<Abilities> abilities;
 		std::unique_ptr<ConditionDamage> conditionDamage;
 
-		uint32_t attackSpeed = 0;
 		uint32_t weight = 0;
 		uint32_t levelDoor = 0;
 		uint32_t decayTime = 0;
 		uint32_t wieldInfo = 0;
 		uint32_t minReqLevel = 0;
-		uint32_t minReqMagicLevel = 0;
 		uint32_t charges = 0;
-		int32_t maxHitChance = -1;
 		int32_t decayTo = -1;
-		int32_t attack = 0;
-		int32_t defense = 0;
-		int32_t extraDefense = 0;
-		int32_t armor = 0;
 		uint16_t rotateTo = 0;
-		int32_t runeMagLevel = 0;
-		int32_t runeLevel = 0;
 
 		CombatType_t combatType = COMBAT_NONE;
 
@@ -333,9 +300,6 @@ class ItemType
 
 		MagicEffectClasses magicEffect = CONST_ME_NONE;
 		Direction bedPartnerDir = DIRECTION_NONE;
-		WeaponType_t weaponType = WEAPON_NONE;
-		Ammo_t ammoType = AMMO_NONE;
-		ShootType_t shootType = CONST_ANI_NONE;
 		RaceType_t corpseType = RACE_NONE;
 		FluidTypes_t fluidSource = FLUID_NONE;
 
@@ -343,8 +307,6 @@ class ItemType
 		uint8_t alwaysOnTopOrder = 0;
 		uint8_t lightLevel = 0;
 		uint8_t lightColor = 0;
-		uint8_t shootRange = 1;
-		int8_t hitChance = 0;
 
 		bool storeItem = false;
 		bool forceUse = false;

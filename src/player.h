@@ -27,7 +27,6 @@
 
 class House;
 class NetworkMessage;
-class Weapon;
 class ProtocolGame;
 class Npc;
 class Party;
@@ -493,9 +492,6 @@ class Player final : public Creature, public Cylinder
 			varSkills[skill] += modifier;
 		}
 
-		void setVarSpecialSkill(SpecialSkills_t skill, int32_t modifier) {
-			varSpecialSkills[skill] += modifier;
-		}
 
 		void setVarStats(stats_t stat, int32_t modifier);
 		int32_t getDefaultStats(stats_t stat) const;
@@ -613,7 +609,6 @@ class Player final : public Creature, public Cylinder
 		bool setAttackedCreature(Creature* creature) override;
 		bool isImmune(CombatType_t type) const override;
 		bool isImmune(ConditionType_t type) const override;
-		bool hasShield() const;
 		bool isAttackable() const override;
 		static bool lastHitIsPlayer(Creature* lastHitCreature);
 
@@ -631,9 +626,6 @@ class Player final : public Creature, public Cylinder
 			return lastAttack > 0 && ((OTSYS_TIME() - lastAttack) >= getAttackSpeed());
 		}
 
-		uint16_t getSpecialSkill(uint8_t skill) const {
-			return std::max<int32_t>(0, varSpecialSkills[skill]);
-		}
 		uint16_t getSkillLevel(uint8_t skill) const {
 			return std::max<int32_t>(0, skills[skill].level + varSkills[skill]);
 		}
@@ -651,12 +643,6 @@ class Player final : public Creature, public Cylinder
 			return lastAttackBlockType;
 		}
 
-		Item* getWeapon(slots_t slot, bool ignoreAmmo) const;
-		Item* getWeapon(bool ignoreAmmo = false) const;
-		WeaponType_t getWeaponType() const;
-		int32_t getWeaponSkill(const Item* item) const;
-		void getShieldAndWeapon(const Item*& shield, const Item*& weapon) const;
-
 		void drainHealth(Creature* attacker, int32_t damage) override;
 		void drainMana(Creature* attacker, int32_t manaLoss);
 		void addManaSpent(uint64_t amount);
@@ -664,8 +650,6 @@ class Player final : public Creature, public Cylinder
 		void addSkillAdvance(skills_t skill, uint64_t count);
 		void removeSkillTries(skills_t skill, uint64_t count, bool notify = false);
 
-		int32_t getArmor() const override;
-		int32_t getDefense() const override;
 		float getAttackFactor() const override;
 		float getDefenseFactor() const override;
 
@@ -694,11 +678,6 @@ class Player final : public Creature, public Cylinder
 
 		LightInfo getCreatureLight() const override;
 
-		void sendCreatureSkull(const Creature* creature) const {
-			if (client) {
-				client->sendCreatureSkull(creature);
-			}
-		}
 		bool canWear(uint32_t lookType, uint8_t addons) const;
 		bool hasOutfit(uint32_t lookType, uint8_t addons);
 		void addOutfit(uint16_t lookType, uint8_t addons);
@@ -846,16 +825,6 @@ class Player final : public Creature, public Cylinder
 		void sendCreatureHelpers(uint32_t creatureId, uint16_t helpers) {
 			if (client) {
 				client->sendCreatureHelpers(creatureId, helpers);
-			}
-		}
-		void sendMoveCooldown(uint8_t moveId, uint32_t time) {
-			if (client) {
-				client->sendMoveCooldown(moveId, time);
-			}
-		}
-		void sendMoveGroupCooldown(MoveGroup_t groupId, uint32_t time) {
-			if (client) {
-				client->sendMoveGroupCooldown(groupId, time);
 			}
 		}
 		void sendModalWindow(const ModalWindow& modalWindow);
@@ -1183,9 +1152,6 @@ class Player final : public Creature, public Cylinder
 		House* getEditHouse(uint32_t& windowTextId, uint32_t& listId);
 		void setEditHouse(House* house, uint32_t listId = 0);
 
-		void learnInstantMove(const std::string& moveName);
-		void forgetInstantMove(const std::string& moveName);
-		bool hasLearnedInstantMove(const std::string& moveName) const;
 
 		void updateRegeneration();
 
@@ -1300,7 +1266,6 @@ class Player final : public Creature, public Cylinder
 
 		std::forward_list<Party*> invitePartyList;
 		std::forward_list<uint32_t> modalWindows;
-		std::forward_list<std::string> learnedInstantMoveList;
 		std::forward_list<Condition*> storedConditionList; // TODO: This variable is only temporarily used when logging in, get rid of it somehow
 
 		std::string name;
@@ -1373,7 +1338,6 @@ class Player final : public Creature, public Cylinder
 		uint32_t mana = 0;
 		uint32_t manaMax = 0;
 		int32_t varSkills[SKILL_LAST + 1] = {};
-		int32_t varSpecialSkills[SPECIALSKILL_LAST + 1] = {};
 		int32_t varStats[STAT_LAST + 1] = {};
 		int32_t purchaseCallback = -1;
 		int32_t saleCallback = -1;

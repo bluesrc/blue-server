@@ -114,7 +114,6 @@ bool MoveEvents::registerEvent(Event_ptr event, const pugi::xml_node& node)
 				ItemType& it = Item::items.getItemType(id);
 				it.wieldInfo = moveEvent->getWieldInfo();
 				it.minReqLevel = moveEvent->getReqLevel();
-				it.minReqMagicLevel = moveEvent->getReqMagLv();
 				it.vocationString = moveEvent->getVocationString();
 			}
 			addEvent(std::move(*moveEvent), id, itemIdMap);
@@ -129,7 +128,6 @@ bool MoveEvents::registerEvent(Event_ptr event, const pugi::xml_node& node)
 			ItemType& it = Item::items.getItemType(id);
 			it.wieldInfo = moveEvent->getWieldInfo();
 			it.minReqLevel = moveEvent->getReqLevel();
-			it.minReqMagicLevel = moveEvent->getReqMagLv();
 			it.vocationString = moveEvent->getVocationString();
 
 			while (++id <= endId) {
@@ -138,7 +136,6 @@ bool MoveEvents::registerEvent(Event_ptr event, const pugi::xml_node& node)
 				ItemType& tit = Item::items.getItemType(id);
 				tit.wieldInfo = moveEvent->getWieldInfo();
 				tit.minReqLevel = moveEvent->getReqLevel();
-				tit.minReqMagicLevel = moveEvent->getReqMagLv();
 				tit.vocationString = moveEvent->getVocationString();
 			}
 		} else {
@@ -227,7 +224,6 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 				ItemType& it = Item::items.getItemType(id);
 				it.wieldInfo = moveEvent->getWieldInfo();
 				it.minReqLevel = moveEvent->getReqLevel();
-				it.minReqMagicLevel = moveEvent->getReqMagLv();
 				it.vocationString = moveEvent->getVocationString();
 			}
 		} else {
@@ -237,7 +233,6 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 					ItemType& it = Item::items.getItemType(moveEvent->getItemIdRange().at(iterId));
 					it.wieldInfo = moveEvent->getWieldInfo();
 					it.minReqLevel = moveEvent->getReqLevel();
-					it.minReqMagicLevel = moveEvent->getReqMagLv();
 					it.vocationString = moveEvent->getVocationString();
 				}
 				addEvent(*moveEvent, moveEvent->getItemIdRange().at(iterId), itemIdMap);
@@ -277,7 +272,6 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 				ItemType& it = Item::items.getItemType(id);
 				it.wieldInfo = moveEvent->getWieldInfo();
 				it.minReqLevel = moveEvent->getReqLevel();
-				it.minReqMagicLevel = moveEvent->getReqMagLv();
 				it.vocationString = moveEvent->getVocationString();
 			}
 		} else {
@@ -287,7 +281,6 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 					ItemType& it = Item::items.getItemType(*i);
 					it.wieldInfo = moveEvent->getWieldInfo();
 					it.minReqLevel = moveEvent->getReqLevel();
-					it.minReqMagicLevel = moveEvent->getReqMagLv();
 					it.vocationString = moveEvent->getVocationString();
 				}
 				addEvent(*moveEvent, *i, itemIdMap);
@@ -372,7 +365,7 @@ MoveEvent* MoveEvents::getEvent(Item* item, MoveEvent_t eventType, slots_t slot)
 		case CONST_SLOT_LEFT: slotp = SLOTP_LEFT; break;
 		case CONST_SLOT_LEGS: slotp = SLOTP_LEGS; break;
 		case CONST_SLOT_FEET: slotp = SLOTP_FEET; break;
-		case CONST_SLOT_AMMO: slotp = SLOTP_AMMO; break;
+		case CONST_SLOT_UTILITY: slotp = SLOTP_UTILITY; break;
 		case CONST_SLOT_RING: slotp = SLOTP_RING; break;
 		default: slotp = 0; break;
 	}
@@ -636,8 +629,8 @@ bool MoveEvent::configureEvent(const pugi::xml_node& node)
 				slot = SLOTP_FEET;
 			} else if (tmpStr == "ring") {
 				slot = SLOTP_RING;
-			} else if (tmpStr == "ammo") {
-				slot = SLOTP_AMMO;
+			} else if (tmpStr == "utility") {
+				slot = SLOTP_UTILITY;
 			} else {
 				std::cout << "[Warning - MoveEvent::configureMoveEvent] Unknown slot type: " << slotAttribute.as_string() << std::endl;
 			}
@@ -650,14 +643,6 @@ bool MoveEvent::configureEvent(const pugi::xml_node& node)
 			reqLevel = pugi::cast<uint32_t>(levelAttribute.value());
 			if (reqLevel > 0) {
 				wieldInfo |= WIELDINFO_LEVEL;
-			}
-		}
-
-		pugi::xml_attribute magLevelAttribute = node.attribute("maglevel");
-		if (magLevelAttribute) {
-			reqMagLevel = pugi::cast<uint32_t>(magLevelAttribute.value());
-			if (reqMagLevel > 0) {
-				wieldInfo |= WIELDINFO_MAGLV;
 			}
 		}
 
@@ -744,7 +729,7 @@ uint32_t MoveEvent::RemoveItemField(Item*, Item*, const Position&)
 
 ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, Player* player, Item* item, slots_t slot, bool isCheck)
 {
-	if (!player->hasFlag(PlayerFlag_IgnoreWeaponCheck) && moveEvent->getWieldInfo() != 0) {
+	if (!player->hasFlag(PlayerFlag_IgnoreEquipmentCheck) && moveEvent->getWieldInfo() != 0) {
 		const VocEquipMap& vocEquipMap = moveEvent->getVocEquipMap();
 		if (!vocEquipMap.empty() && vocEquipMap.find(player->getVocationId()) == vocEquipMap.end()) {
 			return RETURNVALUE_YOUDONTHAVEREQUIREDPROFESSION;
@@ -752,10 +737,6 @@ ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, Player* player, Item* ite
 
 		if (player->getLevel() < moveEvent->getReqLevel()) {
 			return RETURNVALUE_NOTENOUGHLEVEL;
-		}
-
-		if (player->getMagicLevel() < moveEvent->getReqMagLv()) {
-			return RETURNVALUE_NOTENOUGHMAGICLEVEL;
 		}
 
 		if (moveEvent->isPremium() && !player->isPremium()) {
@@ -834,13 +815,6 @@ ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, Player* player, Item* ite
 		}
 	}
 
-	for (int32_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i) {
-		if (it.abilities->specialSkills[i]) {
-			needUpdateSkills = true;
-			player->setVarSpecialSkill(static_cast<SpecialSkills_t>(i), it.abilities->specialSkills[i]);
-		}
-	}
-
 	if (needUpdateSkills) {
 		player->sendSkills();
 	}
@@ -913,13 +887,6 @@ ReturnValue MoveEvent::DeEquipItem(MoveEvent*, Player* player, Item* item, slots
 		if (it.abilities->skills[i] != 0) {
 			needUpdateSkills = true;
 			player->setVarSkill(static_cast<skills_t>(i), -it.abilities->skills[i]);
-		}
-	}
-
-	for (int32_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; ++i) {
-		if (it.abilities->specialSkills[i] != 0) {
-			needUpdateSkills = true;
-			player->setVarSpecialSkill(static_cast<SpecialSkills_t>(i), -it.abilities->specialSkills[i]);
 		}
 	}
 

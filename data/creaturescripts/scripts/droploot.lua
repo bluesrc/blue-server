@@ -3,34 +3,13 @@ function onDeath(player, corpse, killer, mostDamageKiller)
 		return true
 	end
 
-	local amulet = player:getSlotItem(CONST_SLOT_NECKLACE)
-	if amulet and amulet.itemid == ITEM_AMULETOFLOSS then
-		local isPlayer = false
-		if killer then
-			if killer:isPlayer() then
-				isPlayer = true
-			else
-				local master = killer:getMaster()
-				if master and master:isPlayer() then
-					isPlayer = true
-				end
-			end
-		end
-
-		if not isPlayer or not player:hasBlessing(6) then
-			player:removeItem(ITEM_AMULETOFLOSS, 1, -1, false)
-		end
-	else
-		for i = CONST_SLOT_HEAD, CONST_SLOT_AMMO do
-			if i ~= CONST_SLOT_BACKPACK then
-				local item = player:getSlotItem(i)
-				local lossPercent = player:getLossPercent()
-				if item then
-					if math.random(item:isContainer() and 100 or 1000) <= lossPercent then
-						if lossPercent ~= 0 and not item:moveTo(corpse) then
-							item:remove()
-						end
-					end
+	for i = CONST_SLOT_HEAD, CONST_SLOT_UTILITY do
+		if i ~= CONST_SLOT_BACKPACK then
+			local item = player:getSlotItem(i)
+			local lossPercent = player:getLossPercent()
+			if item and math.random(item:isContainer() and 100 or 1000) <= lossPercent then
+				if lossPercent ~= 0 and not item:moveTo(corpse) then
+					item:remove()
 				end
 			end
 		end

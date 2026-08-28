@@ -25,7 +25,6 @@
 #include "server.h"
 #include "moves.h"
 #include "talkaction.h"
-#include "weapons.h"
 #include "script.h"
 #include "zones.h"
 
@@ -42,7 +41,6 @@ extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
 extern Pokemons g_pokemons;
 extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
 extern Scripts* g_scripts;
 
 static constexpr uint8_t PLAYER_BACKPACK_CONTAINER_ID = 0x0D;
@@ -1937,26 +1935,24 @@ Item* searchForItem(Container* container, uint16_t itemId)
 slots_t getSlotType(const ItemType& it)
 {
 	slots_t slot = CONST_SLOT_RIGHT;
-	if (it.weaponType != WeaponType_t::WEAPON_SHIELD) {
-		int32_t slotPosition = it.slotPosition;
+	int32_t slotPosition = it.slotPosition;
 
-		if (slotPosition & SLOTP_HEAD) {
-			slot = CONST_SLOT_HEAD;
-		} else if (slotPosition & SLOTP_NECKLACE) {
-			slot = CONST_SLOT_NECKLACE;
-		} else if (slotPosition & SLOTP_ARMOR) {
-			slot = CONST_SLOT_ARMOR;
-		} else if (slotPosition & SLOTP_LEGS) {
-			slot = CONST_SLOT_LEGS;
-		} else if (slotPosition & SLOTP_FEET) {
-			slot = CONST_SLOT_FEET;
-		} else if (slotPosition & SLOTP_RING) {
-			slot = CONST_SLOT_RING;
-		} else if (slotPosition & SLOTP_AMMO) {
-			slot = CONST_SLOT_AMMO;
-		} else if (slotPosition & SLOTP_TWO_HAND || slotPosition & SLOTP_LEFT) {
-			slot = CONST_SLOT_LEFT;
-		}
+	if (slotPosition & SLOTP_HEAD) {
+		slot = CONST_SLOT_HEAD;
+	} else if (slotPosition & SLOTP_NECKLACE) {
+		slot = CONST_SLOT_NECKLACE;
+	} else if (slotPosition & SLOTP_ARMOR) {
+		slot = CONST_SLOT_ARMOR;
+	} else if (slotPosition & SLOTP_LEGS) {
+		slot = CONST_SLOT_LEGS;
+	} else if (slotPosition & SLOTP_FEET) {
+		slot = CONST_SLOT_FEET;
+	} else if (slotPosition & SLOTP_RING) {
+		slot = CONST_SLOT_RING;
+	} else if (slotPosition & SLOTP_UTILITY) {
+		slot = CONST_SLOT_UTILITY;
+	} else if (slotPosition & SLOTP_TWO_HAND || slotPosition & SLOTP_LEFT) {
+		slot = CONST_SLOT_LEFT;
 	}
 
 	return slot;
@@ -5386,19 +5382,6 @@ void Game::updateCreatureWalkthrough(const Creature* creature)
 	}
 }
 
-void Game::updateCreatureSkull(const Creature* creature)
-{
-	if (getWorldType() != WORLD_TYPE_PVP) {
-		return;
-	}
-
-	SpectatorVec spectators;
-	map.getSpectators(spectators, creature->getPosition(), true, true);
-	for (Creature* spectator : spectators) {
-		spectator->getPlayer()->sendCreatureSkull(creature);
-	}
-}
-
 void Game::updatePlayerShield(Player* player)
 {
 	SpectatorVec spectators;
@@ -6812,12 +6795,6 @@ bool Game::reload(ReloadTypes_t reloadType)
 
 		case RELOAD_TYPE_TALKACTIONS: return g_talkActions->reload();
 
-		case RELOAD_TYPE_WEAPONS: {
-			bool results = g_weapons->reload();
-			g_weapons->loadDefaults();
-			return results;
-		}
-
 		case RELOAD_TYPE_SCRIPTS: {
 			// commented out stuff is TODO, once we approach further in revscriptsys
 			g_actions->clear(true);
@@ -6825,8 +6802,6 @@ bool Game::reload(ReloadTypes_t reloadType)
 			g_moveEvents->clear(true);
 			g_talkActions->clear(true);
 			g_globalEvents->clear(true);
-			g_weapons->clear(true);
-			g_weapons->loadDefaults();
 			g_moves->clear(true);
 			g_scripts->loadScripts("scripts", false, true);
 			g_creatureEvents->removeInvalidEvents();
@@ -6861,9 +6836,6 @@ bool Game::reload(ReloadTypes_t reloadType)
 			raids.reload() && raids.startup();
 			g_talkActions->reload();
 			Item::items.reload();
-			g_weapons->reload();
-			g_weapons->clear(true);
-			g_weapons->loadDefaults();
 			quests.reload();
 			mounts.reload();
 			g_globalEvents->reload();

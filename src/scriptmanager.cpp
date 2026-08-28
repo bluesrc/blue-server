@@ -7,10 +7,10 @@
 
 #include "actions.h"
 #include "chat.h"
+#include "creatureevent.h"
 #include "talkaction.h"
 #include "moves.h"
 #include "movement.h"
-#include "weapons.h"
 #include "globalevent.h"
 #include "events.h"
 #include "script.h"
@@ -23,7 +23,6 @@ GlobalEvents* g_globalEvents = nullptr;
 Moves* g_moves = nullptr;
 TalkActions* g_talkActions = nullptr;
 MoveEvents* g_moveEvents = nullptr;
-Weapons* g_weapons = nullptr;
 Scripts* g_scripts = nullptr;
 
 extern LuaEnvironment g_luaEnvironment;
@@ -31,7 +30,6 @@ extern LuaEnvironment g_luaEnvironment;
 ScriptingManager::~ScriptingManager()
 {
 	delete g_events;
-	delete g_weapons;
 	delete g_moves;
 	delete g_actions;
 	delete g_talkActions;
@@ -56,14 +54,6 @@ bool ScriptingManager::loadScriptSystems()
 	}
 
 	g_chat = new Chat();
-
-	g_weapons = new Weapons();
-	if (!g_weapons->loadFromXml()) {
-		std::cout << "> ERROR: Unable to load weapons!" << std::endl;
-		return false;
-	}
-
-	g_weapons->loadDefaults();
 
 	g_moves = new Moves();
 	if (!g_moves->loadFromXml()) {

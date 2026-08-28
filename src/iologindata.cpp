@@ -401,12 +401,6 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 		}
 	}
 
-	if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `name` FROM `player_moves` WHERE `player_id` = {:d}", player->getGUID())))) {
-		do {
-			player->learnedInstantMoveList.emplace_front(result->getString("name"));
-		} while (result->next());
-	}
-
 	if ((result = db.storeQuery(fmt::format("SELECT `pokemon_number`, `caught_count` FROM `player_pokedex` WHERE `player_id` = {:d}", player->getGUID())))) {
 		do {
 			const uint32_t caughtCount = result->getNumber<uint32_t>("caught_count");
@@ -725,22 +719,6 @@ bool IOLoginData::savePlayer(Player* player)
 	}
 
 	if (!db.executeQuery(query.str())) {
-		return false;
-	}
-
-	// learned moves
-	if (!db.executeQuery(fmt::format("DELETE FROM `player_moves` WHERE `player_id` = {:d}", player->getGUID()))) {
-		return false;
-	}
-
-	DBInsert movesQuery("INSERT INTO `player_moves` (`player_id`, `name` ) VALUES ");
-	for (const std::string& moveName : player->learnedInstantMoveList) {
-		if (!movesQuery.addRow(fmt::format("{:d}, {:s}", player->getGUID(), db.escapeString(moveName)))) {
-			return false;
-		}
-	}
-
-	if (!movesQuery.execute()) {
 		return false;
 	}
 

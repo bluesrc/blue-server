@@ -26,7 +26,7 @@ enum slots_t : uint8_t {
 	CONST_SLOT_LEGS = 7,
 	CONST_SLOT_FEET = 8,
 	CONST_SLOT_RING = 9,
-	CONST_SLOT_AMMO = 10,
+	CONST_SLOT_UTILITY = 10,
 	CONST_SLOT_POKEBALL1 = 11,
 	CONST_SLOT_POKEBALL2 = 12,
 	CONST_SLOT_POKEBALL3 = 13,
@@ -142,13 +142,6 @@ class Creature : virtual public Thing
 		virtual RaceType_t getRace() const {
 			return RACE_NONE;
 		}
-		virtual Skulls_t getSkull() const {
-			return skull;
-		}
-		virtual Skulls_t getSkullClient(const Creature* creature) const {
-			return creature->getSkull();
-		}
-		void setSkull(Skulls_t newSkull);
 		Direction getDirection() const {
 			return direction;
 		}
@@ -524,7 +517,6 @@ class Creature : virtual public Thing
 		LightInfo internalLight;
 
 		Direction direction = DIRECTION_SOUTH;
-		Skulls_t skull = SKULL_NONE;
 
 		bool localMapCache[mapWalkHeight][mapWalkWidth] = {{ false }};
 		bool isInternalRemoved = false;

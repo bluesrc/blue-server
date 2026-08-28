@@ -37,7 +37,6 @@ if Modules == nil then
 	-- These callback function must be called with parameters.npcHandler = npcHandler in the parameters table or they will not work correctly.
 	-- Notice: The members of StdModule have not yet been tested. If you find any bugs, please report them to me.
 	-- Usage:
-		-- keywordHandler:addKeyword({"offer"}, StdModule.say, {npcHandler = npcHandler, text = "I sell many powerful melee weapons."})
 	function StdModule.say(cid, message, keywords, parameters, node)
 		local npcHandler = parameters.npcHandler
 		if npcHandler == nil then
@@ -94,34 +93,6 @@ if Modules == nil then
 		return true
 	end
 
-	function StdModule.learnMove(cid, message, keywords, parameters, node)
-		local npcHandler = parameters.npcHandler
-		if npcHandler == nil then
-			error("StdModule.learnMove called without any npcHandler instance.")
-		end
-
-		if not npcHandler:isFocused(cid) then
-			return false
-		end
-
-		local player = Player(cid)
-		if player:isPremium() or not parameters.premium then
-			if player:hasLearnedMove(parameters.moveName) then
-				npcHandler:say("You already know this move.", cid)
-			elseif not player:canLearnMove(parameters.moveName) then
-				npcHandler:say("You cannot learn this move.", cid)
-			elseif not player:removeTotalMoney(parameters.price) then
-				npcHandler:say("You do not have enough money, this move costs " .. parameters.price .. " gold.", cid)
-			else
-				npcHandler:say("You have learned " .. parameters.moveName .. ".", cid)
-				player:learnMove(parameters.moveName)
-			end
-		else
-			npcHandler:say("You need a premium account in order to buy " .. parameters.moveName .. ".", cid)
-		end
-		npcHandler:resetNpc(cid)
-		return true
-	end
 
 	function StdModule.bless(cid, message, keywords, parameters, node)
 		local npcHandler = parameters.npcHandler
@@ -805,7 +776,7 @@ if Modules == nil then
 	--	names = A table containing one or more strings of alternative names to this item. Used only for old buy/sell system.
 	--	itemid = The itemid of the buyable item
 	--	cost = The price of one single item
-	--	subType - The subType of each rune or fluidcontainer item. Can be left out if it is not a rune/fluidcontainer. Default value is 1.
+	--	subType - The subtype of each stackable or fluid-container item. Defaults to 1.
 	--	realName - The real, full name for the item. Will be used as ITEMNAME in MESSAGE_ONBUY and MESSAGE_ONSELL if defined. Default value is nil (ItemType(itemId):getName() will be used)
 	function ShopModule:addBuyableItem(names, itemid, cost, itemSubType, realName)
 		if SHOPMODULE_MODE ~= SHOPMODULE_MODE_TALK then
@@ -877,7 +848,7 @@ if Modules == nil then
 	--	container = Backpack, bag or any other itemid of container where bought items will be stored
 	--	itemid = The itemid of the buyable item
 	--	cost = The price of one single item
-	--	subType - The subType of each rune or fluidcontainer item. Can be left out if it is not a rune/fluidcontainer. Default value is 1.
+	--	subType - The subtype of each stackable or fluid-container item. Defaults to 1.
 	--	realName - The real, full name for the item. Will be used as ITEMNAME in MESSAGE_ONBUY and MESSAGE_ONSELL if defined. Default value is nil (ItemType(itemId):getName() will be used)
 	function ShopModule:addBuyableItemContainer(names, container, itemid, cost, subType, realName)
 		if names then

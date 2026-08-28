@@ -32,7 +32,6 @@ void Party::disband()
 	currentLeader->sendClosePrivate(CHANNEL_PARTY);
 	g_game.updatePlayerShield(currentLeader);
 	g_game.updatePlayerHelpers(*currentLeader);
-	currentLeader->sendCreatureSkull(currentLeader);
 	currentLeader->sendTextMessage(MESSAGE_INFO_DESCR, "Your party has been disbanded.");
 
 	for (Player* invitee : inviteList) {
@@ -51,11 +50,8 @@ void Party::disband()
 		g_game.updatePlayerShield(member);
 
 		for (Player* otherMember : memberList) {
-			otherMember->sendCreatureSkull(member);
 		}
 
-		member->sendCreatureSkull(currentLeader);
-		currentLeader->sendCreatureSkull(member);
 		g_game.updatePlayerHelpers(*member);
 	}
 	memberList.clear();
@@ -101,13 +97,10 @@ bool Party::leaveParty(Player* player)
 	g_game.updatePlayerHelpers(*player);
 
 	for (Player* member : memberList) {
-		member->sendCreatureSkull(player);
 		player->sendPlayerPartyIcons(member);
 		g_game.updatePlayerHelpers(*member);
 	}
 
-	leader->sendCreatureSkull(player);
-	player->sendCreatureSkull(player);
 	player->sendPlayerPartyIcons(leader);
 
 	player->sendTextMessage(MESSAGE_INFO_DESCR, "You have left the party.");
@@ -183,12 +176,9 @@ bool Party::joinParty(Player& player)
 	g_game.updatePlayerShield(&player);
 
 	for (Player* member : memberList) {
-		member->sendCreatureSkull(&player);
 		player.sendPlayerPartyIcons(member);
 	}
 
-	player.sendCreatureSkull(&player);
-	leader->sendCreatureSkull(&player);
 	player.sendPlayerPartyIcons(leader);
 
 	memberList.push_back(&player);
@@ -248,7 +238,6 @@ bool Party::invitePlayer(Player& player)
 	if (empty()) {
 		leader->sendTextMessage(MESSAGE_INFO_DESCR, fmt::format("{:s} has been invited. Open the party channel to communicate with your members.", player.getName()));
 		g_game.updatePlayerShield(leader);
-		leader->sendCreatureSkull(leader);
 	} else {
 		leader->sendTextMessage(MESSAGE_INFO_DESCR, fmt::format("{:s} has been invited.", player.getName()));
 	}

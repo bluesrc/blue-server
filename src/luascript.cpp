@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 
 #include "luascript.h"
+#include "actions.h"
 #include "chat.h"
 #include "player.h"
 #include "game.h"
@@ -24,9 +25,9 @@
 #include "databasetasks.h"
 #include "events.h"
 #include "movement.h"
+#include "talkaction.h"
 #include "globalevent.h"
 #include "script.h"
-#include "weapons.h"
 #include "zones.h"
 
 extern Chat* g_chat;
@@ -42,7 +43,6 @@ extern CreatureEvents* g_creatureEvents;
 extern MoveEvents* g_moveEvents;
 extern GlobalEvents* g_globalEvents;
 extern Scripts* g_scripts;
-extern Weapons* g_weapons;
 
 ScriptEnvironment::DBResultMap ScriptEnvironment::tempResults;
 uint32_t ScriptEnvironment::lastResultId = 0;
@@ -817,12 +817,6 @@ LuaVariant LuaScriptInterface::getVariant(lua_State* L, int32_t arg)
 	return var;
 }
 
-InstantMove* LuaScriptInterface::getInstantMove(lua_State* L, int32_t arg)
-{
-	InstantMove* move = g_moves->getInstantMoveByName(getFieldString(L, arg, "name"));
-	lua_pop(L, 1);
-	return move;
-}
 
 Thing* LuaScriptInterface::getThing(lua_State* L, int32_t arg)
 {
@@ -1109,20 +1103,6 @@ void LuaScriptInterface::pushPokemonMoveFlags(lua_State* L, uint32_t flags)
 	setFlag("escape", POKEMON_MOVE_FLAG_ESCAPE);
 }
 
-void LuaScriptInterface::pushInstantMove(lua_State* L, const InstantMove& move)
-{
-	lua_createtable(L, 0, 7);
-
-	setField(L, "name", move.getName());
-	setField(L, "words", move.getWords());
-	setField(L, "level", move.getLevel());
-	setField(L, "mlevel", move.getMagicLevel());
-	setField(L, "mana", move.getMana());
-	setField(L, "manapercent", move.getManaPercent());
-	setField(L, "params", move.getHasParam());
-
-	setMetatable(L, -1, "Move");
-}
 
 void LuaScriptInterface::pushPosition(lua_State* L, const Position& position, int32_t stackpos/* = 0*/)
 {
@@ -1301,15 +1281,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ACCOUNT_TYPE_COMMUNITYMANAGER)
 	registerEnum(ACCOUNT_TYPE_GOD)
 
-	registerEnum(AMMO_NONE)
-	registerEnum(AMMO_BOLT)
-	registerEnum(AMMO_ARROW)
-	registerEnum(AMMO_SPEAR)
-	registerEnum(AMMO_THROWINGSTAR)
-	registerEnum(AMMO_THROWINGKNIFE)
-	registerEnum(AMMO_STONE)
-	registerEnum(AMMO_SNOWBALL)
-
 	registerEnum(BUG_CATEGORY_MAP)
 	registerEnum(BUG_CATEGORY_TYPO)
 	registerEnum(BUG_CATEGORY_TECHNICAL)
@@ -1390,7 +1361,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITION_MANASHIELD)
 	registerEnum(CONDITION_INFIGHT)
 	registerEnum(CONDITION_DRUNK)
-	registerEnum(CONDITION_EXHAUST_WEAPON)
 	registerEnum(CONDITION_REGENERATION)
 	registerEnum(CONDITION_SOUL)
 	registerEnum(CONDITION_DROWN)
@@ -1404,8 +1374,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITION_EXHAUST_COMBAT)
 	registerEnum(CONDITION_EXHAUST_HEAL)
 	registerEnum(CONDITION_PACIFIED)
-	registerEnum(CONDITION_MOVECOOLDOWN)
-	registerEnum(CONDITION_MOVEGROUPCOOLDOWN)
 
 	registerEnum(CONDITIONID_DEFAULT)
 	registerEnum(CONDITIONID_COMBAT)
@@ -1418,7 +1386,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITIONID_LEGS)
 	registerEnum(CONDITIONID_FEET)
 	registerEnum(CONDITIONID_RING)
-	registerEnum(CONDITIONID_AMMO)
 
 	registerEnum(CONDITION_PARAM_OWNER)
 	registerEnum(CONDITION_PARAM_TICKS)
@@ -1465,12 +1432,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITION_PARAM_SUBID)
 	registerEnum(CONDITION_PARAM_FIELD)
 	registerEnum(CONDITION_PARAM_DISABLE_DEFENSE)
-	registerEnum(CONDITION_PARAM_SPECIALSKILL_CRITICALHITCHANCE)
-	registerEnum(CONDITION_PARAM_SPECIALSKILL_CRITICALHITAMOUNT)
-	registerEnum(CONDITION_PARAM_SPECIALSKILL_LIFELEECHCHANCE)
-	registerEnum(CONDITION_PARAM_SPECIALSKILL_LIFELEECHAMOUNT)
-	registerEnum(CONDITION_PARAM_SPECIALSKILL_MANALEECHCHANCE)
-	registerEnum(CONDITION_PARAM_SPECIALSKILL_MANALEECHAMOUNT)
 	registerEnum(CONDITION_PARAM_AGGRESSIVE)
 
 	registerEnum(CONST_ME_NONE)
@@ -1611,7 +1572,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONST_ANI_ENVENOMEDARROW)
 	registerEnum(CONST_ANI_GLOOTHSPEAR)
 	registerEnum(CONST_ANI_SIMPLEARROW)
-	registerEnum(CONST_ANI_WEAPONTYPE)
 
 	registerEnum(CONST_PROP_BLOCKSOLID)
 	registerEnum(CONST_PROP_HASHEIGHT)
@@ -1635,7 +1595,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONST_SLOT_LEGS)
 	registerEnum(CONST_SLOT_FEET)
 	registerEnum(CONST_SLOT_RING)
-	registerEnum(CONST_SLOT_AMMO)
+	registerEnum(CONST_SLOT_UTILITY)
 
 	registerEnum(CREATURE_EVENT_NONE)
 	registerEnum(CREATURE_EVENT_LOGIN)
@@ -1709,12 +1669,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ITEM_ATTRIBUTE_ARTICLE)
 	registerEnum(ITEM_ATTRIBUTE_PLURALNAME)
 	registerEnum(ITEM_ATTRIBUTE_WEIGHT)
-	registerEnum(ITEM_ATTRIBUTE_ATTACK)
-	registerEnum(ITEM_ATTRIBUTE_DEFENSE)
-	registerEnum(ITEM_ATTRIBUTE_EXTRADEFENSE)
-	registerEnum(ITEM_ATTRIBUTE_ARMOR)
-	registerEnum(ITEM_ATTRIBUTE_HITCHANCE)
-	registerEnum(ITEM_ATTRIBUTE_SHOOTRANGE)
 	registerEnum(ITEM_ATTRIBUTE_OWNER)
 	registerEnum(ITEM_ATTRIBUTE_DURATION)
 	registerEnum(ITEM_ATTRIBUTE_DECAYSTATE)
@@ -1725,7 +1679,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ITEM_ATTRIBUTE_DECAYTO)
 	registerEnum(ITEM_ATTRIBUTE_WRAPID)
 	registerEnum(ITEM_ATTRIBUTE_STOREITEM)
-	registerEnum(ITEM_ATTRIBUTE_ATTACK_SPEED)
 
 	registerEnum(ITEM_TYPE_DEPOT)
 	registerEnum(ITEM_TYPE_MAILBOX)
@@ -1736,13 +1689,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ITEM_TYPE_TELEPORT)
 	registerEnum(ITEM_TYPE_BED)
 	registerEnum(ITEM_TYPE_KEY)
-	registerEnum(ITEM_TYPE_RUNE)
 
 	registerEnum(ITEM_GROUP_GROUND)
 	registerEnum(ITEM_GROUP_CONTAINER)
-	registerEnum(ITEM_GROUP_WEAPON)
-	registerEnum(ITEM_GROUP_AMMUNITION)
-	registerEnum(ITEM_GROUP_ARMOR)
 	registerEnum(ITEM_GROUP_CHARGES)
 	registerEnum(ITEM_GROUP_TELEPORT)
 	registerEnum(ITEM_GROUP_MAGICFIELD)
@@ -1784,7 +1733,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerEnum(WIELDINFO_NONE)
 	registerEnum(WIELDINFO_LEVEL)
-	registerEnum(WIELDINFO_MAGLV)
 	registerEnum(WIELDINFO_VOCREQ)
 	registerEnum(WIELDINFO_PREMIUM)
 
@@ -1822,7 +1770,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(PlayerFlag_NotGenerateLoot)
 	registerEnum(PlayerFlag_IgnoreProtectionZone)
 	registerEnum(PlayerFlag_IgnoreMoveCheck)
-	registerEnum(PlayerFlag_IgnoreWeaponCheck)
+	registerEnum(PlayerFlag_IgnoreEquipmentCheck)
 	registerEnum(PlayerFlag_CannotBeMuted)
 	registerEnum(PlayerFlag_IsAlwaysPremium)
 
@@ -1866,21 +1814,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(SKILL_FISHING)
 	registerEnum(SKILL_MAGLEVEL)
 	registerEnum(SKILL_LEVEL)
-
-	registerEnum(SPECIALSKILL_CRITICALHITCHANCE)
-	registerEnum(SPECIALSKILL_CRITICALHITAMOUNT)
-	registerEnum(SPECIALSKILL_LIFELEECHCHANCE)
-	registerEnum(SPECIALSKILL_LIFELEECHAMOUNT)
-	registerEnum(SPECIALSKILL_MANALEECHCHANCE)
-	registerEnum(SPECIALSKILL_MANALEECHAMOUNT)
-
-	registerEnum(SKULL_NONE)
-	registerEnum(SKULL_YELLOW)
-	registerEnum(SKULL_GREEN)
-	registerEnum(SKULL_WHITE)
-	registerEnum(SKULL_RED)
-	registerEnum(SKULL_BLACK)
-	registerEnum(SKULL_ORANGE)
 
 	registerEnum(TALKTYPE_SAY)
 	registerEnum(TALKTYPE_WHISPER)
@@ -1941,15 +1874,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(TILESTATE_FLOORCHANGE_EAST_ALT)
 	registerEnum(TILESTATE_SUPPORTS_HANGABLE)
 
-	registerEnum(WEAPON_NONE)
-	registerEnum(WEAPON_SWORD)
-	registerEnum(WEAPON_CLUB)
-	registerEnum(WEAPON_AXE)
-	registerEnum(WEAPON_SHIELD)
-	registerEnum(WEAPON_DISTANCE)
-	registerEnum(WEAPON_WAND)
-	registerEnum(WEAPON_AMMO)
-
 	registerEnum(WORLD_TYPE_NO_PVP)
 	registerEnum(WORLD_TYPE_PVP)
 	registerEnum(WORLD_TYPE_PVP_ENFORCED)
@@ -1975,7 +1899,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(SLOTP_LEGS)
 	registerEnum(SLOTP_FEET)
 	registerEnum(SLOTP_RING)
-	registerEnum(SLOTP_AMMO)
+	registerEnum(SLOTP_UTILITY)
 	registerEnum(SLOTP_DEPOT)
 	registerEnum(SLOTP_TWO_HAND)
 
@@ -2032,7 +1956,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_NOTMOVEABLE)
 	registerEnum(RETURNVALUE_DROPTWOHANDEDITEM)
 	registerEnum(RETURNVALUE_BOTHHANDSNEEDTOBEFREE)
-	registerEnum(RETURNVALUE_CANONLYUSEONEWEAPON)
 	registerEnum(RETURNVALUE_NEEDEXCHANGE)
 	registerEnum(RETURNVALUE_CANNOTBEDRESSED)
 	registerEnum(RETURNVALUE_PUTTHISOBJECTINYOURHAND)
@@ -2048,19 +1971,14 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_CREATUREDOESNOTEXIST)
 	registerEnum(RETURNVALUE_CANNOTUSETHISOBJECT)
 	registerEnum(RETURNVALUE_PLAYERWITHTHISNAMEISNOTONLINE)
-	registerEnum(RETURNVALUE_NOTREQUIREDLEVELTOUSERUNE)
 	registerEnum(RETURNVALUE_YOUAREALREADYTRADING)
 	registerEnum(RETURNVALUE_THISPLAYERISALREADYTRADING)
 	registerEnum(RETURNVALUE_YOUMAYNOTLOGOUTDURINGAFIGHT)
 	registerEnum(RETURNVALUE_DIRECTPLAYERSHOOT)
 	registerEnum(RETURNVALUE_NOTENOUGHLEVEL)
-	registerEnum(RETURNVALUE_NOTENOUGHMAGICLEVEL)
-	registerEnum(RETURNVALUE_NOTENOUGHMANA)
-	registerEnum(RETURNVALUE_NOTENOUGHSOUL)
 	registerEnum(RETURNVALUE_YOUAREEXHAUSTED)
 	registerEnum(RETURNVALUE_YOUCANNOTUSEOBJECTSTHATFAST)
 	registerEnum(RETURNVALUE_PLAYERISNOTREACHABLE)
-	registerEnum(RETURNVALUE_CANONLYUSETHISRUNEONCREATURES)
 	registerEnum(RETURNVALUE_ACTIONNOTPERMITTEDINPROTECTIONZONE)
 	registerEnum(RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER)
 	registerEnum(RETURNVALUE_YOUMAYNOTATTACKAPERSONINPROTECTIONZONE)
@@ -2070,18 +1988,11 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_CREATUREISNOTREACHABLE)
 	registerEnum(RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS)
 	registerEnum(RETURNVALUE_YOUNEEDPREMIUMACCOUNT)
-	registerEnum(RETURNVALUE_YOUNEEDTOLEARNTHISMOVE)
-	registerEnum(RETURNVALUE_YOURVOCATIONCANNOTUSETHISMOVE)
-	registerEnum(RETURNVALUE_YOUNEEDAWEAPONTOUSETHISMOVE)
 	registerEnum(RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE)
 	registerEnum(RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE)
 	registerEnum(RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE)
 	registerEnum(RETURNVALUE_YOUCANNOTLOGOUTHERE)
-	registerEnum(RETURNVALUE_YOUNEEDAMAGICITEMTOCASTMOVE)
-	registerEnum(RETURNVALUE_CANNOTCONJUREITEMHERE)
-	registerEnum(RETURNVALUE_YOUNEEDTOSPLITYOURSPEARS)
 	registerEnum(RETURNVALUE_NAMEISTOOAMBIGUOUS)
-	registerEnum(RETURNVALUE_CANONLYUSEONESHIELD)
 	registerEnum(RETURNVALUE_NOPARTYMEMBERSINRANGE)
 	registerEnum(RETURNVALUE_YOUARENOTTHEOWNER)
 	registerEnum(RETURNVALUE_TRADEPLAYERFARAWAY)
@@ -2116,7 +2027,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RELOAD_TYPE_SCRIPTS)
 	registerEnum(RELOAD_TYPE_MOVES)
 	registerEnum(RELOAD_TYPE_TALKACTIONS)
-	registerEnum(RELOAD_TYPE_WEAPONS)
 
 	registerEnum(ZONE_PROTECTION)
 	registerEnum(ZONE_NOPVP)
@@ -2125,9 +2035,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ZONE_NORMAL)
 
 	registerEnum(MAX_LOOTCHANCE)
-
-	registerEnum(MOVE_INSTANT)
-	registerEnum(MOVE_RUNE)
 
 	registerEnum(POKEMONS_EVENT_THINK)
 	registerEnum(POKEMONS_EVENT_APPEAR)
@@ -2266,9 +2173,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::ALLOW_CHANGEOUTFIT)
 	registerEnumIn("configKeys", ConfigManager::ONE_PLAYER_ON_ACCOUNT)
 	registerEnumIn("configKeys", ConfigManager::AIMBOT_HOTKEY_ENABLED)
-	registerEnumIn("configKeys", ConfigManager::REMOVE_RUNE_CHARGES)
-	registerEnumIn("configKeys", ConfigManager::REMOVE_WEAPON_AMMO)
-	registerEnumIn("configKeys", ConfigManager::REMOVE_WEAPON_CHARGES)
 	registerEnumIn("configKeys", ConfigManager::REMOVE_POTION_CHARGES)
 	registerEnumIn("configKeys", ConfigManager::EXPERIENCE_FROM_PLAYERS)
 	registerEnumIn("configKeys", ConfigManager::FREE_PREMIUM)
@@ -2281,7 +2185,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::STAMINA_SYSTEM)
 	registerEnumIn("configKeys", ConfigManager::WARN_UNSAFE_SCRIPTS)
 	registerEnumIn("configKeys", ConfigManager::CONVERT_UNSAFE_SCRIPTS)
-	registerEnumIn("configKeys", ConfigManager::CLASSIC_EQUIPMENT_SLOTS)
 	registerEnumIn("configKeys", ConfigManager::CLASSIC_ATTACK_SPEED)
 	registerEnumIn("configKeys", ConfigManager::SERVER_SAVE_NOTIFY_MESSAGE)
 	registerEnumIn("configKeys", ConfigManager::SERVER_SAVE_NOTIFY_DURATION)
@@ -2669,9 +2572,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Creature", "setHiddenHealth", LuaScriptInterface::luaCreatureSetHiddenHealth);
 	registerMethod("Creature", "setMovementBlocked", LuaScriptInterface::luaCreatureSetMovementBlocked);
 
-	registerMethod("Creature", "getSkull", LuaScriptInterface::luaCreatureGetSkull);
-	registerMethod("Creature", "setSkull", LuaScriptInterface::luaCreatureSetSkull);
-
 	registerMethod("Creature", "getOutfit", LuaScriptInterface::luaCreatureGetOutfit);
 	registerMethod("Creature", "setOutfit", LuaScriptInterface::luaCreatureSetOutfit);
 
@@ -2745,8 +2645,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getSkillTries", LuaScriptInterface::luaPlayerGetSkillTries);
 	registerMethod("Player", "addSkillTries", LuaScriptInterface::luaPlayerAddSkillTries);
 	registerMethod("Player", "removeSkillTries", LuaScriptInterface::luaPlayerRemoveSkillTries);
-	registerMethod("Player", "getSpecialSkill", LuaScriptInterface::luaPlayerGetSpecialSkill);
-	registerMethod("Player", "addSpecialSkill", LuaScriptInterface::luaPlayerAddSpecialSkill);
 
 	registerMethod("Player", "addOfflineTrainingTime", LuaScriptInterface::luaPlayerAddOfflineTrainingTime);
 	registerMethod("Player", "getOfflineTrainingTime", LuaScriptInterface::luaPlayerGetOfflineTrainingTime);
@@ -2833,11 +2731,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "addBlessing", LuaScriptInterface::luaPlayerAddBlessing);
 	registerMethod("Player", "removeBlessing", LuaScriptInterface::luaPlayerRemoveBlessing);
 
-	registerMethod("Player", "canLearnMove", LuaScriptInterface::luaPlayerCanLearnMove);
-	registerMethod("Player", "learnMove", LuaScriptInterface::luaPlayerLearnMove);
-	registerMethod("Player", "forgetMove", LuaScriptInterface::luaPlayerForgetMove);
-	registerMethod("Player", "hasLearnedMove", LuaScriptInterface::luaPlayerHasLearnedMove);
-
 	registerMethod("Player", "sendTutorial", LuaScriptInterface::luaPlayerSendTutorial);
 	registerMethod("Player", "addMapMark", LuaScriptInterface::luaPlayerAddMapMark);
 
@@ -2857,9 +2750,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getContainerId", LuaScriptInterface::luaPlayerGetContainerId);
 	registerMethod("Player", "getContainerById", LuaScriptInterface::luaPlayerGetContainerById);
 	registerMethod("Player", "getContainerIndex", LuaScriptInterface::luaPlayerGetContainerIndex);
-
-	registerMethod("Player", "getInstantMoves", LuaScriptInterface::luaPlayerGetInstantMoves);
-	registerMethod("Player", "canCast", LuaScriptInterface::luaPlayerCanCast);
 
 	registerMethod("Player", "hasChaseMode", LuaScriptInterface::luaPlayerHasChaseMode);
 	registerMethod("Player", "hasSecureMode", LuaScriptInterface::luaPlayerHasSecureMode);
@@ -3068,7 +2958,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "isContainer", LuaScriptInterface::luaItemTypeIsContainer);
 	registerMethod("ItemType", "isFluidContainer", LuaScriptInterface::luaItemTypeIsFluidContainer);
 	registerMethod("ItemType", "isMovable", LuaScriptInterface::luaItemTypeIsMovable);
-	registerMethod("ItemType", "isRune", LuaScriptInterface::luaItemTypeIsRune);
 	registerMethod("ItemType", "isStackable", LuaScriptInterface::luaItemTypeIsStackable);
 	registerMethod("ItemType", "isReadable", LuaScriptInterface::luaItemTypeIsReadable);
 	registerMethod("ItemType", "isWritable", LuaScriptInterface::luaItemTypeIsWritable);
@@ -3093,16 +2982,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "getCapacity", LuaScriptInterface::luaItemTypeGetCapacity);
 	registerMethod("ItemType", "getWeight", LuaScriptInterface::luaItemTypeGetWeight);
 
-	registerMethod("ItemType", "getHitChance", LuaScriptInterface::luaItemTypeGetHitChance);
-	registerMethod("ItemType", "getShootRange", LuaScriptInterface::luaItemTypeGetShootRange);
-
-	registerMethod("ItemType", "getAttack", LuaScriptInterface::luaItemTypeGetAttack);
-	registerMethod("ItemType", "getAttackSpeed", LuaScriptInterface::luaItemTypeGetAttackSpeed);
-	registerMethod("ItemType", "getDefense", LuaScriptInterface::luaItemTypeGetDefense);
-	registerMethod("ItemType", "getExtraDefense", LuaScriptInterface::luaItemTypeGetExtraDefense);
-	registerMethod("ItemType", "getArmor", LuaScriptInterface::luaItemTypeGetArmor);
-	registerMethod("ItemType", "getWeaponType", LuaScriptInterface::luaItemTypeGetWeaponType);
-
 	registerMethod("ItemType", "getElementType", LuaScriptInterface::luaItemTypeGetElementType);
 	registerMethod("ItemType", "getElementDamage", LuaScriptInterface::luaItemTypeGetElementDamage);
 
@@ -3111,7 +2990,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "getDestroyId", LuaScriptInterface::luaItemTypeGetDestroyId);
 	registerMethod("ItemType", "getDecayId", LuaScriptInterface::luaItemTypeGetDecayId);
 	registerMethod("ItemType", "getRequiredLevel", LuaScriptInterface::luaItemTypeGetRequiredLevel);
-	registerMethod("ItemType", "getAmmoType", LuaScriptInterface::luaItemTypeGetAmmoType);
 	registerMethod("ItemType", "getCorpseType", LuaScriptInterface::luaItemTypeGetCorpseType);
 
 	registerMethod("ItemType", "getAbilities", LuaScriptInterface::luaItemTypeGetAbilities);
@@ -3126,7 +3004,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "getLevelDoor", LuaScriptInterface::luaItemTypeGetLevelDoor);
 	registerMethod("ItemType", "getVocationString", LuaScriptInterface::luaItemTypeGetVocationString);
 	registerMethod("ItemType", "getMinReqLevel", LuaScriptInterface::luaItemTypeGetMinReqLevel);
-	registerMethod("ItemType", "getMinReqMagicLevel", LuaScriptInterface::luaItemTypeGetMinReqMagicLevel);
 
 	registerMethod("ItemType", "hasSubType", LuaScriptInterface::luaItemTypeHasSubType);
 
@@ -3208,7 +3085,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "maxHealth", LuaScriptInterface::luaPokemonTypeMaxHealth);
 	registerMethod("PokemonType", "runHealth", LuaScriptInterface::luaPokemonTypeRunHealth);
 	registerMethod("PokemonType", "experience", LuaScriptInterface::luaPokemonTypeExperience);
-	registerMethod("PokemonType", "skull", LuaScriptInterface::luaPokemonTypeSkull);
 
 	registerMethod("PokemonType", "combatImmunities", LuaScriptInterface::luaPokemonTypeCombatImmunities);
 	registerMethod("PokemonType", "conditionImmunities", LuaScriptInterface::luaPokemonTypeConditionImmunities);
@@ -3217,9 +3093,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "addTechnicalMachine", LuaScriptInterface::luaPokemonTypeAddTechnicalMachine);
 	registerMethod("PokemonType", "addAbility", LuaScriptInterface::luaPokemonTypeAddAbility);
 	registerMethod("PokemonType", "hiddenAbilityChance", LuaScriptInterface::luaPokemonTypeHiddenAbilityChance);
-
-	registerMethod("PokemonType", "getDefenseList", LuaScriptInterface::luaPokemonTypeGetDefenseList);
-	registerMethod("PokemonType", "addDefense", LuaScriptInterface::luaPokemonTypeAddDefense);
 
 	registerMethod("PokemonType", "getElementList", LuaScriptInterface::luaPokemonTypeGetElementList);
 	registerMethod("PokemonType", "addElement", LuaScriptInterface::luaPokemonTypeAddElement);
@@ -3245,8 +3118,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("PokemonType", "maxSummons", LuaScriptInterface::luaPokemonTypeMaxSummons);
 
-	registerMethod("PokemonType", "armor", LuaScriptInterface::luaPokemonTypeArmor);
-	registerMethod("PokemonType", "defense", LuaScriptInterface::luaPokemonTypeDefense);
 	registerMethod("PokemonType", "outfit", LuaScriptInterface::luaPokemonTypeOutfit);
 	registerMethod("PokemonType", "race", LuaScriptInterface::luaPokemonTypeRace);
 	registerMethod("PokemonType", "corpseId", LuaScriptInterface::luaPokemonTypeCorpseId);
@@ -3289,32 +3160,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Loot", "setDescription", LuaScriptInterface::luaLootSetDescription);
 	registerMethod("Loot", "addChildLoot", LuaScriptInterface::luaLootAddChildLoot);
 
-	// PokemonMove
-	registerClass("PokemonMove", "", LuaScriptInterface::luaCreatePokemonMove);
-	registerMetaMethod("PokemonMove", "__gc", LuaScriptInterface::luaDeletePokemonMove);
-	registerMethod("PokemonMove", "delete", LuaScriptInterface::luaDeletePokemonMove);
-
-	registerMethod("PokemonMove", "setType", LuaScriptInterface::luaPokemonMoveSetType);
-	registerMethod("PokemonMove", "setScriptName", LuaScriptInterface::luaPokemonMoveSetScriptName);
-	registerMethod("PokemonMove", "setChance", LuaScriptInterface::luaPokemonMoveSetChance);
-	registerMethod("PokemonMove", "setInterval", LuaScriptInterface::luaPokemonMoveSetInterval);
-	registerMethod("PokemonMove", "setRange", LuaScriptInterface::luaPokemonMoveSetRange);
-	registerMethod("PokemonMove", "setCombatValue", LuaScriptInterface::luaPokemonMoveSetCombatValue);
-	registerMethod("PokemonMove", "setCombatType", LuaScriptInterface::luaPokemonMoveSetCombatType);
-	registerMethod("PokemonMove", "setAttackValue", LuaScriptInterface::luaPokemonMoveSetAttackValue);
-	registerMethod("PokemonMove", "setNeedTarget", LuaScriptInterface::luaPokemonMoveSetNeedTarget);
-	registerMethod("PokemonMove", "setNeedDirection", LuaScriptInterface::luaPokemonMoveSetNeedDirection);
-	registerMethod("PokemonMove", "setCombatLength", LuaScriptInterface::luaPokemonMoveSetCombatLength);
-	registerMethod("PokemonMove", "setCombatSpread", LuaScriptInterface::luaPokemonMoveSetCombatSpread);
-	registerMethod("PokemonMove", "setCombatRadius", LuaScriptInterface::luaPokemonMoveSetCombatRadius);
-	registerMethod("PokemonMove", "setConditionType", LuaScriptInterface::luaPokemonMoveSetConditionType);
-	registerMethod("PokemonMove", "setConditionDamage", LuaScriptInterface::luaPokemonMoveSetConditionDamage);
-	registerMethod("PokemonMove", "setConditionSpeedChange", LuaScriptInterface::luaPokemonMoveSetConditionSpeedChange);
-	registerMethod("PokemonMove", "setConditionDuration", LuaScriptInterface::luaPokemonMoveSetConditionDuration);
-	registerMethod("PokemonMove", "setConditionDrunkenness", LuaScriptInterface::luaPokemonMoveSetConditionDrunkenness);
-	registerMethod("PokemonMove", "setConditionTickInterval", LuaScriptInterface::luaPokemonMoveSetConditionTickInterval);
-	registerMethod("PokemonMove", "setCombatShootEffect", LuaScriptInterface::luaPokemonMoveSetCombatShootEffect);
-	registerMethod("PokemonMove", "setCombatEffect", LuaScriptInterface::luaPokemonMoveSetCombatEffect);
 
 	// Party
 	registerClass("Party", "", LuaScriptInterface::luaPartyCreate);
@@ -3342,50 +3187,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Party", "shareExperience", LuaScriptInterface::luaPartyShareExperience);
 	registerMethod("Party", "setSharedExperience", LuaScriptInterface::luaPartySetSharedExperience);
 
-	// Moves
-	registerClass("Move", "", LuaScriptInterface::luaMoveCreate);
-	registerMetaMethod("Move", "__eq", LuaScriptInterface::luaUserdataCompare);
-
-	registerMethod("Move", "onCastMove", LuaScriptInterface::luaMoveOnCastMove);
-	registerMethod("Move", "register", LuaScriptInterface::luaMoveRegister);
-	registerMethod("Move", "name", LuaScriptInterface::luaMoveName);
-	registerMethod("Move", "id", LuaScriptInterface::luaMoveId);
-	registerMethod("Move", "group", LuaScriptInterface::luaMoveGroup);
-	registerMethod("Move", "cooldown", LuaScriptInterface::luaMoveCooldown);
-	registerMethod("Move", "groupCooldown", LuaScriptInterface::luaMoveGroupCooldown);
-	registerMethod("Move", "level", LuaScriptInterface::luaMoveLevel);
-	registerMethod("Move", "magicLevel", LuaScriptInterface::luaMoveMagicLevel);
-	registerMethod("Move", "mana", LuaScriptInterface::luaMoveMana);
-	registerMethod("Move", "manaPercent", LuaScriptInterface::luaMoveManaPercent);
-	registerMethod("Move", "soul", LuaScriptInterface::luaMoveSoul);
-	registerMethod("Move", "range", LuaScriptInterface::luaMoveRange);
-	registerMethod("Move", "isPremium", LuaScriptInterface::luaMovePremium);
-	registerMethod("Move", "isEnabled", LuaScriptInterface::luaMoveEnabled);
-	registerMethod("Move", "needTarget", LuaScriptInterface::luaMoveNeedTarget);
-	registerMethod("Move", "needWeapon", LuaScriptInterface::luaMoveNeedWeapon);
-	registerMethod("Move", "needLearn", LuaScriptInterface::luaMoveNeedLearn);
-	registerMethod("Move", "isSelfTarget", LuaScriptInterface::luaMoveSelfTarget);
-	registerMethod("Move", "isBlocking", LuaScriptInterface::luaMoveBlocking);
-	registerMethod("Move", "isAggressive", LuaScriptInterface::luaMoveAggressive);
-	registerMethod("Move", "isPzLock", LuaScriptInterface::luaMovePzLock);
-	registerMethod("Move", "vocation", LuaScriptInterface::luaMoveVocation);
-
-	// only for InstantMove
-	registerMethod("Move", "words", LuaScriptInterface::luaMoveWords);
-	registerMethod("Move", "needDirection", LuaScriptInterface::luaMoveNeedDirection);
-	registerMethod("Move", "hasParams", LuaScriptInterface::luaMoveHasParams);
-	registerMethod("Move", "hasPlayerNameParam", LuaScriptInterface::luaMoveHasPlayerNameParam);
-	registerMethod("Move", "needCasterTargetOrDirection", LuaScriptInterface::luaMoveNeedCasterTargetOrDirection);
-	registerMethod("Move", "isBlockingWalls", LuaScriptInterface::luaMoveIsBlockingWalls);
-
-	// only for RuneMoves
-	registerMethod("Move", "runeLevel", LuaScriptInterface::luaMoveRuneLevel);
-	registerMethod("Move", "runeMagicLevel", LuaScriptInterface::luaMoveRuneMagicLevel);
-	registerMethod("Move", "runeId", LuaScriptInterface::luaMoveRuneId);
-	registerMethod("Move", "charges", LuaScriptInterface::luaMoveCharges);
-	registerMethod("Move", "allowFarUse", LuaScriptInterface::luaMoveAllowFarUse);
-	registerMethod("Move", "blockWalls", LuaScriptInterface::luaMoveBlockWalls);
-	registerMethod("Move", "checkFloor", LuaScriptInterface::luaMoveCheckFloor);
 
 	// Action
 	registerClass("Action", "", LuaScriptInterface::luaCreateAction);
@@ -3428,7 +3229,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("MoveEvent", "type", LuaScriptInterface::luaMoveEventType);
 	registerMethod("MoveEvent", "register", LuaScriptInterface::luaMoveEventRegister);
 	registerMethod("MoveEvent", "level", LuaScriptInterface::luaMoveEventLevel);
-	registerMethod("MoveEvent", "magicLevel", LuaScriptInterface::luaMoveEventMagLevel);
 	registerMethod("MoveEvent", "slot", LuaScriptInterface::luaMoveEventSlot);
 	registerMethod("MoveEvent", "id", LuaScriptInterface::luaMoveEventItemId);
 	registerMethod("MoveEvent", "aid", LuaScriptInterface::luaMoveEventActionId);
@@ -3457,45 +3257,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("GlobalEvent", "onShutdown", LuaScriptInterface::luaGlobalEventOnCallback);
 	registerMethod("GlobalEvent", "onRecord", LuaScriptInterface::luaGlobalEventOnCallback);
 
-	// Weapon
-	registerClass("Weapon", "", LuaScriptInterface::luaCreateWeapon);
-	registerMethod("Weapon", "action", LuaScriptInterface::luaWeaponAction);
-	registerMethod("Weapon", "register", LuaScriptInterface::luaWeaponRegister);
-	registerMethod("Weapon", "id", LuaScriptInterface::luaWeaponId);
-	registerMethod("Weapon", "level", LuaScriptInterface::luaWeaponLevel);
-	registerMethod("Weapon", "magicLevel", LuaScriptInterface::luaWeaponMagicLevel);
-	registerMethod("Weapon", "mana", LuaScriptInterface::luaWeaponMana);
-	registerMethod("Weapon", "manaPercent", LuaScriptInterface::luaWeaponManaPercent);
-	registerMethod("Weapon", "health", LuaScriptInterface::luaWeaponHealth);
-	registerMethod("Weapon", "healthPercent", LuaScriptInterface::luaWeaponHealthPercent);
-	registerMethod("Weapon", "soul", LuaScriptInterface::luaWeaponSoul);
-	registerMethod("Weapon", "breakChance", LuaScriptInterface::luaWeaponBreakChance);
-	registerMethod("Weapon", "premium", LuaScriptInterface::luaWeaponPremium);
-	registerMethod("Weapon", "wieldUnproperly", LuaScriptInterface::luaWeaponUnproperly);
-	registerMethod("Weapon", "vocation", LuaScriptInterface::luaWeaponVocation);
-	registerMethod("Weapon", "onUseWeapon", LuaScriptInterface::luaWeaponOnUseWeapon);
-	registerMethod("Weapon", "element", LuaScriptInterface::luaWeaponElement);
-	registerMethod("Weapon", "attack", LuaScriptInterface::luaWeaponAttack);
-	registerMethod("Weapon", "defense", LuaScriptInterface::luaWeaponDefense);
-	registerMethod("Weapon", "range", LuaScriptInterface::luaWeaponRange);
-	registerMethod("Weapon", "charges", LuaScriptInterface::luaWeaponCharges);
-	registerMethod("Weapon", "duration", LuaScriptInterface::luaWeaponDuration);
-	registerMethod("Weapon", "decayTo", LuaScriptInterface::luaWeaponDecayTo);
-	registerMethod("Weapon", "transformEquipTo", LuaScriptInterface::luaWeaponTransformEquipTo);
-	registerMethod("Weapon", "transformDeEquipTo", LuaScriptInterface::luaWeaponTransformDeEquipTo);
-	registerMethod("Weapon", "slotType", LuaScriptInterface::luaWeaponSlotType);
-	registerMethod("Weapon", "hitChance", LuaScriptInterface::luaWeaponHitChance);
-	registerMethod("Weapon", "extraElement", LuaScriptInterface::luaWeaponExtraElement);
-
-	// exclusively for distance weapons
-	registerMethod("Weapon", "ammoType", LuaScriptInterface::luaWeaponAmmoType);
-	registerMethod("Weapon", "maxHitChance", LuaScriptInterface::luaWeaponMaxHitChance);
-
-	// exclusively for wands
-	registerMethod("Weapon", "damage", LuaScriptInterface::luaWeaponWandDamage);
-
-	// exclusively for wands & distance weapons
-	registerMethod("Weapon", "shootType", LuaScriptInterface::luaWeaponShootType);
 }
 
 #undef registerEnum
@@ -5016,7 +4777,6 @@ int LuaScriptInterface::luaGameCreatePokemonType(lua_State* L)
 		pokemonType->info.lootItems.clear();
 		pokemonType->info.learnset.clear();
 		pokemonType->info.technicalMachines.clear();
-		pokemonType->info.defenseMoves.clear();
 		pokemonType->info.scripts.clear();
 		pokemonType->info.thinkEvent = -1;
 		pokemonType->info.creatureAppearEvent = -1;
@@ -8365,30 +8125,6 @@ int LuaScriptInterface::luaCreatureSetMovementBlocked(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaCreatureGetSkull(lua_State* L)
-{
-	// creature:getSkull()
-	Creature* creature = getUserdata<Creature>(L, 1);
-	if (creature) {
-		lua_pushnumber(L, creature->getSkull());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaCreatureSetSkull(lua_State* L)
-{
-	// creature:setSkull(skull)
-	Creature* creature = getUserdata<Creature>(L, 1);
-	if (creature) {
-		creature->setSkull(getNumber<Skulls_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaCreatureGetOutfit(lua_State* L)
 {
@@ -9271,40 +9007,6 @@ int LuaScriptInterface::luaPlayerRemoveSkillTries(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetSpecialSkill(lua_State* L)
-{
-	// player:getSpecialSkill(specialSkillType)
-	SpecialSkills_t specialSkillType = getNumber<SpecialSkills_t>(L, 2);
-	Player* player = getUserdata<Player>(L, 1);
-	if (player && specialSkillType <= SPECIALSKILL_LAST) {
-		lua_pushnumber(L, player->getSpecialSkill(specialSkillType));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerAddSpecialSkill(lua_State* L)
-{
-	// player:addSpecialSkill(specialSkillType, value)
-	Player* player = getUserdata<Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	SpecialSkills_t specialSkillType = getNumber<SpecialSkills_t>(L, 2);
-	if (specialSkillType > SPECIALSKILL_LAST) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	player->setVarSpecialSkill(specialSkillType, getNumber<int32_t>(L, 3));
-	player->sendSkills();
-	pushBoolean(L, true);
 	return 1;
 }
 
@@ -10462,81 +10164,6 @@ int LuaScriptInterface::luaPlayerRemoveBlessing(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerCanLearnMove(lua_State* L)
-{
-	// player:canLearnMove(moveName)
-	const Player* player = getUserdata<const Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	const std::string& moveName = getString(L, 2);
-	InstantMove* move = g_moves->getInstantMoveByName(moveName);
-	if (!move) {
-		reportErrorFunc(L, "Move \"" + moveName + "\" not found");
-		pushBoolean(L, false);
-		return 1;
-	}
-
-	if (player->hasFlag(PlayerFlag_IgnoreMoveCheck)) {
-		pushBoolean(L, true);
-		return 1;
-	}
-
-	const auto& vocMap = move->getVocMap();
-	if (vocMap.count(player->getVocationId()) == 0) {
-		pushBoolean(L, false);
-	} else if (player->getLevel() < move->getLevel()) {
-		pushBoolean(L, false);
-	} else if (player->getMagicLevel() < move->getMagicLevel()) {
-		pushBoolean(L, false);
-	} else {
-		pushBoolean(L, true);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerLearnMove(lua_State* L)
-{
-	// player:learnMove(moveName)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		const std::string& moveName = getString(L, 2);
-		player->learnInstantMove(moveName);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerForgetMove(lua_State* L)
-{
-	// player:forgetMove(moveName)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		const std::string& moveName = getString(L, 2);
-		player->forgetInstantMove(moveName);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerHasLearnedMove(lua_State* L)
-{
-	// player:hasLearnedMove(moveName)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		const std::string& moveName = getString(L, 2);
-		pushBoolean(L, player->hasLearnedInstantMove(moveName));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaPlayerSendTutorial(lua_State* L)
 {
@@ -10792,44 +10419,6 @@ int LuaScriptInterface::luaPlayerGetContainerIndex(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerGetInstantMoves(lua_State* L)
-{
-	// player:getInstantMoves()
-	Player* player = getUserdata<Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	std::vector<const InstantMove*> moves;
-	for (auto& move : g_moves->getInstantMoves()) {
-		if (move.second.canCast(player)) {
-			moves.push_back(&move.second);
-		}
-	}
-
-	lua_createtable(L, moves.size(), 0);
-
-	int index = 0;
-	for (auto move : moves) {
-		pushInstantMove(L, *move);
-		lua_rawseti(L, -2, ++index);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerCanCast(lua_State* L)
-{
-	// player:canCast(move)
-	Player* player = getUserdata<Player>(L, 1);
-	InstantMove* move = getUserdata<InstantMove>(L, 2);
-	if (player && move) {
-		pushBoolean(L, move->canCast(player));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaPlayerHasChaseMode(lua_State* L)
 {
@@ -12554,17 +12143,6 @@ int LuaScriptInterface::luaItemTypeIsMovable(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaItemTypeIsRune(lua_State* L)
-{
-	// itemType:isRune()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		pushBoolean(L, itemType->isRune());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaItemTypeIsStackable(lua_State* L)
 {
@@ -12822,113 +12400,6 @@ int LuaScriptInterface::luaItemTypeGetWeight(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaItemTypeGetHitChance(lua_State* L)
-{
-	// itemType:getHitChance()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->hitChance);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetShootRange(lua_State* L)
-{
-	// itemType:getShootRange()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->shootRange);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetAttack(lua_State* L)
-{
-	// itemType:getAttack()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->attack);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetAttackSpeed(lua_State* L)
-{
-	// itemType:getAttackSpeed()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->attackSpeed);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetDefense(lua_State* L)
-{
-	// itemType:getDefense()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->defense);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetExtraDefense(lua_State* L)
-{
-	// itemType:getExtraDefense()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->extraDefense);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetArmor(lua_State* L)
-{
-	// itemType:getArmor()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->armor);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetWeaponType(lua_State* L)
-{
-	// itemType:getWeaponType()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->weaponType);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetAmmoType(lua_State* L)
-{
-	// itemType:getAmmoType()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushnumber(L, itemType->ammoType);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaItemTypeGetCorpseType(lua_State* L)
 {
@@ -12989,14 +12460,6 @@ int LuaScriptInterface::luaItemTypeGetAbilities(lua_State* L)
 			lua_rawseti(L, -2, i + 1);
 		}
 		lua_setfield(L, -2, "skills");
-
-		// Special skills
-		lua_createtable(L, 0, SPECIALSKILL_LAST + 1);
-		for (int32_t i = SPECIALSKILL_FIRST; i <= SPECIALSKILL_LAST; i++) {
-			lua_pushnumber(L, abilities.specialSkills[i]);
-			lua_rawseti(L, -2, i + 1);
-		}
-		lua_setfield(L, -2, "specialSkills");
 
 		// Field absorb percent
 		lua_createtable(L, 0, COMBAT_COUNT);
@@ -13137,17 +12600,6 @@ int LuaScriptInterface::luaItemTypeGetMinReqLevel(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaItemTypeGetMinReqMagicLevel(lua_State* L)
-{
-	// itemType:getMinReqMagicLevel()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		lua_pushinteger(L, itemType->minReqMagicLevel);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaItemTypeGetElementType(lua_State* L)
 {
@@ -14688,26 +14140,6 @@ int LuaScriptInterface::luaPokemonTypeExperience(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPokemonTypeSkull(lua_State* L)
-{
-	// get: pokemonType:skull() set: pokemonType:skull(str/constant)
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (pokemonType) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, pokemonType->info.skull);
-		} else {
-			if (isNumber(L, 2)) {
-				pokemonType->info.skull = getNumber<Skulls_t>(L, 2);
-			} else {
-				pokemonType->info.skull = getSkullType(getString(L, 2));
-			}
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaPokemonTypeCombatImmunities(lua_State* L)
 {
@@ -15397,58 +14829,6 @@ int LuaScriptInterface::luaPokemonApplyFlinch(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPokemonTypeGetDefenseList(lua_State* L)
-{
-	// pokemonType:getDefenseList()
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (!pokemonType) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_createtable(L, pokemonType->info.defenseMoves.size(), 0);
-
-	int index = 0;
-	for (const auto& moveBlock : pokemonType->info.defenseMoves) {
-		lua_createtable(L, 0, 8);
-
-		setField(L, "chance", moveBlock.chance);
-		setField(L, "isCombatMove", moveBlock.combatMove ? 1 : 0);
-		setField(L, "isMelee", moveBlock.isMelee ? 1 : 0);
-		setField(L, "minCombatValue", moveBlock.minCombatValue);
-		setField(L, "maxCombatValue", moveBlock.maxCombatValue);
-		setField(L, "range", moveBlock.range);
-		setField(L, "speed", moveBlock.speed);
-		pushUserdata<CombatMove>(L, static_cast<CombatMove*>(moveBlock.move));
-		lua_setfield(L, -2, "move");
-
-		lua_rawseti(L, -2, ++index);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonTypeAddDefense(lua_State* L)
-{
-	// pokemonType:addDefense(pokemonmove)
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (pokemonType) {
-		PokemonMove* move = getUserdata<PokemonMove>(L, 2);
-		if (move) {
-			moveBlock_t sb;
-			if (g_pokemons.deserializeMove(move, sb, pokemonType->name)) {
-				pokemonType->info.defenseMoves.push_back(std::move(sb));
-			} else {
-				std::cout << pokemonType->name << std::endl;
-				std::cout << "[Warning - Pokemons::loadPokemon] Cant load move. " << move->name << std::endl;
-			}
-		} else {
-			lua_pushnil(L);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaPokemonTypeGetElementList(lua_State* L)
 {
@@ -15670,39 +15050,6 @@ int LuaScriptInterface::luaPokemonTypeMaxSummons(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPokemonTypeArmor(lua_State* L)
-{
-	// get: pokemonType:armor() set: pokemonType:armor(armor)
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (pokemonType) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, pokemonType->info.armor);
-		} else {
-			pokemonType->info.armor = getNumber<int32_t>(L, 2);
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonTypeDefense(lua_State* L)
-{
-	// get: pokemonType:defense() set: pokemonType:defense(defense)
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (pokemonType) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, pokemonType->info.defense);
-		} else {
-			pokemonType->info.defense = getNumber<int32_t>(L, 2);
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaPokemonTypeOutfit(lua_State* L)
 {
@@ -16060,308 +15407,6 @@ int LuaScriptInterface::luaLootAddChildLoot(lua_State* L)
 	return 1;
 }
 
-// PokemonMove
-int LuaScriptInterface::luaCreatePokemonMove(lua_State* L)
-{
-	// PokemonMove() will create a new Pokemon Move
-	PokemonMove* move = new PokemonMove();
-	if (move) {
-		pushUserdata<PokemonMove>(L, move);
-		setMetatable(L, -1, "PokemonMove");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaDeletePokemonMove(lua_State* L)
-{
-	// pokemonMove:delete() pokemonMove:__gc()
-	PokemonMove** pokemonMovePtr = getRawUserdata<PokemonMove>(L, 1);
-	if (pokemonMovePtr && *pokemonMovePtr) {
-		delete *pokemonMovePtr;
-		*pokemonMovePtr = nullptr;
-	}
-	return 0;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetType(lua_State* L)
-{
-	// pokemonMove:setType(type)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->name = getString(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetScriptName(lua_State* L)
-{
-	// pokemonMove:setScriptName(name)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->scriptName = getString(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetChance(lua_State* L)
-{
-	// pokemonMove:setChance(chance)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->chance = getNumber<uint8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetInterval(lua_State* L)
-{
-	// pokemonMove:setInterval(interval)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->interval = getNumber<uint16_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetRange(lua_State* L)
-{
-	// pokemonMove:setRange(range)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->range = getNumber<uint8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatValue(lua_State* L)
-{
-	// pokemonMove:setCombatValue(min, max)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->minCombatValue = getNumber<int32_t>(L, 2);
-		move->maxCombatValue = getNumber<int32_t>(L, 3);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatType(lua_State* L)
-{
-	// pokemonMove:setCombatType(combatType_t)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->combatType = getNumber<CombatType_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetAttackValue(lua_State* L)
-{
-	// pokemonMove:setAttackValue(attack, skill)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->attack = getNumber<int32_t>(L, 2);
-		move->skill = getNumber<int32_t>(L, 3);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetNeedTarget(lua_State* L)
-{
-	// pokemonMove:setNeedTarget(bool)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->needTarget = getBoolean(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetNeedDirection(lua_State* L)
-{
-	// pokemonMove:setNeedDirection(bool)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->needDirection = getBoolean(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatLength(lua_State* L)
-{
-	// pokemonMove:setCombatLength(length)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->length = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatSpread(lua_State* L)
-{
-	// pokemonMove:setCombatSpread(spread)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->spread = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatRadius(lua_State* L)
-{
-	// pokemonMove:setCombatRadius(radius)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->radius = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetConditionType(lua_State* L)
-{
-	// pokemonMove:setConditionType(type)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->conditionType = getNumber<ConditionType_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetConditionDamage(lua_State* L)
-{
-	// pokemonMove:setConditionDamage(min, max, start)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->conditionMinDamage = getNumber<int32_t>(L, 2);
-		move->conditionMaxDamage = getNumber<int32_t>(L, 3);
-		move->conditionStartDamage = getNumber<int32_t>(L, 4);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetConditionSpeedChange(lua_State* L)
-{
-	// pokemonMove:setConditionSpeedChange(minSpeed[, maxSpeed])
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->minSpeedChange = getNumber<int32_t>(L, 2);
-		move->maxSpeedChange = getNumber<int32_t>(L, 3, 0);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetConditionDuration(lua_State* L)
-{
-	// pokemonMove:setConditionDuration(duration)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->duration = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetConditionDrunkenness(lua_State* L)
-{
-	// pokemonMove:setConditionDrunkenness(drunkenness)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->drunkenness = getNumber<uint8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetConditionTickInterval(lua_State* L)
-{
-	// pokemonMove:setConditionTickInterval(interval)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->tickInterval = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatShootEffect(lua_State* L)
-{
-	// pokemonMove:setCombatShootEffect(effect)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->shoot = getNumber<ShootType_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPokemonMoveSetCombatEffect(lua_State* L)
-{
-	// pokemonMove:setCombatEffect(effect)
-	PokemonMove* move = getUserdata<PokemonMove>(L, 1);
-	if (move) {
-		move->effect = getNumber<MagicEffectClasses>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 // Party
 int32_t LuaScriptInterface::luaPartyCreate(lua_State* L)
@@ -16377,7 +15422,6 @@ int32_t LuaScriptInterface::luaPartyCreate(lua_State* L)
 	if (!party) {
 		party = new Party(player);
 		g_game.updatePlayerShield(player);
-		player->sendCreatureSkull(player);
 		pushUserdata<Party>(L, party);
 		setMetatable(L, -1, "Party");
 	} else {
@@ -16599,886 +15643,6 @@ int LuaScriptInterface::luaPartySetSharedExperience(lua_State* L)
 }
 
 // Moves
-int LuaScriptInterface::luaMoveCreate(lua_State* L)
-{
-	// Move(words, name or id) to get an existing move
-	// Move(type) ex: Move(MOVE_INSTANT) or Move(MOVE_RUNE) to create a new move
-	if (lua_gettop(L) == 1) {
-		std::cout << "[Error - Move::luaMoveCreate] There is no parameter set!" << std::endl;
-		lua_pushnil(L);
-		return 1;
-	}
-
-	MoveType_t moveType = MOVE_UNDEFINED;
-
-	if (isNumber(L, 2)) {
-		int32_t id = getNumber<int32_t>(L, 2);
-		RuneMove* rune = g_moves->getRuneMove(id);
-
-		if (rune) {
-			pushUserdata<Move>(L, rune);
-			setMetatable(L, -1, "Move");
-			return 1;
-		}
-
-		moveType = static_cast<MoveType_t>(id);
-	} else if (isString(L, 2)) {
-		std::string arg = getString(L, 2);
-		InstantMove* instant = g_moves->getInstantMoveByName(arg);
-		if (instant) {
-			pushUserdata<Move>(L, instant);
-			setMetatable(L, -1, "Move");
-			return 1;
-		}
-		instant = g_moves->getInstantMove(arg);
-		if (instant) {
-			pushUserdata<Move>(L, instant);
-			setMetatable(L, -1, "Move");
-			return 1;
-		}
-		RuneMove* rune = g_moves->getRuneMoveByName(arg);
-		if (rune) {
-			pushUserdata<Move>(L, rune);
-			setMetatable(L, -1, "Move");
-			return 1;
-		}
-
-		std::string tmp = asLowerCaseString(arg);
-		if (tmp == "instant") {
-			moveType = MOVE_INSTANT;
-		} else if (tmp == "rune") {
-			moveType = MOVE_RUNE;
-		}
-	}
-
-	if (moveType == MOVE_INSTANT) {
-		InstantMove* move = new InstantMove(getScriptEnv()->getScriptInterface());
-		move->fromLua = true;
-		pushUserdata<Move>(L, move);
-		setMetatable(L, -1, "Move");
-		move->moveType = MOVE_INSTANT;
-		return 1;
-	} else if (moveType == MOVE_RUNE) {
-		RuneMove* move = new RuneMove(getScriptEnv()->getScriptInterface());
-		move->fromLua = true;
-		pushUserdata<Move>(L, move);
-		setMetatable(L, -1, "Move");
-		move->moveType = MOVE_RUNE;
-		return 1;
-	}
-
-	lua_pushnil(L);
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveOnCastMove(lua_State* L)
-{
-	// move:onCastMove(callback)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (move->moveType == MOVE_INSTANT) {
-			InstantMove* instant = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-			if (!instant->loadCallback()) {
-				pushBoolean(L, false);
-				return 1;
-			}
-			instant->scripted = true;
-			pushBoolean(L, true);
-		} else if (move->moveType == MOVE_RUNE) {
-			RuneMove* rune = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-			if (!rune->loadCallback()) {
-				pushBoolean(L, false);
-				return 1;
-			}
-			rune->scripted = true;
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveRegister(lua_State* L)
-{
-	// move:register()
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (move->moveType == MOVE_INSTANT) {
-			InstantMove* instant = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-			if (!instant->isScripted()) {
-				pushBoolean(L, false);
-				return 1;
-			}
-			pushBoolean(L, g_moves->registerInstantLuaEvent(instant));
-		} else if (move->moveType == MOVE_RUNE) {
-			RuneMove* rune = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-			if (rune->getMagicLevel() != 0 || rune->getLevel() != 0) {
-				//Change information in the ItemType to get accurate description
-				ItemType& iType = Item::items.getItemType(rune->getRuneItemId());
-				iType.name = rune->getName();
-				iType.runeMagLevel = rune->getMagicLevel();
-				iType.runeLevel = rune->getLevel();
-				iType.charges = rune->getCharges();
-			}
-			if (!rune->isScripted()) {
-				pushBoolean(L, false);
-				return 1;
-			}
-			pushBoolean(L, g_moves->registerRuneLuaEvent(rune));
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveName(lua_State* L)
-{
-	// move:name(name)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushString(L, move->getName());
-		} else {
-			move->setName(getString(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveId(lua_State* L)
-{
-	// move:id(id)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getId());
-		} else {
-			move->setId(getNumber<uint8_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveGroup(lua_State* L)
-{
-	// move:group(primaryGroup[, secondaryGroup])
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getGroup());
-			lua_pushnumber(L, move->getSecondaryGroup());
-			return 2;
-		} else if (lua_gettop(L) == 2) {
-			MoveGroup_t group = getNumber<MoveGroup_t>(L, 2);
-			if (group) {
-				move->setGroup(group);
-				pushBoolean(L, true);
-			} else if (isString(L, 2)) {
-				group = stringToMoveGroup(getString(L, 2));
-				if (group != MOVEGROUP_NONE) {
-					move->setGroup(group);
-				} else {
-					std::cout << "[Warning - Move::group] Unknown group: " << getString(L, 2) << std::endl;
-					pushBoolean(L, false);
-					return 1;
-				}
-				pushBoolean(L, true);
-			} else {
-				std::cout << "[Warning - Move::group] Unknown group: " << getString(L, 2) << std::endl;
-				pushBoolean(L, false);
-				return 1;
-			}
-		} else {
-			MoveGroup_t primaryGroup = getNumber<MoveGroup_t>(L, 2);
-			MoveGroup_t secondaryGroup = getNumber<MoveGroup_t>(L, 2);
-			if (primaryGroup && secondaryGroup) {
-				move->setGroup(primaryGroup);
-				move->setSecondaryGroup(secondaryGroup);
-				pushBoolean(L, true);
-			} else if (isString(L, 2) && isString(L, 3)) {
-				primaryGroup = stringToMoveGroup(getString(L, 2));
-				if (primaryGroup != MOVEGROUP_NONE) {
-					move->setGroup(primaryGroup);
-				} else {
-					std::cout << "[Warning - Move::group] Unknown primaryGroup: " << getString(L, 2) << std::endl;
-					pushBoolean(L, false);
-					return 1;
-				}
-				secondaryGroup = stringToMoveGroup(getString(L, 3));
-				if (secondaryGroup != MOVEGROUP_NONE) {
-					move->setSecondaryGroup(secondaryGroup);
-				} else {
-					std::cout << "[Warning - Move::group] Unknown secondaryGroup: " << getString(L, 3) << std::endl;
-					pushBoolean(L, false);
-					return 1;
-				}
-				pushBoolean(L, true);
-			} else {
-				std::cout << "[Warning - Move::group] Unknown primaryGroup: " << getString(L, 2) << " or secondaryGroup: " << getString(L, 3) << std::endl;
-				pushBoolean(L, false);
-				return 1;
-			}
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveCooldown(lua_State* L)
-{
-	// move:cooldown(cooldown)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getCooldown());
-		} else {
-			move->setCooldown(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveGroupCooldown(lua_State* L)
-{
-	// move:groupCooldown(primaryGroupCd[, secondaryGroupCd])
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getGroupCooldown());
-			lua_pushnumber(L, move->getSecondaryCooldown());
-			return 2;
-		} else if (lua_gettop(L) == 2) {
-			move->setGroupCooldown(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		} else {
-			move->setGroupCooldown(getNumber<uint32_t>(L, 2));
-			move->setSecondaryCooldown(getNumber<uint32_t>(L, 3));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveLevel(lua_State* L)
-{
-	// move:level(lvl)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getLevel());
-		} else {
-			move->setLevel(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveMagicLevel(lua_State* L)
-{
-	// move:magicLevel(lvl)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getMagicLevel());
-		} else {
-			move->setMagicLevel(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveMana(lua_State* L)
-{
-	// move:mana(mana)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getMana());
-		} else {
-			move->setMana(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveManaPercent(lua_State* L)
-{
-	// move:manaPercent(percent)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getManaPercent());
-		} else {
-			move->setManaPercent(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveSoul(lua_State* L)
-{
-	// move:soul(soul)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getSoulCost());
-		} else {
-			move->setSoulCost(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveRange(lua_State* L)
-{
-	// move:range(range)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getRange());
-		} else {
-			move->setRange(getNumber<int32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMovePremium(lua_State* L)
-{
-	// move:isPremium(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->isPremium());
-		} else {
-			move->setPremium(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEnabled(lua_State* L)
-{
-	// move:isEnabled(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->isEnabled());
-		} else {
-			move->setEnabled(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveNeedTarget(lua_State* L)
-{
-	// move:needTarget(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getNeedTarget());
-		} else {
-			move->setNeedTarget(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveNeedWeapon(lua_State* L)
-{
-	// move:needWeapon(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getNeedWeapon());
-		} else {
-			move->setNeedWeapon(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveNeedLearn(lua_State* L)
-{
-	// move:needLearn(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getNeedLearn());
-		} else {
-			move->setNeedLearn(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveSelfTarget(lua_State* L)
-{
-	// move:isSelfTarget(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getSelfTarget());
-		} else {
-			move->setSelfTarget(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveBlocking(lua_State* L)
-{
-	// move:isBlocking(blockingSolid, blockingCreature)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getBlockingSolid());
-			pushBoolean(L, move->getBlockingCreature());
-			return 2;
-		} else {
-			move->setBlockingSolid(getBoolean(L, 2));
-			move->setBlockingCreature(getBoolean(L, 3));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveAggressive(lua_State* L)
-{
-	// move:isAggressive(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getAggressive());
-		} else {
-			move->setAggressive(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMovePzLock(lua_State* L)
-{
-	// move:isPzLock(bool)
-	Move* move = getUserdata<Move>(L, 1);
-	if (move) {
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getPzLock());
-		} else {
-			move->setPzLock(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveVocation(lua_State* L)
-{
-	// move:vocation(vocation)
-	Move* move = getUserdata<Move>(L, 1);
-	if (!move) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (lua_gettop(L) == 1) {
-		lua_createtable(L, 0, 0);
-		int i = 0;
-		for (auto& voc : move->getVocMap()) {
-			std::string name = g_vocations.getVocation(voc.first)->getVocName();
-			pushString(L, name);
-			lua_rawseti(L, -2, ++i);
-		}
-	} else {
-		int parameters = lua_gettop(L) - 1; // - 1 because self is a parameter aswell, which we want to skip ofc
-		for (int i = 0; i < parameters; ++i) {
-			std::vector<std::string> vocList = explodeString(getString(L, 2 + i), ";");
-			move->addVocMap(g_vocations.getVocationId(vocList[0]), vocList.size() > 1 ? booleanString(vocList[1]) : false);
-		}
-		pushBoolean(L, true);
-	}
-	return 1;
-}
-
-// only for InstantMoves
-int LuaScriptInterface::luaMoveWords(lua_State* L)
-{
-	// move:words(words[, separator = ""])
-	InstantMove* move = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_INSTANT, it means that this actually is no InstantMove, so we return nil
-		if (move->moveType != MOVE_INSTANT) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushString(L, move->getWords());
-			pushString(L, move->getSeparator());
-			return 2;
-		} else {
-			std::string sep = "";
-			if (lua_gettop(L) == 3) {
-				sep = getString(L, 3);
-			}
-			move->setWords(getString(L, 2));
-			move->setSeparator(sep);
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for InstantMoves
-int LuaScriptInterface::luaMoveNeedDirection(lua_State* L)
-{
-	// move:needDirection(bool)
-	InstantMove* move = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_INSTANT, it means that this actually is no InstantMove, so we return nil
-		if (move->moveType != MOVE_INSTANT) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getNeedDirection());
-		} else {
-			move->setNeedDirection(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for InstantMoves
-int LuaScriptInterface::luaMoveHasParams(lua_State* L)
-{
-	// move:hasParams(bool)
-	InstantMove* move = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_INSTANT, it means that this actually is no InstantMove, so we return nil
-		if (move->moveType != MOVE_INSTANT) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getHasParam());
-		} else {
-			move->setHasParam(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for InstantMoves
-int LuaScriptInterface::luaMoveHasPlayerNameParam(lua_State* L)
-{
-	// move:hasPlayerNameParam(bool)
-	InstantMove* move = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_INSTANT, it means that this actually is no InstantMove, so we return nil
-		if (move->moveType != MOVE_INSTANT) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getHasPlayerNameParam());
-		} else {
-			move->setHasPlayerNameParam(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for InstantMoves
-int LuaScriptInterface::luaMoveNeedCasterTargetOrDirection(lua_State* L)
-{
-	// move:needCasterTargetOrDirection(bool)
-	InstantMove* move = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_INSTANT, it means that this actually is no InstantMove, so we return nil
-		if (move->moveType != MOVE_INSTANT) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getNeedCasterTargetOrDirection());
-		} else {
-			move->setNeedCasterTargetOrDirection(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for InstantMoves
-int LuaScriptInterface::luaMoveIsBlockingWalls(lua_State* L)
-{
-	// move:blockWalls(bool)
-	InstantMove* move = dynamic_cast<InstantMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_INSTANT, it means that this actually is no InstantMove, so we return nil
-		if (move->moveType != MOVE_INSTANT) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getBlockWalls());
-		} else {
-			move->setBlockWalls(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveRuneLevel(lua_State* L)
-{
-	// move:runeLevel(level)
-	RuneMove* move = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	int32_t level = getNumber<int32_t>(L, 2);
-	if (move) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (move->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getLevel());
-		} else {
-			move->setLevel(level);
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveRuneMagicLevel(lua_State* L)
-{
-	// move:runeMagicLevel(magLevel)
-	RuneMove* move = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	int32_t magLevel = getNumber<int32_t>(L, 2);
-	if (move) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (move->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getMagicLevel());
-		} else {
-			move->setMagicLevel(magLevel);
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveRuneId(lua_State* L)
-{
-	// move:runeId(id)
-	RuneMove* rune = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	if (rune) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (rune->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, rune->getRuneItemId());
-		} else {
-			rune->setRuneItemId(getNumber<uint16_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveCharges(lua_State* L)
-{
-	// move:charges(charges)
-	RuneMove* move = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (move->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, move->getCharges());
-		} else {
-			move->setCharges(getNumber<uint32_t>(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveAllowFarUse(lua_State* L)
-{
-	// move:allowFarUse(bool)
-	RuneMove* move = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (move->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getAllowFarUse());
-		} else {
-			move->setAllowFarUse(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveBlockWalls(lua_State* L)
-{
-	// move:blockWalls(bool)
-	RuneMove* move = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (move->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getCheckLineOfSight());
-		} else {
-			move->setCheckLineOfSight(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// only for RuneMoves
-int LuaScriptInterface::luaMoveCheckFloor(lua_State* L)
-{
-	// move:checkFloor(bool)
-	RuneMove* move = dynamic_cast<RuneMove*>(getUserdata<Move>(L, 1));
-	if (move) {
-		// if move != MOVE_RUNE, it means that this actually is no RuneMove, so we return nil
-		if (move->moveType != MOVE_RUNE) {
-			lua_pushnil(L);
-			return 1;
-		}
-
-		if (lua_gettop(L) == 1) {
-			pushBoolean(L, move->getCheckFloor());
-		} else {
-			move->setCheckFloor(getBoolean(L, 2));
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaCreateAction(lua_State* L)
 {
@@ -17972,8 +16136,8 @@ int LuaScriptInterface::luaMoveEventSlot(lua_State* L)
 			moveevent->setSlot(SLOTP_FEET);
 		} else if (slotName == "ring") {
 			moveevent->setSlot(SLOTP_RING);
-		} else if (slotName == "ammo") {
-			moveevent->setSlot(SLOTP_AMMO);
+		} else if (slotName == "utility") {
+			moveevent->setSlot(SLOTP_UTILITY);
 		} else {
 			std::cout << "[Warning - MoveEvent::configureMoveEvent] Unknown slot type: " << slotName << std::endl;
 			pushBoolean(L, false);
@@ -17999,19 +16163,6 @@ int LuaScriptInterface::luaMoveEventLevel(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaMoveEventMagLevel(lua_State* L)
-{
-	// moveevent:magicLevel(lvl)
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->setRequiredMagLevel(getNumber<uint32_t>(L, 2));
-		moveevent->setWieldInfo(WIELDINFO_MAGLV);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaMoveEventPremium(lua_State* L)
 {
@@ -18237,13 +16388,13 @@ int LuaScriptInterface::luaGlobalEventRegister(lua_State* L)
 			pushBoolean(L, false);
 			return 1;
 		}
-		
+
 		if (globalevent->getEventType() == GLOBALEVENT_NONE && globalevent->getInterval() == 0) {
 			std::cout << "[Error - LuaScriptInterface::luaGlobalEventRegister] No interval for globalevent with name " << globalevent->getName() << std::endl;
 			pushBoolean(L, false);
 			return 1;
 		}
-		
+
 		pushBoolean(L, g_globalEvents->registerLuaEvent(globalevent));
 	} else {
 		lua_pushnil(L);
@@ -18338,635 +16489,7 @@ int LuaScriptInterface::luaGlobalEventInterval(lua_State* L)
 	return 1;
 }
 
-// Weapon
-int LuaScriptInterface::luaCreateWeapon(lua_State* L)
-{
-	// Weapon(type)
-	if (getScriptEnv()->getScriptInterface() != &g_scripts->getScriptInterface()) {
-		reportErrorFunc(L, "Weapons can only be registered in the Scripts interface.");
-		lua_pushnil(L);
-		return 1;
-	}
-
-	WeaponType_t type = getNumber<WeaponType_t>(L, 2);
-	switch (type) {
-		case WEAPON_SWORD:
-		case WEAPON_AXE:
-		case WEAPON_CLUB: {
-			WeaponMelee* weapon = new WeaponMelee(getScriptEnv()->getScriptInterface());
-			if (weapon) {
-				pushUserdata<WeaponMelee>(L, weapon);
-				setMetatable(L, -1, "Weapon");
-				weapon->weaponType = type;
-				weapon->fromLua = true;
-			} else {
-				lua_pushnil(L);
-			}
-			break;
-		}
-		case WEAPON_DISTANCE:
-		case WEAPON_AMMO: {
-			WeaponDistance* weapon = new WeaponDistance(getScriptEnv()->getScriptInterface());
-			if (weapon) {
-				pushUserdata<WeaponDistance>(L, weapon);
-				setMetatable(L, -1, "Weapon");
-				weapon->weaponType = type;
-				weapon->fromLua = true;
-			} else {
-				lua_pushnil(L);
-			}
-			break;
-		}
-		case WEAPON_WAND: {
-			WeaponWand* weapon = new WeaponWand(getScriptEnv()->getScriptInterface());
-			if (weapon) {
-				pushUserdata<WeaponWand>(L, weapon);
-				setMetatable(L, -1, "Weapon");
-				weapon->weaponType = type;
-				weapon->fromLua = true;
-			} else {
-				lua_pushnil(L);
-			}
-			break;
-		}
-		default: {
-			lua_pushnil(L);
-			break;
-		}
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponAction(lua_State* L)
-{
-	// weapon:action(callback)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		std::string typeName = getString(L, 2);
-		std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "removecount") {
-			weapon->action = WEAPONACTION_REMOVECOUNT;
-		} else if (tmpStr == "removecharge") {
-			weapon->action = WEAPONACTION_REMOVECHARGE;
-		} else if (tmpStr == "move") {
-			weapon->action = WEAPONACTION_MOVE;
-		} else {
-			std::cout << "Error: [Weapon::action] No valid action " << typeName << std::endl;
-			pushBoolean(L, false);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponRegister(lua_State* L)
-{
-	// weapon:register()
-	Weapon** weaponPtr = getRawUserdata<Weapon>(L, 1);
-	if (!weaponPtr) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	if (auto* weapon = *weaponPtr) {
-		if (weapon->weaponType == WEAPON_DISTANCE || weapon->weaponType == WEAPON_AMMO) {
-			weapon = getUserdata<WeaponDistance>(L, 1);
-		} else if (weapon->weaponType == WEAPON_WAND) {
-			weapon = getUserdata<WeaponWand>(L, 1);
-		} else {
-			weapon = getUserdata<WeaponMelee>(L, 1);
-		}
-
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.weaponType = weapon->weaponType;
-
-		if (weapon->getWieldInfo() != 0) {
-			it.wieldInfo = weapon->getWieldInfo();
-			it.vocationString = weapon->getVocationString();
-			it.minReqLevel = weapon->getReqLevel();
-			it.minReqMagicLevel = weapon->getReqMagLv();
-		}
-
-		weapon->configureWeapon(it);
-		pushBoolean(L, g_weapons->registerLuaEvent(weapon));
-		*weaponPtr = nullptr; // Remove luascript reference
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponOnUseWeapon(lua_State* L)
-{
-	// weapon:onUseWeapon(callback)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		if (!weapon->loadCallback()) {
-			pushBoolean(L, false);
-			return 1;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponUnproperly(lua_State* L)
-{
-	// weapon:wieldedUnproperly(bool)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setWieldUnproperly(getBoolean(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponLevel(lua_State* L)
-{
-	// weapon:level(lvl)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setRequiredLevel(getNumber<uint32_t>(L, 2));
-		weapon->setWieldInfo(WIELDINFO_LEVEL);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponMagicLevel(lua_State* L)
-{
-	// weapon:magicLevel(lvl)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setRequiredMagLevel(getNumber<uint32_t>(L, 2));
-		weapon->setWieldInfo(WIELDINFO_MAGLV);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponMana(lua_State* L)
-{
-	// weapon:mana(mana)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setMana(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponManaPercent(lua_State* L)
-{
-	// weapon:manaPercent(percent)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setManaPercent(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponHealth(lua_State* L)
-{
-	// weapon:health(health)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setHealth(getNumber<int32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponHealthPercent(lua_State* L)
-{
-	// weapon:healthPercent(percent)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setHealthPercent(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponSoul(lua_State* L)
-{
-	// weapon:soul(soul)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setSoul(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponBreakChance(lua_State* L)
-{
-	// weapon:breakChance(percent)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setBreakChance(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponWandDamage(lua_State* L)
-{
-	// weapon:damage(damage[min, max]) only use this if the weapon is a wand!
-	WeaponWand* weapon = getUserdata<WeaponWand>(L, 1);
-	if (weapon) {
-		weapon->setMinChange(getNumber<uint32_t>(L, 2));
-		if (lua_gettop(L) > 2) {
-			weapon->setMaxChange(getNumber<uint32_t>(L, 3));
-		} else {
-			weapon->setMaxChange(getNumber<uint32_t>(L, 2));
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponElement(lua_State* L)
-{
-	// weapon:element(combatType)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		if (!getNumber<CombatType_t>(L, 2)) {
-			std::string element = getString(L, 2);
-			std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth") {
-				weapon->params.combatType = COMBAT_EARTHDAMAGE;
-			} else if (tmpStrValue == "ice") {
-				weapon->params.combatType = COMBAT_ICEDAMAGE;
-			} else if (tmpStrValue == "energy") {
-				weapon->params.combatType = COMBAT_ENERGYDAMAGE;
-			} else if (tmpStrValue == "fire") {
-				weapon->params.combatType = COMBAT_FIREDAMAGE;
-			} else if (tmpStrValue == "death") {
-				weapon->params.combatType = COMBAT_DEATHDAMAGE;
-			} else if (tmpStrValue == "holy") {
-				weapon->params.combatType = COMBAT_HOLYDAMAGE;
-			} else {
-				std::cout << "[Warning - weapon:element] Type \"" << element << "\" does not exist." << std::endl;
-			}
-		} else {
-			weapon->params.combatType = getNumber<CombatType_t>(L, 2);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponPremium(lua_State* L)
-{
-	// weapon:premium(bool)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setNeedPremium(getBoolean(L, 2));
-		weapon->setWieldInfo(WIELDINFO_PREMIUM);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponVocation(lua_State* L)
-{
-	// weapon:vocation(vocName[, showInDescription = false, lastVoc = false])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->addVocWeaponMap(getString(L, 2));
-		weapon->setWieldInfo(WIELDINFO_VOCREQ);
-		std::string tmp;
-		bool showInDescription = getBoolean(L, 3, false);
-		bool lastVoc = getBoolean(L, 4, false);
-
-		if (showInDescription) {
-			if (weapon->getVocationString().empty()) {
-				tmp = asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				weapon->setVocationString(tmp);
-			} else {
-				tmp = weapon->getVocationString();
-				if (lastVoc) {
-					tmp += " and ";
-				} else {
-					tmp += ", ";
-				}
-				tmp += asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				weapon->setVocationString(tmp);
-			}
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponId(lua_State* L)
-{
-	// weapon:id(id)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		weapon->setID(getNumber<uint32_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponAttack(lua_State* L)
-{
-	// weapon:attack(atk)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.attack = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponDefense(lua_State* L)
-{
-	// weapon:defense(defense[, extraDefense])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.defense = getNumber<int32_t>(L, 2);
-		if (lua_gettop(L) > 2) {
-			it.extraDefense = getNumber<int32_t>(L, 3);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponRange(lua_State* L)
-{
-	// weapon:range(range)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.shootRange = getNumber<uint8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponCharges(lua_State* L)
-{
-	// weapon:charges(charges[, showCharges = true])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		bool showCharges = getBoolean(L, 3, true);
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-
-		it.charges = getNumber<uint8_t>(L, 2);
-		it.showCharges = showCharges;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponDuration(lua_State* L)
-{
-	// weapon:duration(duration[, showDuration = true])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		bool showDuration = getBoolean(L, 3, true);
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-
-		it.decayTime = getNumber<uint32_t>(L, 2);
-		it.showDuration = showDuration;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponDecayTo(lua_State* L)
-{
-	// weapon:decayTo([itemid = 0])
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t itemid = getNumber<uint16_t>(L, 2, 0);
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-
-		it.decayTo = itemid;
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponTransformEquipTo(lua_State* L)
-{
-	// weapon:transformEquipTo(itemid)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.transformEquipTo = getNumber<uint16_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponTransformDeEquipTo(lua_State* L)
-{
-	// weapon:transformDeEquipTo(itemid)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.transformDeEquipTo = getNumber<uint16_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponShootType(lua_State* L)
-{
-	// weapon:shootType(type)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.shootType = getNumber<ShootType_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponSlotType(lua_State* L)
-{
-	// weapon:slotType(slot)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		std::string slot = getString(L, 2);
-
-		if (slot == "two-handed") {
-			it.slotPosition |= SLOTP_TWO_HAND;
-		} else {
-			it.slotPosition |= SLOTP_HAND;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponAmmoType(lua_State* L)
-{
-	// weapon:ammoType(type)
-	WeaponDistance* weapon = getUserdata<WeaponDistance>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		std::string type = getString(L, 2);
-
-		if (type == "arrow") {
-			it.ammoType = AMMO_ARROW;
-		} else if (type == "bolt"){
-			it.ammoType = AMMO_BOLT;
-		} else {
-			std::cout << "[Warning - weapon:ammoType] Type \"" << type << "\" does not exist." << std::endl;
-			lua_pushnil(L);
-			return 1;
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponHitChance(lua_State* L)
-{
-	// weapon:hitChance(chance)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.hitChance = getNumber<int8_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponMaxHitChance(lua_State* L)
-{
-	// weapon:maxHitChance(max)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.maxHitChance = getNumber<int32_t>(L, 2);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaWeaponExtraElement(lua_State* L)
-{
-	// weapon:extraElement(atk, combatType)
-	Weapon* weapon = getUserdata<Weapon>(L, 1);
-	if (weapon) {
-		uint16_t id = weapon->getID();
-		ItemType& it = Item::items.getItemType(id);
-		it.abilities.get()->elementDamage = getNumber<uint16_t>(L, 2);
-
-		if (!getNumber<CombatType_t>(L, 3)) {
-			std::string element = getString(L, 3);
-			std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth") {
-				it.abilities.get()->elementType = COMBAT_EARTHDAMAGE;
-			} else if (tmpStrValue == "ice") {
-				it.abilities.get()->elementType = COMBAT_ICEDAMAGE;
-			} else if (tmpStrValue == "energy") {
-				it.abilities.get()->elementType = COMBAT_ENERGYDAMAGE;
-			} else if (tmpStrValue == "fire") {
-				it.abilities.get()->elementType = COMBAT_FIREDAMAGE;
-			} else if (tmpStrValue == "death") {
-				it.abilities.get()->elementType = COMBAT_DEATHDAMAGE;
-			} else if (tmpStrValue == "holy") {
-				it.abilities.get()->elementType = COMBAT_HOLYDAMAGE;
-			} else {
-				std::cout << "[Warning - weapon:extraElement] Type \"" << element << "\" does not exist." << std::endl;
-			}
-		} else {
-			it.abilities.get()->elementType = getNumber<CombatType_t>(L, 3);
-		}
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-//
+// Lua environment
 LuaEnvironment::LuaEnvironment() : LuaScriptInterface("Main Interface") {}
 
 LuaEnvironment::~LuaEnvironment()
