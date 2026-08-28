@@ -473,7 +473,6 @@ enum PlayerFlags : uint64_t {
 	PlayerFlag_CanEditHouses = 1 << 17,
 	PlayerFlag_CannotBeBanned = 1 << 18,
 	PlayerFlag_CannotBePushed = 1 << 19,
-	PlayerFlag_HasInfiniteCapacity = 1 << 20,
 	PlayerFlag_CanPushAllCreatures = 1 << 21,
 	PlayerFlag_CanTalkRedPrivate = 1 << 22,
 	PlayerFlag_CanTalkRedChannel = 1 << 23,

@@ -56,17 +56,7 @@ Item* Container::clone() const
 	for (Item* item : itemlist) {
 		clone->addItem(item->clone());
 	}
-	clone->totalWeight = totalWeight;
 	return clone;
-}
-
-Container* Container::getParentContainer()
-{
-	Thing* thing = getParent();
-	if (!thing) {
-		return nullptr;
-	}
-	return thing->getContainer();
 }
 
 std::string Container::getName(bool addArticle /* = false*/) const {
@@ -125,22 +115,8 @@ bool Container::unserializeItemNode(OTB::Loader& loader, const OTB::Node& node, 
 		}
 
 		addItem(item);
-		updateItemWeight(item->getWeight());
 	}
 	return true;
-}
-
-void Container::updateItemWeight(int32_t diff)
-{
-	totalWeight += diff;
-	if (Container* parentContainer = getParentContainer()) {
-		parentContainer->updateItemWeight(diff);
-	}
-}
-
-uint32_t Container::getWeight() const
-{
-	return Item::getWeight() + totalWeight;
 }
 
 std::string Container::getContentDescription() const
@@ -544,7 +520,6 @@ void Container::addThing(int32_t index, Thing* thing)
 
 	item->setParent(this);
 	itemlist.push_front(item);
-	updateItemWeight(item->getWeight());
 
 	//send change to client
 	if (getParent() && (getParent() != VirtualCylinder::virtualCylinder)) {
@@ -555,7 +530,6 @@ void Container::addThing(int32_t index, Thing* thing)
 void Container::addItemBack(Item* item)
 {
 	addItem(item);
-	updateItemWeight(item->getWeight());
 
 	//send change to client
 	if (getParent() && (getParent() != VirtualCylinder::virtualCylinder)) {
@@ -575,10 +549,8 @@ void Container::updateThing(Thing* thing, uint16_t itemId, uint32_t count)
 		return /*RETURNVALUE_NOTPOSSIBLE*/;
 	}
 
-	const int32_t oldWeight = item->getWeight();
 	item->setID(itemId);
 	item->setSubType(count);
-	updateItemWeight(-oldWeight + item->getWeight());
 
 	//send change to client
 	if (getParent()) {
@@ -600,7 +572,6 @@ void Container::replaceThing(uint32_t index, Thing* thing)
 
 	itemlist[index] = item;
 	item->setParent(this);
-	updateItemWeight(-static_cast<int32_t>(replacedItem->getWeight()) + item->getWeight());
 
 	//send change to client
 	if (getParent()) {
@@ -624,17 +595,13 @@ void Container::removeThing(Thing* thing, uint32_t count)
 
 	if (item->isStackable() && count != item->getItemCount()) {
 		uint8_t newCount = static_cast<uint8_t>(std::max<int32_t>(0, item->getItemCount() - count));
-		const int32_t oldWeight = item->getWeight();
 		item->setItemCount(newCount);
-		updateItemWeight(-oldWeight + item->getWeight());
 
 		//send change to client
 		if (getParent()) {
 			onUpdateContainerItem(index, item, item);
 		}
 	} else {
-		updateItemWeight(-static_cast<int32_t>(item->getWeight()));
-
 		//send change to client
 		if (getParent()) {
 			onRemoveContainerItem(index, item);
@@ -750,7 +717,6 @@ void Container::internalAddThing(uint32_t, Thing* thing)
 
 	item->setParent(this);
 	itemlist.push_front(item);
-	updateItemWeight(item->getWeight());
 }
 
 void Container::startDecaying()

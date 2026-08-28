@@ -102,7 +102,6 @@ class Container : public Item, public Cylinder
 		bool isHoldingItem(const Item* item) const;
 
 		uint32_t getItemHoldingCount() const;
-		uint32_t getWeight() const override final;
 
 		bool isUnlocked() const {
 			return unlocked;
@@ -152,7 +151,6 @@ class Container : public Item, public Cylinder
 		std::ostringstream& getContentDescription(std::ostringstream& os) const;
 
 		uint32_t maxSize;
-		uint32_t totalWeight = 0;
 		uint32_t serializationCount = 0;
 
 		bool unlocked;
@@ -162,8 +160,6 @@ class Container : public Item, public Cylinder
 		void onUpdateContainerItem(uint32_t index, Item* oldItem, Item* newItem);
 		void onRemoveContainerItem(uint32_t index, Item* item);
 
-		Container* getParentContainer();
-		void updateItemWeight(int32_t diff);
 
 		friend class ContainerIterator;
 		friend class IOMapSerialize;

@@ -505,13 +505,11 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 			break;
 		}
 
-		case ATTR_WEIGHT: {
-			uint32_t weight;
-			if (!propStream.read<uint32_t>(weight)) {
+		case ATTR_RESERVED_27: {
+			uint32_t reservedValue;
+			if (!propStream.read<uint32_t>(reservedValue)) {
 				return ATTR_READ_ERROR;
 			}
-
-			setIntAttr(ITEM_ATTRIBUTE_WEIGHT, weight);
 			break;
 		}
 
@@ -731,11 +729,6 @@ void Item::serializeAttr(PropWriteStream& propWriteStream) const
 		propWriteStream.writeString(getStrAttr(ITEM_ATTRIBUTE_PLURALNAME));
 	}
 
-	if (hasAttribute(ITEM_ATTRIBUTE_WEIGHT)) {
-		propWriteStream.write<uint8_t>(ATTR_WEIGHT);
-		propWriteStream.write<uint32_t>(getIntAttr(ITEM_ATTRIBUTE_WEIGHT));
-	}
-
 	if (hasAttribute(ITEM_ATTRIBUTE_DECAYTO)) {
 		propWriteStream.write<uint8_t>(ATTR_DECAYTO);
 		propWriteStream.write<int32_t>(getIntAttr(ITEM_ATTRIBUTE_DECAYTO));
@@ -783,15 +776,6 @@ bool Item::hasProperty(ITEMPROPERTY prop) const
 		case CONST_PROP_SUPPORTHANGABLE: return it.isHorizontal || it.isVertical;
 		default: return false;
 	}
-}
-
-uint32_t Item::getWeight() const
-{
-	uint32_t weight = getBaseWeight();
-	if (isStackable()) {
-		return weight * std::max<uint32_t>(1, getItemCount());
-	}
-	return weight;
 }
 
 std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
@@ -971,17 +955,6 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 		s << '.';
 	}
 
-	if (lookDistance <= 1) {
-		if (item) {
-			const uint32_t weight = item->getWeight();
-			if (weight != 0 && it.pickupable) {
-				s << '\n' << getWeightDescription(it, weight, item->getItemCount());
-			}
-		} else if (it.weight != 0 && it.pickupable) {
-			s << '\n' << getWeightDescription(it, it.weight);
-		}
-	}
-
 	if (item) {
 		const std::string& specialDescription = item->getSpecialDescription();
 		if (!specialDescription.empty()) {
@@ -1050,44 +1023,6 @@ std::string Item::getNameDescription() const
 {
 	const ItemType& it = items[id];
 	return getNameDescription(it, this);
-}
-
-std::string Item::getWeightDescription(const ItemType& it, uint32_t weight, uint32_t count /*= 1*/)
-{
-	std::ostringstream ss;
-	if (it.stackable && count > 1 && it.showCount != 0) {
-		ss << "They weigh ";
-	} else {
-		ss << "It weighs ";
-	}
-
-	if (weight < 10) {
-		ss << "0.0" << weight;
-	} else if (weight < 100) {
-		ss << "0." << weight;
-	} else {
-		std::string weightString = std::to_string(weight);
-		weightString.insert(weightString.end() - 2, '.');
-		ss << weightString;
-	}
-
-	ss << " oz.";
-	return ss.str();
-}
-
-std::string Item::getWeightDescription(uint32_t weight) const
-{
-	const ItemType& it = Item::items[id];
-	return getWeightDescription(it, weight, getItemCount());
-}
-
-std::string Item::getWeightDescription() const
-{
-	uint32_t weight = getWeight();
-	if (weight == 0) {
-		return std::string();
-	}
-	return getWeightDescription(weight);
 }
 
 void Item::setUniqueId(uint16_t n)

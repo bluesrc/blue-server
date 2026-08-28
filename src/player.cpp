@@ -268,28 +268,6 @@ uint16_t Player::getClientIcons() const
 	return icon_bitset.to_ulong();
 }
 
-void Player::updateInventoryWeight()
-{
-	if (hasFlag(PlayerFlag_HasInfiniteCapacity)) {
-		return;
-	}
-
-	inventoryWeight = 0;
-	for (int i = CONST_SLOT_FIRST; i <= CONST_SLOT_LAST; ++i) {
-		const Item* item = inventory[i];
-		if (item) {
-			inventoryWeight += item->getWeight();
-		}
-	}
-
-	inventoryWeight += backpack->getWeight() - backpack->getBaseWeight();
-	inventoryWeight += lootBag->getWeight() - lootBag->getBaseWeight();
-
-	if (StoreInbox* storeInbox = getStoreInbox()) {
-		inventoryWeight += storeInbox->getWeight();
-	}
-}
-
 void Player::addSkillAdvance(skills_t skill, uint64_t count)
 {
 	uint64_t currReqTries = vocation->getReqSkillTries(skill, skills[skill].level);
@@ -1730,8 +1708,6 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 		health += vocation->getHPGain();
 		manaMax += vocation->getManaGain();
 		mana += vocation->getManaGain();
-		capacity += vocation->getCapGain();
-
 		currLevelExp = nextLevelExp;
 		nextLevelExp = Player::getExpForLevel(level + 1);
 		if (currLevelExp >= nextLevelExp) {
@@ -1816,7 +1792,6 @@ void Player::removeExperience(uint64_t exp, bool sendText/* = false*/)
 		--level;
 		healthMax = std::max<int32_t>(0, healthMax - vocation->getHPGain());
 		manaMax = std::max<int32_t>(0, manaMax - vocation->getManaGain());
-		capacity = std::max<int32_t>(0, capacity - vocation->getCapGain());
 		currLevelExp = Player::getExpForLevel(level);
 	}
 
@@ -2042,7 +2017,6 @@ void Player::death(Creature* lastHitCreature)
 				--level;
 				healthMax = std::max<int32_t>(0, healthMax - vocation->getHPGain());
 				manaMax = std::max<int32_t>(0, manaMax - vocation->getManaGain());
-				capacity = std::max<int32_t>(0, capacity - vocation->getCapGain());
 			}
 
 			if (oldLevel != level) {
@@ -2292,24 +2266,7 @@ void Player::autoCloseContainers(const Container* container)
 	}
 }
 
-bool Player::hasCapacity(const Item* item, uint32_t count) const
-{
-	if (hasFlag(PlayerFlag_CannotPickupItem)) {
-		return false;
-	}
-
-	if (hasFlag(PlayerFlag_HasInfiniteCapacity) || item->getTopParent() == this) {
-		return true;
-	}
-
-	uint32_t itemWeight = item->getContainer() != nullptr ? item->getWeight() : item->getBaseWeight();
-	if (item->isStackable()) {
-		itemWeight *= count;
-	}
-	return itemWeight <= getFreeCapacity();
-}
-
-ReturnValue Player::queryAdd(int32_t index, const Thing& thing, uint32_t count, uint32_t flags, Creature*) const
+ReturnValue Player::queryAdd(int32_t index, const Thing& thing, uint32_t /*count*/, uint32_t flags, Creature*) const
 {
 	const Item* item = thing.getItem();
 	if (item == nullptr) {
@@ -2318,12 +2275,8 @@ ReturnValue Player::queryAdd(int32_t index, const Thing& thing, uint32_t count, 
 
 	bool childIsOwner = hasBitSet(FLAG_CHILDISOWNER, flags);
 	if (childIsOwner) {
-		//a child container is querying the player, just check if enough capacity
-		bool skipLimit = hasBitSet(FLAG_NOLIMIT, flags);
-		if (skipLimit || hasCapacity(item, count)) {
-			return RETURNVALUE_NOERROR;
-		}
-		return RETURNVALUE_NOTENOUGHCAPACITY;
+		return hasFlag(PlayerFlag_CannotPickupItem) && item->getTopParent() != this ?
+			RETURNVALUE_CANNOTPICKUP : RETURNVALUE_NOERROR;
 	}
 
 	if (!item->isPickupable()) {
@@ -2456,9 +2409,8 @@ ReturnValue Player::queryAdd(int32_t index, const Thing& thing, uint32_t count, 
 		return ret;
 	}
 
-	//check if enough capacity
-	if (!hasCapacity(item, count)) {
-		return RETURNVALUE_NOTENOUGHCAPACITY;
+	if (hasFlag(PlayerFlag_CannotPickupItem) && item->getTopParent() != this) {
+		return RETURNVALUE_CANNOTPICKUP;
 	}
 
 	if (index != CONST_SLOT_WHEREEVER && index != -1) { // we don't try to equip whereever call
@@ -2594,7 +2546,7 @@ ReturnValue Player::queryRemove(const Thing& thing, uint32_t count, uint32_t fla
 Cylinder* Player::queryDestination(int32_t& index, const Thing& thing, Item** destItem,
 		uint32_t& flags)
 {
-	if (index == 0 /*drop to capacity window*/ || index == INDEX_WHEREEVER) {
+	if (index == 0 /*automatic inventory placement*/ || index == INDEX_WHEREEVER) {
 		*destItem = nullptr;
 
 		const Item* item = thing.getItem();
@@ -3015,7 +2967,6 @@ void Player::postAddNotification(Thing* thing, const Cylinder* oldParent, int32_
 			requireListUpdate = oldParent != this;
 		}
 
-		updateInventoryWeight();
 		updateItemsLight();
 		sendStats();
 	}
@@ -3075,7 +3026,6 @@ void Player::postRemoveNotification(Thing* thing, const Cylinder* newParent, int
 			requireListUpdate = newParent != this;
 		}
 
-		updateInventoryWeight();
 		updateItemsLight();
 		sendStats();
 	}

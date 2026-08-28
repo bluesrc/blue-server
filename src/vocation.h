@@ -35,10 +35,6 @@ class Vocation
 		uint32_t getManaGain() const {
 			return gainMana;
 		}
-		uint32_t getCapGain() const {
-			return gainCap;
-		}
-
 		uint32_t getManaGainTicks() const {
 			return gainManaTicks;
 		}
@@ -96,7 +92,6 @@ class Vocation
 		uint32_t gainHealthAmount = 1;
 		uint32_t gainManaTicks = 6;
 		uint32_t gainManaAmount = 1;
-		uint32_t gainCap = 500;
 		uint32_t gainMana = 5;
 		uint32_t gainHP = 5;
 		uint32_t fromVocation = VOCATION_NONE;

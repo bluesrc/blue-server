@@ -900,8 +900,6 @@ itemAttrTypes stringToItemAttribute(const std::string& str)
 		return ITEM_ATTRIBUTE_ARTICLE;
 	} else if (str == "pluralname") {
 		return ITEM_ATTRIBUTE_PLURALNAME;
-	} else if (str == "weight") {
-		return ITEM_ATTRIBUTE_WEIGHT;
 	} else if (str == "owner") {
 		return ITEM_ATTRIBUTE_OWNER;
 	} else if (str == "duration") {
@@ -971,9 +969,6 @@ const char* getReturnMessage(ReturnValue value)
 
 		case RETURNVALUE_FIRSTGOUPSTAIRS:
 			return "First go upstairs.";
-
-		case RETURNVALUE_NOTENOUGHCAPACITY:
-			return "This object is too heavy for you to carry.";
 
 		case RETURNVALUE_CONTAINERNOTENOUGHROOM:
 			return "You cannot put more objects in this container.";
@@ -1056,9 +1051,6 @@ const char* getReturnMessage(ReturnValue value)
 
 		case RETURNVALUE_YOUCANONLYUSEITONCREATURES:
 			return "You can only use it on creatures.";
-
-		case RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS:
-			return "Turn secure mode off if you really want to attack unmarked players.";
 
 		case RETURNVALUE_YOUNEEDPREMIUMACCOUNT:
 			return "You need a premium account.";

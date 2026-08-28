@@ -3401,9 +3401,7 @@ void Game::releaseTradeOffer(Player* player, bool cancelled)
 std::string Game::getTradeErrorDescription(ReturnValue ret, Item* item)
 {
 	if (item) {
-		if (ret == RETURNVALUE_NOTENOUGHCAPACITY) {
-			return fmt::format("You do not have enough capacity to carry {:s}.\n {:s}", item->isStackable() && item->getItemCount() > 1 ? "these objects" : "this object", item->getWeightDescription());
-		} else if (ret == RETURNVALUE_NOTENOUGHROOM || ret == RETURNVALUE_CONTAINERNOTENOUGHROOM) {
+		if (ret == RETURNVALUE_NOTENOUGHROOM || ret == RETURNVALUE_CONTAINERNOTENOUGHROOM) {
 			return fmt::format("You do not have enough room to carry {:s}.", item->isStackable() && item->getItemCount() > 1 ? "these objects" : "this object");
 		}
 	}
@@ -3481,7 +3479,7 @@ void Game::internalCloseTrade(Player* player, bool sendCancel/* = true*/)
 }
 
 void Game::playerPurchaseItem(uint32_t playerId, uint16_t spriteId, uint8_t count, uint8_t amount,
-                              bool ignoreCap/* = false*/, bool inBackpacks/* = false*/)
+							  bool inBackpacks/* = false*/)
 {
 	if (amount == 0 || amount > 100) {
 		return;
@@ -3515,7 +3513,7 @@ void Game::playerPurchaseItem(uint32_t playerId, uint16_t spriteId, uint8_t coun
 		return;
 	}
 
-	merchant->onPlayerTrade(player, onBuy, it.id, subType, amount, ignoreCap, inBackpacks);
+	merchant->onPlayerTrade(player, onBuy, it.id, subType, amount, false, inBackpacks);
 }
 
 void Game::playerSellItem(uint32_t playerId, uint16_t spriteId, uint8_t count, uint8_t amount, bool ignoreEquipped)
@@ -3720,7 +3718,7 @@ void Game::playerFollowCreature(uint32_t playerId, uint32_t creatureId)
 	player->setFollowCreature(getCreatureByID(creatureId));
 }
 
-void Game::playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool chaseMode, bool secureMode)
+void Game::playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool chaseMode)
 {
 	Player* player = getPlayerByID(playerId);
 	if (!player) {
@@ -3729,7 +3727,6 @@ void Game::playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool ch
 
 	player->setFightMode(fightMode);
 	player->setChaseMode(chaseMode);
-	player->setSecureMode(secureMode);
 }
 
 void Game::playerRequestAddVip(uint32_t playerId, const std::string& name)

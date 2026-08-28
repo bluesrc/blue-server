@@ -729,7 +729,6 @@ class LuaScriptInterface
 		static int luaItemGetCount(lua_State* L);
 		static int luaItemGetCharges(lua_State* L);
 		static int luaItemGetFluidType(lua_State* L);
-		static int luaItemGetWeight(lua_State* L);
 
 		static int luaItemGetSubType(lua_State* L);
 
@@ -880,11 +879,6 @@ class LuaScriptInterface
 		static int luaPlayerGetAccountType(lua_State* L);
 		static int luaPlayerSetAccountType(lua_State* L);
 
-		static int luaPlayerGetCapacity(lua_State* L);
-		static int luaPlayerSetCapacity(lua_State* L);
-
-		static int luaPlayerGetFreeCapacity(lua_State* L);
-
 		static int luaPlayerGetDepotChest(lua_State* L);
 		static int luaPlayerGetInbox(lua_State* L);
 		static int luaPlayerGetBackpack(lua_State* L);
@@ -1024,7 +1018,6 @@ class LuaScriptInterface
 
 
 		static int luaPlayerHasChaseMode(lua_State* L);
-		static int luaPlayerHasSecureMode(lua_State* L);
 		static int luaPlayerGetFightMode(lua_State* L);
 		static int luaPlayerIsInCombat(lua_State* L);
 		static int luaPlayerIsInPokemonCombat(lua_State* L);
@@ -1154,8 +1147,6 @@ class LuaScriptInterface
 		static int luaVocationGetRequiredSkillTries(lua_State* L);
 		static int luaVocationGetRequiredManaSpent(lua_State* L);
 
-		static int luaVocationGetCapacityGain(lua_State* L);
-
 		static int luaVocationGetHealthGain(lua_State* L);
 		static int luaVocationGetHealthGainTicks(lua_State* L);
 		static int luaVocationGetHealthGainAmount(lua_State* L);
@@ -1244,7 +1235,6 @@ class LuaScriptInterface
 		static int luaItemTypeGetCharges(lua_State* L);
 		static int luaItemTypeGetFluidSource(lua_State* L);
 		static int luaItemTypeGetCapacity(lua_State* L);
-		static int luaItemTypeGetWeight(lua_State* L);
 
 
 		static int luaItemTypeGetElementType(lua_State* L);

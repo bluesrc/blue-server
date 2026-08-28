@@ -959,8 +959,6 @@ void ProtocolGame::parseFightModes(NetworkMessage& msg)
 {
 	uint8_t rawFightMode = msg.getByte(); // 1 - offensive, 2 - balanced, 3 - defensive
 	uint8_t rawChaseMode = msg.getByte(); // 0 - stand while fighting, 1 - chase opponent
-	uint8_t rawSecureMode = msg.getByte(); // 0 - can't attack unmarked, 1 - can attack unmarked
-	// uint8_t rawPvpMode = msg.getByte(); // pvp mode introduced in 10.0
 
 	fightMode_t fightMode;
 	if (rawFightMode == 1) {
@@ -971,7 +969,7 @@ void ProtocolGame::parseFightModes(NetworkMessage& msg)
 		fightMode = FIGHTMODE_DEFENSE;
 	}
 
-	addGameTask(&Game::playerSetFightModes, player->getID(), fightMode, rawChaseMode != 0, rawSecureMode != 0);
+	addGameTask(&Game::playerSetFightModes, player->getID(), fightMode, rawChaseMode != 0);
 }
 
 void ProtocolGame::parseAttack(NetworkMessage& msg)
@@ -1031,9 +1029,8 @@ void ProtocolGame::parsePlayerPurchase(NetworkMessage& msg)
 	uint16_t id = msg.get<uint16_t>();
 	uint8_t count = msg.getByte();
 	uint8_t amount = msg.getByte();
-	bool ignoreCap = msg.getByte() != 0;
 	bool inBackpacks = msg.getByte() != 0;
-	addGameTaskTimed(DISPATCHER_TASK_EXPIRATION, &Game::playerPurchaseItem, player->getID(), id, count, amount, ignoreCap, inBackpacks);
+	addGameTaskTimed(DISPATCHER_TASK_EXPIRATION, &Game::playerPurchaseItem, player->getID(), id, count, amount, inBackpacks);
 }
 
 void ProtocolGame::parsePlayerSale(NetworkMessage& msg)
@@ -2019,22 +2016,8 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 	// Reserved field kept empty for client protocol compatibility.
 	msg.add<uint16_t>(0x00);
 
-	if (it.weight != 0) {
-		std::ostringstream ss;
-		if (it.weight < 10) {
-			ss << "0.0" << it.weight;
-		} else if (it.weight < 100) {
-			ss << "0." << it.weight;
-		} else {
-			std::string weightString = std::to_string(it.weight);
-			weightString.insert(weightString.end() - 2, '.');
-			ss << weightString;
-		}
-		ss << " oz";
-		msg.addString(ss.str());
-	} else {
-		msg.add<uint16_t>(0x00);
-	}
+	// Reserved market-description field.
+	msg.add<uint16_t>(0x00);
 
 	MarketStatistics* statistics = IOMarket::getInstance().getPurchaseStatistics(itemId);
 	if (statistics) {
@@ -2504,8 +2487,6 @@ void ProtocolGame::sendFightModes()
 	msg.addByte(0xA7);
 	msg.addByte(player->fightMode);
 	msg.addByte(player->chaseMode);
-	msg.addByte(player->secureMode);
-	msg.addByte(PVP_MODE_DOVE);
 	writeToOutputBuffer(msg);
 }
 
@@ -2560,9 +2541,6 @@ void ProtocolGame::sendAddCreature(const Creature* creature, const Position& pos
 	} else {
 		msg.addByte(0x00);
 	}
-
-	msg.addByte(0x00); // can change pvp framing option
-	msg.addByte(0x00); // expert mode button enabled
 
 	msg.add<uint16_t>(0x00); // URL (string) to ingame store images
 	msg.add<uint16_t>(25); // premium coin package size
@@ -3043,9 +3021,6 @@ void ProtocolGame::AddPlayerStats(NetworkMessage& msg)
 	msg.add<uint16_t>(std::min<int32_t>(player->getHealth(), std::numeric_limits<uint16_t>::max()));
 	msg.add<uint16_t>(std::min<int32_t>(player->getMaxHealth(), std::numeric_limits<uint16_t>::max()));
 
-	msg.add<uint32_t>(player->getFreeCapacity());
-	msg.add<uint32_t>(player->getCapacity());
-
 	msg.add<uint64_t>(player->getExperience());
 
 	msg.add<uint16_t>(player->getLevel());
@@ -3246,7 +3221,6 @@ void ProtocolGame::AddShopItem(NetworkMessage& msg, const ShopInfo& item)
 	}
 
 	msg.addString(item.realName);
-	msg.add<uint32_t>(it.weight);
 	msg.add<uint32_t>(item.buyPrice);
 	msg.add<uint32_t>(item.sellPrice);
 }

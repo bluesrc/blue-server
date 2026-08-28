@@ -29,7 +29,6 @@ const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 	{"canedithouses", PlayerFlag_CanEditHouses},
 	{"cannotbebanned", PlayerFlag_CannotBeBanned},
 	{"cannotbepushed", PlayerFlag_CannotBePushed},
-	{"hasinfinitecapacity", PlayerFlag_HasInfiniteCapacity},
 	{"canpushallcreatures", PlayerFlag_CanPushAllCreatures},
 	{"cantalkredprivate", PlayerFlag_CanTalkRedPrivate},
 	{"cantalkredchannel", PlayerFlag_CanTalkRedChannel},

@@ -80,7 +80,7 @@ enum AttrTypes_t {
 	ATTR_NAME = 24,
 	ATTR_ARTICLE = 25,
 	ATTR_PLURALNAME = 26,
-	ATTR_WEIGHT = 27,
+	ATTR_RESERVED_27 = 27,
 	ATTR_ATTACK = 28,
 	ATTR_DEFENSE = 29,
 	ATTR_EXTRADEFENSE = 30,
@@ -498,7 +498,7 @@ class ItemAttributes
 		}
 
 		const static uint32_t intAttributeTypes = ITEM_ATTRIBUTE_ACTIONID | ITEM_ATTRIBUTE_UNIQUEID | ITEM_ATTRIBUTE_DATE
-			| ITEM_ATTRIBUTE_WEIGHT | ITEM_ATTRIBUTE_OWNER
+			| ITEM_ATTRIBUTE_OWNER
 			| ITEM_ATTRIBUTE_DURATION | ITEM_ATTRIBUTE_DECAYSTATE | ITEM_ATTRIBUTE_CORPSEOWNER | ITEM_ATTRIBUTE_CHARGES
 			| ITEM_ATTRIBUTE_FLUIDTYPE | ITEM_ATTRIBUTE_DOORID | ITEM_ATTRIBUTE_DECAYTO | ITEM_ATTRIBUTE_WRAPID | ITEM_ATTRIBUTE_STOREITEM;
 		const static uint32_t stringAttributeTypes = ITEM_ATTRIBUTE_DESCRIPTION | ITEM_ATTRIBUTE_TEXT | ITEM_ATTRIBUTE_WRITER
@@ -803,11 +803,8 @@ class Item : virtual public Thing
 
 		static std::string getDescription(const ItemType& it, int32_t lookDistance, const Item* item = nullptr, int32_t subType = -1, bool addArticle = true);
 		static std::string getNameDescription(const ItemType& it, const Item* item = nullptr, int32_t subType = -1, bool addArticle = true);
-		static std::string getWeightDescription(const ItemType& it, uint32_t weight, uint32_t count = 1);
-
 		std::string getDescription(int32_t lookDistance) const override final;
 		std::string getNameDescription() const;
-		std::string getWeightDescription() const;
 
 		//serialization
 		virtual Attr_ReadValue readAttr(AttrTypes_t attr, PropStream& propStream);
@@ -834,13 +831,6 @@ class Item : virtual public Thing
 		// Returns the player that is holding this item in his inventory
 		Player* getHoldingPlayer() const;
 
-		virtual uint32_t getWeight() const;
-		uint32_t getBaseWeight() const {
-			if (hasAttribute(ITEM_ATTRIBUTE_WEIGHT)) {
-				return getIntAttr(ITEM_ATTRIBUTE_WEIGHT);
-			}
-			return items[id].weight;
-		}
 		int32_t getSlotPosition() const {
 			return items[id].slotPosition;
 		}
@@ -1003,8 +993,6 @@ class Item : virtual public Thing
 		uint16_t id; // the same id as in ItemType
 
 	private:
-		std::string getWeightDescription(uint32_t weight) const;
-
 		std::unique_ptr<ItemAttributes> attributes;
 
 		uint32_t referenceCounter = 0;

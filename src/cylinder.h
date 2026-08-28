@@ -16,7 +16,7 @@ enum cylinderflags_t {
 	FLAG_NOLIMIT = 1 << 0, //Bypass limits like capacity/container limits, blocking items/creatures etc.
 	FLAG_IGNOREBLOCKITEM = 1 << 1, //Bypass movable blocking item checks
 	FLAG_IGNOREBLOCKCREATURE = 1 << 2, //Bypass creature checks
-	FLAG_CHILDISOWNER = 1 << 3, //Used by containers to query capacity of the carrier (player)
+	FLAG_CHILDISOWNER = 1 << 3, // Used by child containers to query their top-level owner.
 	FLAG_PATHFINDING = 1 << 4, //An additional check is done for floor changing/teleport items
 	FLAG_IGNOREFIELDDAMAGE = 1 << 5, //Bypass field damage checks
 	FLAG_IGNORENOTMOVEABLE = 1 << 6, //Bypass check for mobility
@@ -39,7 +39,7 @@ class Cylinder : virtual public Thing
 			* -1 is a internal value and means add to a empty position, with no destItem
 		  * \param thing the object to move/add
 		  * \param count is the amount that we want to move/add
-		  * \param flags if FLAG_CHILDISOWNER if set the query is from a child-cylinder (check cap etc.)
+		  * \param flags if FLAG_CHILDISOWNER is set, the query comes from a child cylinder.
 			* if FLAG_NOLIMIT is set blocking items/container limits is ignored
 		  * \param actor the creature trying to add the thing
 		  * \returns ReturnValue holds the return value

@@ -363,7 +363,7 @@ class Game
 		void playerAcceptTrade(uint32_t playerId);
 		void playerLookInTrade(uint32_t playerId, bool lookAtCounterOffer, uint8_t index);
 		void playerPurchaseItem(uint32_t playerId, uint16_t spriteId, uint8_t count, uint8_t amount,
-		                        bool ignoreCap = false, bool inBackpacks = false);
+		                        bool inBackpacks = false);
 		void playerSellItem(uint32_t playerId, uint16_t spriteId, uint8_t count,
 		                    uint8_t amount, bool ignoreEquipped = false);
 		void playerCloseShop(uint32_t playerId);
@@ -372,7 +372,7 @@ class Game
 		void playerSetAttackedCreature(uint32_t playerId, uint32_t creatureId);
 		void playerFollowCreature(uint32_t playerId, uint32_t creatureId);
 		void playerCancelAttackAndFollow(uint32_t playerId);
-		void playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool chaseMode, bool secureMode);
+		void playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool chaseMode);
 		void playerLookAt(uint32_t playerId, const Position& pos, uint8_t stackPos);
 		void playerLookInBattleList(uint32_t playerId, uint32_t creatureId);
 		void playerRequestAddVip(uint32_t playerId, const std::string& name);

@@ -1668,7 +1668,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ITEM_ATTRIBUTE_NAME)
 	registerEnum(ITEM_ATTRIBUTE_ARTICLE)
 	registerEnum(ITEM_ATTRIBUTE_PLURALNAME)
-	registerEnum(ITEM_ATTRIBUTE_WEIGHT)
 	registerEnum(ITEM_ATTRIBUTE_OWNER)
 	registerEnum(ITEM_ATTRIBUTE_DURATION)
 	registerEnum(ITEM_ATTRIBUTE_DECAYSTATE)
@@ -1756,7 +1755,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(PlayerFlag_CanEditHouses)
 	registerEnum(PlayerFlag_CannotBeBanned)
 	registerEnum(PlayerFlag_CannotBePushed)
-	registerEnum(PlayerFlag_HasInfiniteCapacity)
 	registerEnum(PlayerFlag_CanPushAllCreatures)
 	registerEnum(PlayerFlag_CanTalkRedPrivate)
 	registerEnum(PlayerFlag_CanTalkRedChannel)
@@ -1964,7 +1962,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_FIRSTGODOWNSTAIRS)
 	registerEnum(RETURNVALUE_FIRSTGOUPSTAIRS)
 	registerEnum(RETURNVALUE_CONTAINERNOTENOUGHROOM)
-	registerEnum(RETURNVALUE_NOTENOUGHCAPACITY)
 	registerEnum(RETURNVALUE_CANNOTPICKUP)
 	registerEnum(RETURNVALUE_THISISIMPOSSIBLE)
 	registerEnum(RETURNVALUE_DEPOTISFULL)
@@ -1986,7 +1983,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE)
 	registerEnum(RETURNVALUE_YOUCANONLYUSEITONCREATURES)
 	registerEnum(RETURNVALUE_CREATUREISNOTREACHABLE)
-	registerEnum(RETURNVALUE_TURNSECUREMODETOATTACKUNMARKEDPLAYERS)
 	registerEnum(RETURNVALUE_YOUNEEDPREMIUMACCOUNT)
 	registerEnum(RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE)
 	registerEnum(RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE)
@@ -2456,7 +2452,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Item", "getCount", LuaScriptInterface::luaItemGetCount);
 	registerMethod("Item", "getCharges", LuaScriptInterface::luaItemGetCharges);
 	registerMethod("Item", "getFluidType", LuaScriptInterface::luaItemGetFluidType);
-	registerMethod("Item", "getWeight", LuaScriptInterface::luaItemGetWeight);
 
 	registerMethod("Item", "getSubType", LuaScriptInterface::luaItemGetSubType);
 
@@ -2610,11 +2605,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getAccountType", LuaScriptInterface::luaPlayerGetAccountType);
 	registerMethod("Player", "setAccountType", LuaScriptInterface::luaPlayerSetAccountType);
 
-	registerMethod("Player", "getCapacity", LuaScriptInterface::luaPlayerGetCapacity);
-	registerMethod("Player", "setCapacity", LuaScriptInterface::luaPlayerSetCapacity);
-
-	registerMethod("Player", "getFreeCapacity", LuaScriptInterface::luaPlayerGetFreeCapacity);
-
 	registerMethod("Player", "getDepotChest", LuaScriptInterface::luaPlayerGetDepotChest);
 	registerMethod("Player", "getInbox", LuaScriptInterface::luaPlayerGetInbox);
 	registerMethod("Player", "getBackpack", LuaScriptInterface::luaPlayerGetBackpack);
@@ -2752,7 +2742,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "getContainerIndex", LuaScriptInterface::luaPlayerGetContainerIndex);
 
 	registerMethod("Player", "hasChaseMode", LuaScriptInterface::luaPlayerHasChaseMode);
-	registerMethod("Player", "hasSecureMode", LuaScriptInterface::luaPlayerHasSecureMode);
 	registerMethod("Player", "getFightMode", LuaScriptInterface::luaPlayerGetFightMode);
 	registerMethod("Player", "isInCombat", LuaScriptInterface::luaPlayerIsInCombat);
 	registerMethod("Player", "isInPokemonCombat", LuaScriptInterface::luaPlayerIsInPokemonCombat);
@@ -2887,8 +2876,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Vocation", "getRequiredSkillTries", LuaScriptInterface::luaVocationGetRequiredSkillTries);
 	registerMethod("Vocation", "getRequiredManaSpent", LuaScriptInterface::luaVocationGetRequiredManaSpent);
 
-	registerMethod("Vocation", "getCapacityGain", LuaScriptInterface::luaVocationGetCapacityGain);
-
 	registerMethod("Vocation", "getHealthGain", LuaScriptInterface::luaVocationGetHealthGain);
 	registerMethod("Vocation", "getHealthGainTicks", LuaScriptInterface::luaVocationGetHealthGainTicks);
 	registerMethod("Vocation", "getHealthGainAmount", LuaScriptInterface::luaVocationGetHealthGainAmount);
@@ -2980,7 +2967,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "getCharges", LuaScriptInterface::luaItemTypeGetCharges);
 	registerMethod("ItemType", "getFluidSource", LuaScriptInterface::luaItemTypeGetFluidSource);
 	registerMethod("ItemType", "getCapacity", LuaScriptInterface::luaItemTypeGetCapacity);
-	registerMethod("ItemType", "getWeight", LuaScriptInterface::luaItemTypeGetWeight);
 
 	registerMethod("ItemType", "getElementType", LuaScriptInterface::luaItemTypeGetElementType);
 	registerMethod("ItemType", "getElementDamage", LuaScriptInterface::luaItemTypeGetElementDamage);
@@ -6706,18 +6692,6 @@ int LuaScriptInterface::luaItemGetFluidType(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaItemGetWeight(lua_State* L)
-{
-	// item:getWeight()
-	Item* item = getUserdata<Item>(L, 1);
-	if (item) {
-		lua_pushnumber(L, item->getWeight());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaItemGetSubType(lua_State* L)
 {
 	// item:getSubType()
@@ -8621,44 +8595,6 @@ int LuaScriptInterface::luaPlayerSetAccountType(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerGetCapacity(lua_State* L)
-{
-	// player:getCapacity()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getCapacity());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerSetCapacity(lua_State* L)
-{
-	// player:setCapacity(capacity)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		player->capacity = getNumber<uint32_t>(L, 2);
-		player->sendStats();
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetFreeCapacity(lua_State* L)
-{
-	// player:getFreeCapacity()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getFreeCapacity());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaPlayerGetDepotChest(lua_State* L)
 {
 	// player:getDepotChest(depotId[, autoCreate = false])
@@ -10432,18 +10368,6 @@ int LuaScriptInterface::luaPlayerHasChaseMode(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerHasSecureMode(lua_State* L)
-{
-	// player:hasSecureMode()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		pushBoolean(L, player->secureMode);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaPlayerGetFightMode(lua_State* L)
 {
 	// player:getFightMode()
@@ -11436,18 +11360,6 @@ int LuaScriptInterface::luaVocationGetRequiredManaSpent(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaVocationGetCapacityGain(lua_State* L)
-{
-	// vocation:getCapacityGain()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getCapGain());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaVocationGetHealthGain(lua_State* L)
 {
 	// vocation:getHealthGain()
@@ -12383,23 +12295,6 @@ int LuaScriptInterface::luaItemTypeGetCapacity(lua_State* L)
 	}
 	return 1;
 }
-
-int LuaScriptInterface::luaItemTypeGetWeight(lua_State* L)
-{
-	// itemType:getWeight([count = 1])
-	uint16_t count = getNumber<uint16_t>(L, 2, 1);
-
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (!itemType) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint64_t weight = static_cast<uint64_t>(itemType->weight) * std::max<int32_t>(1, count);
-	lua_pushnumber(L, weight);
-	return 1;
-}
-
 
 int LuaScriptInterface::luaItemTypeGetCorpseType(lua_State* L)
 {

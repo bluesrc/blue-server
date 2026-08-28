@@ -46,13 +46,6 @@ enum fightMode_t : uint8_t {
 	FIGHTMODE_DEFENSE = 3,
 };
 
-enum pvpMode_t : uint8_t {
-	PVP_MODE_DOVE = 0,
-	PVP_MODE_WHITE_HAND = 1,
-	PVP_MODE_YELLOW_HAND = 2,
-	PVP_MODE_RED_FIST = 3,
-};
-
 enum tradestate_t : uint8_t {
 	TRADE_NONE,
 	TRADE_INITIATED,
@@ -277,10 +270,6 @@ class Player final : public Creature, public Cylinder
 			return client->getVersion();
 		}
 
-		bool hasSecureMode() const {
-			return secureMode;
-		}
-
 		void setParty(Party* party) {
 			this->party = party;
 		}
@@ -449,25 +438,6 @@ class Player final : public Creature, public Cylinder
 
 		bool removeItemOfType(uint16_t itemId, uint32_t amount, int32_t subType, bool ignoreEquipped = false) const;
 
-		uint32_t getCapacity() const {
-			if (hasFlag(PlayerFlag_CannotPickupItem)) {
-				return 0;
-			} else if (hasFlag(PlayerFlag_HasInfiniteCapacity)) {
-				return std::numeric_limits<uint32_t>::max();
-			}
-			return capacity;
-		}
-
-		uint32_t getFreeCapacity() const {
-			if (hasFlag(PlayerFlag_CannotPickupItem)) {
-				return 0;
-			} else if (hasFlag(PlayerFlag_HasInfiniteCapacity)) {
-				return std::numeric_limits<uint32_t>::max();
-			} else {
-				return std::max<int32_t>(0, capacity - inventoryWeight);
-			}
-		}
-
 		int32_t getMaxHealth() const override {
 			return std::max<int32_t>(1, healthMax + varStats[STAT_MAXHITPOINTS]);
 		}
@@ -601,10 +571,6 @@ class Player final : public Creature, public Cylinder
 		void setFightMode(fightMode_t mode) {
 			fightMode = mode;
 		}
-		void setSecureMode(bool mode) {
-			secureMode = mode;
-		}
-
 		//combat functions
 		bool setAttackedCreature(Creature* creature) override;
 		bool isImmune(CombatType_t type) const override;
@@ -1210,13 +1176,9 @@ class Player final : public Creature, public Cylinder
 		std::forward_list<Condition*> getMuteConditions() const;
 
 		void checkTradeState(const Item* item);
-		bool hasCapacity(const Item* item, uint32_t count) const;
-
 		void gainExperience(uint64_t gainExp, Creature* source);
 		void addExperience(Creature* source, uint64_t exp, bool sendText = false);
 		void removeExperience(uint64_t exp, bool sendText = false);
-
-		void updateInventoryWeight();
 
 		void setNextWalkActionTask(SchedulerTask* task);
 		void setNextWalkTask(SchedulerTask* task);
@@ -1319,8 +1281,6 @@ class Player final : public Creature, public Cylinder
 		StoreInbox* storeInbox = nullptr;
 		DepotLocker_ptr depotLocker = nullptr;
 
-		uint32_t inventoryWeight = 0;
-		uint32_t capacity = 40000;
 		uint32_t damageImmunities = 0;
 		uint32_t conditionImmunities = 0;
 		uint32_t conditionSuppressions = 0;
@@ -1365,7 +1325,6 @@ class Player final : public Creature, public Cylinder
 		AccountType_t accountType = ACCOUNT_TYPE_NORMAL;
 
 		bool chaseMode = false;
-		bool secureMode = false;
 		bool inMarket = false;
 		bool wasMounted = false;
 		bool ghostMode = false;

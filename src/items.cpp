@@ -14,7 +14,6 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"type", ITEM_PARSE_TYPE},
 	{"description", ITEM_PARSE_DESCRIPTION},
 	{"tmmove", ITEM_PARSE_TMMOVENAME},
-	{"weight", ITEM_PARSE_WEIGHT},
 	{"showcount", ITEM_PARSE_SHOWCOUNT},
 	{"rotateto", ITEM_PARSE_ROTATETO},
 	{"moveable", ITEM_PARSE_MOVEABLE},
@@ -562,11 +561,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 				case ITEM_PARSE_TMMOVENAME: {
 					it.tmMoveName = valueAttribute.as_string();
-					break;
-				}
-
-				case ITEM_PARSE_WEIGHT: {
-					it.weight = pugi::cast<uint32_t>(valueAttribute.value());
 					break;
 				}
 

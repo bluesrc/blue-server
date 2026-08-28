@@ -395,7 +395,6 @@ function getPlayerLastLoginSaved(cid) local p = Player(cid) return p and p:getLa
 getPlayerLastLogin = getPlayerLastLoginSaved
 function getPlayerName(cid) local p = Player(cid) return p and p:getName() or false end
 getPlayerNameDescription = getPlayerName
-function getPlayerFreeCap(cid) local p = Player(cid) return p and (p:getFreeCapacity() / 100) or false end
 function getPlayerPosition(cid) local p = Player(cid) return p and p:getPosition() or false end
 function getPlayerMagLevel(cid) local p = Player(cid) return p and p:getMagicLevel() or false end
 function getPlayerSpentMana(cid) local p = Player(cid) return p and p:getManaSpent() or false end
@@ -577,7 +576,6 @@ getIpByName = getIPByPlayerName
 function setPlayerStorageValue(cid, key, value) local p = Player(cid) return p and p:setStorageValue(key, value) or false end
 function doPlayerSetNameDescription() debugPrint("Deprecated function, use Player:onLook event instead.") return true end
 function doPlayerSendChannelMessage(cid, author, message, SpeakClasses, channel) local p = Player(cid) return p and p:sendChannelMessage(author, message, SpeakClasses, channel) or false end
-function doPlayerSetMaxCapacity(cid, cap) local p = Player(cid) return p and p:setCapacity(cap) or false end
 function doPlayerSetSpecialDescription() debugPrint("Deprecated function, use Player:onLook event instead.") return true end
 function doPlayerSetBalance(cid, balance) local p = Player(cid) return p and p:setBankBalance(balance) or false end
 function doPlayerSetPromotionLevel(cid, level) local p = Player(cid) return p and p:setVocation(p:getVocation():getPromotion()) or false end
@@ -881,7 +879,6 @@ isMoveable = isMovable
 
 function getItemName(itemId) return ItemType(itemId):getName() end
 getItemNameById = getItemName
-function getItemWeight(itemId, ...) return ItemType(itemId):getWeight(...) / 100 end
 function getItemDescriptions(itemId)
 	local itemType = ItemType(itemId)
 	return {
@@ -897,15 +894,6 @@ function getItemIdByName(name)
 		return false
 	end
 	return id
-end
-function getItemWeightByUID(uid, ...)
-	local item = Item(uid)
-	if item == nil then
-		return false
-	end
-
-	local itemType = ItemType(item:getId())
-	return itemType:isStackable() and (itemType:getWeight(item:getCount(), ...) / 100) or (itemType:getWeight(1, ...) / 100)
 end
 function getItemRWInfo(uid)
 	local item = Item(uid)

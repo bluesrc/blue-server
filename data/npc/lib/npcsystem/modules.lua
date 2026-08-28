@@ -925,7 +925,7 @@ if Modules == nil then
 	end
 
 	-- Callback onBuy() function. If you wish, you can change certain Npc to use your onBuy().
-	function ShopModule:callbackOnBuy(cid, itemid, subType, amount, ignoreCap, inBackpacks)
+	function ShopModule:callbackOnBuy(cid, itemid, subType, amount, canDropOnMap, inBackpacks)
 		local shopItem = self:getShopItem(itemid, subType)
 		if shopItem == nil then
 			error("[ShopModule.onBuy] shopItem == nil")
@@ -958,7 +958,7 @@ if Modules == nil then
 		end
 
 		local subType = shopItem.subType or 1
-		local a, b = doNpcSellItem(cid, itemid, amount, subType, ignoreCap, inBackpacks, ITEM_SHOPPING_BAG)
+		local a, b = doNpcSellItem(cid, itemid, amount, subType, canDropOnMap, inBackpacks, ITEM_SHOPPING_BAG)
 		if a < amount then
 			local msgId = MESSAGE_NEEDMORESPACE
 			if a == 0 then
@@ -1058,8 +1058,8 @@ if Modules == nil then
 		local parseInfo = {[TAG_PLAYERNAME] = Player(cid):getName()}
 		local msg = module.npcHandler:parseMessage(module.npcHandler:getMessage(MESSAGE_SENDTRADE), parseInfo)
 		openShopWindow(cid, itemWindow,
-			function(cid, itemid, subType, amount, ignoreCap, inBackpacks) module.npcHandler:onBuy(cid, itemid, subType, amount, ignoreCap, inBackpacks) end,
-			function(cid, itemid, subType, amount, ignoreCap, inBackpacks) module.npcHandler:onSell(cid, itemid, subType, amount, ignoreCap, inBackpacks) end)
+			function(cid, itemid, subType, amount, canDropOnMap, inBackpacks) module.npcHandler:onBuy(cid, itemid, subType, amount, canDropOnMap, inBackpacks) end,
+			function(cid, itemid, subType, amount, ignoreEquipped, inBackpacks) module.npcHandler:onSell(cid, itemid, subType, amount, ignoreEquipped, inBackpacks) end)
 		module.npcHandler:say(msg, cid)
 		return true
 	end

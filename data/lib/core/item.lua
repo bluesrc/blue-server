@@ -295,20 +295,6 @@ do
 			ss:append('.')
 		end
 
-		if lookDistance <= 1 then
-			local weight = obj:getWeight()
-			local count = item and item:getCount() or 1
-			if weight ~= 0 and it:isPickupable() then
-				ss:append('\n')
-				if it:isStackable() and count > 1 and it:hasShowCount() then
-					ss:append('They weigh ')
-				else
-					ss:append('It weighs ')
-				end
-				ss:append('%.2f oz.', weight / 100)
-			end
-		end
-
 		local desc = it:getDescription()
 		if item then
 			local specialDesc = item:getSpecialDescription()

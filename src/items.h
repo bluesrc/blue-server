@@ -44,7 +44,6 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_TYPE,
 	ITEM_PARSE_DESCRIPTION,
 	ITEM_PARSE_TMMOVENAME,
-	ITEM_PARSE_WEIGHT,
 	ITEM_PARSE_SHOWCOUNT,
 	ITEM_PARSE_ROTATETO,
 	ITEM_PARSE_MOVEABLE,
@@ -275,7 +274,6 @@ class ItemType
 		std::unique_ptr<Abilities> abilities;
 		std::unique_ptr<ConditionDamage> conditionDamage;
 
-		uint32_t weight = 0;
 		uint32_t levelDoor = 0;
 		uint32_t decayTime = 0;
 		uint32_t wieldInfo = 0;
