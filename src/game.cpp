@@ -3803,6 +3803,12 @@ void Game::playerTurn(uint32_t playerId, Direction dir)
 
 	player->resetIdleTime();
 	internalCreatureTurn(player, dir);
+
+	Pokeball* activePokeball = player->getActivePokemon();
+	Pokemon* activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
+	if (activePokemon && !activePokemon->isRemoved()) {
+		internalCreatureTurn(activePokemon, dir);
+	}
 }
 
 void Game::playerRequestOutfit(uint32_t playerId)
