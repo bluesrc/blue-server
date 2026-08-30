@@ -9,10 +9,46 @@
 #include "pokeball.h"
 
 #include <fmt/format.h>
+#include <cctype>
 
 extern ConfigManager g_config;
 extern Game g_game;
 extern Pokemons g_pokemons;
+
+namespace {
+	bool isValidAccountName(const std::string& name)
+	{
+		if (name.length() < 4 || name.length() > 32) {
+			return false;
+		}
+		return std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0; });
+	}
+
+	bool formatNewCharacterName(std::string& name)
+	{
+		if (name.length() < 3 || name.length() > 20 || name.front() == ' ' || name.back() == ' ') {
+			return false;
+		}
+
+		bool wordStart = true;
+		for (char& rawCharacter : name) {
+			const auto ch = static_cast<unsigned char>(rawCharacter);
+			if (ch == ' ') {
+				if (wordStart) {
+					return false;
+				}
+				wordStart = true;
+				continue;
+			}
+			if (!std::isalpha(ch)) {
+				return false;
+			}
+			rawCharacter = static_cast<char>(wordStart ? std::toupper(ch) : std::tolower(ch));
+			wordStart = false;
+		}
+		return !wordStart;
+	}
+}
 
 Account IOLoginData::loadAccount(uint32_t accno)
 {
@@ -84,6 +120,75 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 			account.characters.push_back(result->getString("name"));
 		} while (result->next());
 	}
+	return true;
+}
+
+bool IOLoginData::createAccount(const std::string& name, const std::string& password, std::string& error)
+{
+	if (!isValidAccountName(name)) {
+		error = "Account name must contain 4 to 32 letters or numbers.";
+		return false;
+	}
+	if (password.length() < 6 || password.length() > 29) {
+		error = "Password must contain 6 to 29 characters.";
+		return false;
+	}
+
+	Database& db = Database::getInstance();
+	if (db.storeQuery(fmt::format("SELECT `id` FROM `accounts` WHERE `name` = {:s}", db.escapeString(name)))) {
+		error = "This account name is already in use.";
+		return false;
+	}
+
+	if (!db.executeQuery(fmt::format(
+		"INSERT INTO `accounts` (`name`, `password`, `email`, `creation`) VALUES ({:s}, {:s}, '', {:d})",
+		db.escapeString(name), db.escapeString(transformToSHA1(password)), time(nullptr)))) {
+		error = "Could not create the account. Please try another name.";
+		return false;
+	}
+
+	error = "Account created successfully.";
+	return true;
+}
+
+bool IOLoginData::createCharacter(uint32_t accountId, std::string name, PlayerSex_t sex, uint32_t maxCharacters, std::string& error)
+{
+	if (!formatNewCharacterName(name)) {
+		error = "Character name must contain 3 to 20 letters and single spaces.";
+		return false;
+	}
+	if (sex > PLAYERSEX_LAST) {
+		error = "Invalid character sex.";
+		return false;
+	}
+
+	Database& db = Database::getInstance();
+	DBResult_ptr result = db.storeQuery(fmt::format(
+		"SELECT COUNT(*) AS `count` FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0", accountId));
+	if (!result || result->getNumber<uint32_t>("count") >= maxCharacters) {
+		error = "This account has reached its character limit.";
+		return false;
+	}
+	if (db.storeQuery(fmt::format("SELECT `id` FROM `players` WHERE `name` = {:s}", db.escapeString(name)))) {
+		error = "This character name is already in use.";
+		return false;
+	}
+
+	const TownMap& towns = g_game.map.towns.getTowns();
+	if (towns.empty()) {
+		error = "No starting town is configured.";
+		return false;
+	}
+	const uint32_t townId = towns.begin()->first;
+	const uint16_t lookType = sex == PLAYERSEX_MALE ? 128 : 136;
+	if (!db.executeQuery(fmt::format(
+		"INSERT INTO `players` (`name`, `account_id`, `sex`, `looktype`, `town_id`) VALUES ({:s}, {:d}, {:d}, {:d}, {:d})",
+		db.escapeString(name), accountId, static_cast<uint8_t>(sex), lookType, townId))) {
+		error = "Could not create the character. Please try another name.";
+		return false;
+	}
+
+	error = "Character created successfully.";
 	return true;
 }
 
