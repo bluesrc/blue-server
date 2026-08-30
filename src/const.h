@@ -224,7 +224,6 @@ enum FluidTypes_t : uint8_t {
 	FLUID_SLIME = FLUID_GREEN,
 	FLUID_LEMONADE = FLUID_YELLOW,
 	FLUID_MILK = FLUID_WHITE,
-	FLUID_MANA = FLUID_PURPLE,
 
 	FLUID_LIFE = FLUID_RED + 8,
 	FLUID_OIL = FLUID_BROWN + 8,
@@ -247,7 +246,7 @@ enum FluidTypes_t : uint8_t {
 const uint8_t reverseFluidMap[] = {
 	FLUID_EMPTY,
 	FLUID_WATER,
-	FLUID_MANA,
+	FLUID_PURPLE,
 	FLUID_BEER,
 	FLUID_EMPTY,
 	FLUID_BLOOD,
@@ -260,7 +259,7 @@ const uint8_t reverseFluidMap[] = {
 const uint8_t clientToServerFluidMap[] = {
 	FLUID_EMPTY,
 	FLUID_WATER,
-	FLUID_MANA,
+	FLUID_PURPLE,
 	FLUID_BEER,
 	FLUID_MUD,
 	FLUID_BLOOD,
@@ -329,7 +328,6 @@ enum Icons_t {
 	ICON_BURN = 1 << 1,
 	ICON_ENERGY =  1 << 2,
 	ICON_DRUNK = 1 << 3,
-	ICON_MANASHIELD = 1 << 4,
 	ICON_PARALYZE = 1 << 5,
 	ICON_HASTE = 1 << 6,
 	ICON_SWORDS = 1 << 7,
@@ -346,7 +344,7 @@ enum Icons_t {
 enum WieldInfo_t {
 	WIELDINFO_NONE = 0 << 0,
 	WIELDINFO_LEVEL = 1 << 0,
-	WIELDINFO_VOCREQ = 1 << 2,
+	WIELDINFO_RESERVED = 1 << 2,
 	WIELDINFO_PREMIUM = 1 << 3,
 };
 
@@ -463,8 +461,6 @@ enum PlayerFlags : uint64_t {
 	PlayerFlag_CanSenseInvisibility = 1 << 7,
 	PlayerFlag_IgnoredByPokemons = 1 << 8,
 	PlayerFlag_NotGainInFight = 1 << 9,
-	PlayerFlag_HasInfiniteMana = 1 << 10,
-	PlayerFlag_HasInfiniteSoul = 1 << 11,
 	PlayerFlag_HasNoExhaustion = 1 << 12,
 	PlayerFlag_CannotUseMoves = 1 << 13,
 	PlayerFlag_CannotPickupItem = 1 << 14,
@@ -478,7 +474,6 @@ enum PlayerFlags : uint64_t {
 	PlayerFlag_CanTalkRedChannel = 1 << 23,
 	PlayerFlag_TalkOrangeHelpChannel = 1 << 24,
 	PlayerFlag_NotGainExperience = 1 << 25,
-	PlayerFlag_NotGainMana = 1 << 26,
 	PlayerFlag_NotGainHealth = 1 << 27,
 	PlayerFlag_NotGainSkill = 1 << 28,
 	PlayerFlag_SetMaxSpeed = 1 << 29,

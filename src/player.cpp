@@ -25,7 +25,6 @@
 extern ConfigManager g_config;
 extern Game g_game;
 extern Chat* g_chat;
-extern Vocations g_vocations;
 extern MoveEvents* g_moveEvents;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
@@ -38,6 +37,20 @@ uint32_t Player::playerAutoID = 0x10000000;
 namespace {
 	constexpr int32_t ACTIVE_POKEMON_TELEPORT_RANGE_X = Map::maxClientViewportX - 1;
 	constexpr int32_t ACTIVE_POKEMON_TELEPORT_RANGE_Y = Map::maxClientViewportY - 1;
+	constexpr uint32_t PLAYER_ATTACK_SPEED = 2000;
+	constexpr uint32_t PLAYER_HEALTH_GAIN_PER_LEVEL = 5;
+	constexpr uint32_t PLAYER_HEALTH_REGEN_TICKS = 6000;
+	constexpr uint32_t PLAYER_HEALTH_REGEN_AMOUNT = 1;
+	constexpr uint32_t PLAYER_NO_PONG_KICK_TIME = 60;
+
+	struct SkillProgression {
+		uint32_t base;
+		double multiplier;
+	};
+
+	constexpr std::array<SkillProgression, SKILL_LAST + 1> SKILL_PROGRESSIONS {{
+		{20, 1.1}, // Fishing. Add future skills here, independently from player roles/titles.
+	}};
 }
 
 Player::Player(ProtocolGame_ptr p) :
@@ -83,18 +96,6 @@ Player::~Player()
 	setEditHouse(nullptr);
 }
 
-bool Player::setVocation(uint16_t vocId)
-{
-	Vocation* voc = g_vocations.getVocation(vocId);
-	if (!voc) {
-		return false;
-	}
-	vocation = voc;
-
-	updateRegeneration();
-	return true;
-}
-
 bool Player::isPushable() const
 {
 	if (hasFlag(PlayerFlag_CannotBePushed)) {
@@ -112,10 +113,6 @@ std::string Player::getDescription(int32_t lookDistance) const
 
 		if (group->access) {
 			s << " You are " << group->name << '.';
-		} else if (vocation->getId() != VOCATION_NONE) {
-			s << " You are " << vocation->getVocDescription() << '.';
-		} else {
-			s << " You have no vocation.";
 		}
 	} else {
 		s << name;
@@ -132,10 +129,6 @@ std::string Player::getDescription(int32_t lookDistance) const
 
 		if (group->access) {
 			s << " is " << group->name << '.';
-		} else if (vocation->getId() != VOCATION_NONE) {
-			s << " is " << vocation->getVocDescription() << '.';
-		} else {
-			s << " has no vocation.";
 		}
 	}
 
@@ -210,7 +203,17 @@ void Player::removeConditionSuppressions(uint32_t conditions)
 
 uint32_t Player::getAttackSpeed() const
 {
-	return vocation->getAttackSpeed();
+	return PLAYER_ATTACK_SPEED;
+}
+
+uint64_t Player::getRequiredSkillTries(skills_t skill, uint16_t level)
+{
+	if (skill < SKILL_FIRST || skill > SKILL_LAST || level <= MINIMUM_SKILL_LEVEL) {
+		return 0;
+	}
+
+	const SkillProgression& progression = SKILL_PROGRESSIONS[skill];
+	return static_cast<uint64_t>(progression.base * std::pow(progression.multiplier, level - (MINIMUM_SKILL_LEVEL + 1)));
 }
 
 float Player::getAttackFactor() const
@@ -270,8 +273,8 @@ uint16_t Player::getClientIcons() const
 
 void Player::addSkillAdvance(skills_t skill, uint64_t count)
 {
-	uint64_t currReqTries = vocation->getReqSkillTries(skill, skills[skill].level);
-	uint64_t nextReqTries = vocation->getReqSkillTries(skill, skills[skill].level + 1);
+	uint64_t currReqTries = getRequiredSkillTries(skill, skills[skill].level);
+	uint64_t nextReqTries = getRequiredSkillTries(skill, skills[skill].level + 1);
 	if (currReqTries >= nextReqTries) {
 		//player has reached max skill
 		return;
@@ -295,7 +298,7 @@ void Player::addSkillAdvance(skills_t skill, uint64_t count)
 
 		sendUpdateSkills = true;
 		currReqTries = nextReqTries;
-		nextReqTries = vocation->getReqSkillTries(skill, skills[skill].level + 1);
+		nextReqTries = getRequiredSkillTries(skill, skills[skill].level + 1);
 		if (currReqTries >= nextReqTries) {
 			count = 0;
 			break;
@@ -336,12 +339,12 @@ void Player::removeSkillTries(skills_t skill, uint64_t count, bool notify/* = fa
 			break;
 		}
 
-		skills[skill].tries = vocation->getReqSkillTries(skill, skills[skill].level);
+		skills[skill].tries = getRequiredSkillTries(skill, skills[skill].level);
 		skills[skill].level--;
 	}
 
 	skills[skill].tries = std::max<int32_t>(0, skills[skill].tries - count);
-	skills[skill].percent = Player::getPercentLevel(skills[skill].tries, vocation->getReqSkillTries(skill, skills[skill].level));
+	skills[skill].percent = Player::getPercentLevel(skills[skill].tries, getRequiredSkillTries(skill, skills[skill].level));
 
 	if (notify) {
 		bool sendUpdateSkills = false;
@@ -370,13 +373,6 @@ void Player::setVarStats(stats_t stat, int32_t modifier)
 			break;
 		}
 
-		case STAT_MAXMANAPOINTS: {
-			if (getMana() > getMaxMana()) {
-				changeMana(getMaxMana() - getMana());
-			}
-			break;
-		}
-
 		default: {
 			break;
 		}
@@ -387,8 +383,6 @@ int32_t Player::getDefaultStats(stats_t stat) const
 {
 	switch (stat) {
 		case STAT_MAXHITPOINTS: return healthMax;
-		case STAT_MAXMANAPOINTS: return manaMax;
-		case STAT_MAGICPOINTS: return getBaseMagicLevel();
 		default: return 0;
 	}
 }
@@ -798,7 +792,6 @@ void Player::sendStats()
 {
 	if (client) {
 		client->sendStats();
-		lastStatsTrainingTime = getOfflineTrainingTime() / 60 / 1000;
 	}
 }
 
@@ -833,7 +826,7 @@ void Player::sendPing()
 		setAttackedCreature(nullptr);
 	}
 
-	int32_t noPongKickTime = vocation->getNoPongKickTime();
+	int32_t noPongKickTime = PLAYER_NO_PONG_KICK_TIME * 1000;
 	if (pzLocked && noPongKickTime < 60000) {
 		noPongKickTime = 60000;
 	}
@@ -1283,13 +1276,6 @@ void Player::onCreatureMove(Creature* creature, const Tile* newTile, const Posit
 
 	// close modal windows
 	if (!modalWindows.empty()) {
-		// TODO: This shouldn't be hard-coded
-		for (uint32_t modalWindowId : modalWindows) {
-			if (modalWindowId == std::numeric_limits<uint32_t>::max()) {
-				sendTextMessage(MESSAGE_EVENT_ADVANCE, "Offline training aborted.");
-				break;
-			}
-		}
 		modalWindows.clear();
 	}
 
@@ -1486,10 +1472,6 @@ void Player::onThink(uint32_t interval)
 		}
 	}
 
-	addOfflineTrainingTime(interval);
-	if (lastStatsTrainingTime != getOfflineTrainingTime() / 60 / 1000) {
-		sendStats();
-	}
 }
 
 void Player::markPokemonCombat(int64_t expiresAt)
@@ -1557,110 +1539,6 @@ void Player::drainHealth(Creature* attacker, int32_t damage)
 	sendStats();
 }
 
-void Player::drainMana(Creature* attacker, int32_t manaLoss)
-{
-	onAttacked();
-	changeMana(-manaLoss);
-
-	if (attacker) {
-		addDamagePoints(attacker, manaLoss);
-	}
-
-	sendStats();
-}
-
-void Player::addManaSpent(uint64_t amount)
-{
-	if (hasFlag(PlayerFlag_NotGainMana)) {
-		return;
-	}
-
-	uint64_t currReqMana = vocation->getReqMana(magLevel);
-	uint64_t nextReqMana = vocation->getReqMana(magLevel + 1);
-	if (currReqMana >= nextReqMana) {
-		//player has reached max magic level
-		return;
-	}
-
-	g_events->eventPlayerOnGainSkillTries(this, SKILL_MAGLEVEL, amount);
-	if (amount == 0) {
-		return;
-	}
-
-	bool sendUpdateStats = false;
-	while ((manaSpent + amount) >= nextReqMana) {
-		amount -= nextReqMana - manaSpent;
-
-		magLevel++;
-		manaSpent = 0;
-
-		sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("You advanced to magic level {:d}.", magLevel));
-
-		g_creatureEvents->playerAdvance(this, SKILL_MAGLEVEL, magLevel - 1, magLevel);
-
-		sendUpdateStats = true;
-		currReqMana = nextReqMana;
-		nextReqMana = vocation->getReqMana(magLevel + 1);
-		if (currReqMana >= nextReqMana) {
-			return;
-		}
-	}
-
-	manaSpent += amount;
-
-	uint8_t oldPercent = magLevelPercent;
-	if (nextReqMana > currReqMana) {
-		magLevelPercent = Player::getPercentLevel(manaSpent, nextReqMana);
-	} else {
-		magLevelPercent = 0;
-	}
-
-	if (oldPercent != magLevelPercent) {
-		sendUpdateStats = true;
-	}
-
-	if (sendUpdateStats) {
-		sendStats();
-	}
-}
-
-void Player::removeManaSpent(uint64_t amount, bool notify/* = false*/)
-{
-	if (amount == 0) {
-		return;
-	}
-
-	uint32_t oldLevel = magLevel;
-	uint8_t oldPercent = magLevelPercent;
-
-	while (amount > manaSpent && magLevel > 0) {
-		amount -= manaSpent;
-		manaSpent = vocation->getReqMana(magLevel);
-		magLevel--;
-	}
-
-	manaSpent -= amount;
-
-	uint64_t nextReqMana = vocation->getReqMana(magLevel + 1);
-	if (nextReqMana > vocation->getReqMana(magLevel)) {
-		magLevelPercent = Player::getPercentLevel(manaSpent, nextReqMana);
-	} else {
-		magLevelPercent = 0;
-	}
-
-	if (notify) {
-		bool sendUpdateStats = false;
-		if (oldLevel != magLevel) {
-			sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("You were downgraded to magic level {:d}.", magLevel));
-			sendUpdateStats = true;
-		}
-
-		if (sendUpdateStats || oldPercent != magLevelPercent) {
-			sendStats();
-		}
-	}
-}
-
 void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = false*/)
 {
 	uint64_t currLevelExp = Player::getExpForLevel(level);
@@ -1704,10 +1582,8 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 	uint32_t prevLevel = level;
 	while (experience >= nextLevelExp) {
 		++level;
-		healthMax += vocation->getHPGain();
-		health += vocation->getHPGain();
-		manaMax += vocation->getManaGain();
-		mana += vocation->getManaGain();
+		healthMax += PLAYER_HEALTH_GAIN_PER_LEVEL;
+		health += PLAYER_HEALTH_GAIN_PER_LEVEL;
 		currLevelExp = nextLevelExp;
 		nextLevelExp = Player::getExpForLevel(level + 1);
 		if (currLevelExp >= nextLevelExp) {
@@ -1718,7 +1594,6 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 
 	if (prevLevel != level) {
 		health = getMaxHealth();
-		mana = getMaxMana();
 
 		updateBaseSpeed();
 		setBaseSpeed(getBaseSpeed());
@@ -1790,14 +1665,12 @@ void Player::removeExperience(uint64_t exp, bool sendText/* = false*/)
 
 	while (level > 1 && experience < currLevelExp) {
 		--level;
-		healthMax = std::max<int32_t>(0, healthMax - vocation->getHPGain());
-		manaMax = std::max<int32_t>(0, manaMax - vocation->getManaGain());
+		healthMax = std::max<int32_t>(0, healthMax - PLAYER_HEALTH_GAIN_PER_LEVEL);
 		currLevelExp = Player::getExpForLevel(level);
 	}
 
 	if (oldLevel != level) {
 		health = getMaxHealth();
-		mana = getMaxMana();
 
 		updateBaseSpeed();
 		setBaseSpeed(getBaseSpeed());
@@ -1837,42 +1710,6 @@ uint8_t Player::getPercentLevel(uint64_t count, uint64_t nextLevelCount)
 		return 0;
 	}
 	return result;
-}
-
-void Player::onBlockHit()
-{
-	// Trainers do not gain Tibia shielding skill from blocked hits.
-}
-
-void Player::onAttackedCreatureBlockHit(BlockType_t blockType)
-{
-	lastAttackBlockType = blockType;
-
-	switch (blockType) {
-		case BLOCK_NONE: {
-			addAttackSkillPoint = true;
-			bloodHitCount = 30;
-			shieldBlockCount = 30;
-			break;
-		}
-
-		case BLOCK_DEFENSE:
-		case BLOCK_ARMOR: {
-			//need to draw blood every 30 hits
-			if (bloodHitCount > 0) {
-				addAttackSkillPoint = true;
-				--bloodHitCount;
-			} else {
-				addAttackSkillPoint = false;
-			}
-			break;
-		}
-
-		default: {
-			addAttackSkillPoint = false;
-			break;
-		}
-	}
 }
 
 BlockType_t Player::blockHit(Creature* attacker, CombatType_t combatType, int32_t& damage,
@@ -1981,20 +1818,13 @@ void Player::death(Creature* lastHitCreature)
 			}
 		}
 
-		//Magic level loss
-		uint64_t sumMana = 0;
-		for (uint32_t i = 1; i <= magLevel; ++i) {
-			sumMana += vocation->getReqMana(i);
-		}
-
 		double deathLossPercent = getLostPercent() * (unfairFightReduction / 100.);
-		removeManaSpent(static_cast<uint64_t>((sumMana + manaSpent) * deathLossPercent), false);
 
-		//Skill loss
+		// Generic skill loss. Fishing is currently the only registered skill.
 		for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; ++i) { //for each skill
 			uint64_t sumSkillTries = 0;
 			for (uint16_t c = MINIMUM_SKILL_LEVEL + 1; c <= skills[i].level; ++c) { //sum up all required tries for all skill levels
-				sumSkillTries += vocation->getReqSkillTries(i, c);
+				sumSkillTries += getRequiredSkillTries(static_cast<skills_t>(i), c);
 			}
 
 			sumSkillTries += skills[i].tries;
@@ -2009,14 +1839,11 @@ void Player::death(Creature* lastHitCreature)
 		if (expLoss != 0) {
 			uint32_t oldLevel = level;
 
-			if (vocation->getId() == VOCATION_NONE || level > 7) {
-				experience -= expLoss;
-			}
+			experience -= expLoss;
 
 			while (level > 1 && experience < Player::getExpForLevel(level)) {
 				--level;
-				healthMax = std::max<int32_t>(0, healthMax - vocation->getHPGain());
-				manaMax = std::max<int32_t>(0, manaMax - vocation->getManaGain());
+				healthMax = std::max<int32_t>(0, healthMax - PLAYER_HEALTH_GAIN_PER_LEVEL);
 			}
 
 			if (oldLevel != level) {
@@ -2048,7 +1875,6 @@ void Player::death(Creature* lastHitCreature)
 		sendReLoginWindow(unfairFightReduction);
 
 		health = healthMax;
-		mana = manaMax;
 
 		auto it = conditions.begin(), end = conditions.end();
 		while (it != end) {
@@ -3551,30 +3377,6 @@ void Player::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/
 	sendStats();
 }
 
-void Player::changeMana(int32_t manaChange)
-{
-	if (!hasFlag(PlayerFlag_HasInfiniteMana)) {
-		if (manaChange > 0) {
-			mana += std::min<int32_t>(manaChange, getMaxMana() - mana);
-		} else {
-			mana = std::max<int32_t>(0, mana + manaChange);
-		}
-	}
-
-	sendStats();
-}
-
-void Player::changeSoul(int32_t soulChange)
-{
-	if (soulChange > 0) {
-		soul += std::min<int32_t>(soulChange, vocation->getSoulMax() - soul);
-	} else {
-		soul = std::max<int32_t>(0, soul + soulChange);
-	}
-
-	sendStats();
-}
-
 bool Player::canWear(uint32_t lookType, uint8_t addons) const
 {
 	if (group->access) {
@@ -3703,20 +3505,10 @@ void Player::setSex(PlayerSex_t newSex)
 	sex = newSex;
 }
 
-bool Player::isPromoted() const
-{
-	uint16_t promotedVocation = g_vocations.getPromotedVocation(vocation->getId());
-	return promotedVocation == VOCATION_NONE && vocation->getId() != promotedVocation;
-}
-
 double Player::getLostPercent() const
 {
 	int32_t deathLosePercent = g_config.getNumber(ConfigManager::DEATH_LOSE_PERCENT);
 	if (deathLosePercent != -1) {
-		if (isPromoted()) {
-			deathLosePercent -= 3;
-		}
-
 		deathLosePercent -= blessings.count();
 		return std::max<int32_t>(0, deathLosePercent) / 100.;
 	}
@@ -3730,9 +3522,6 @@ double Player::getLostPercent() const
 	}
 
 	double percentReduction = 0;
-	if (isPromoted()) {
-		percentReduction += 30;
-	}
 	percentReduction += blessings.count() * 8;
 	return lossPercent * (1 - (percentReduction / 100.)) / 100.;
 }
@@ -4065,132 +3854,6 @@ void Player::dismount()
 	defaultOutfit.lookMount = 0;
 }
 
-bool Player::addOfflineTrainingTries(skills_t skill, uint64_t tries)
-{
-	if (tries == 0 || skill == SKILL_LEVEL) {
-		return false;
-	}
-
-	bool sendUpdate = false;
-	uint32_t oldSkillValue, newSkillValue;
-	long double oldPercentToNextLevel, newPercentToNextLevel;
-
-	if (skill == SKILL_MAGLEVEL) {
-		uint64_t currReqMana = vocation->getReqMana(magLevel);
-		uint64_t nextReqMana = vocation->getReqMana(magLevel + 1);
-
-		if (currReqMana >= nextReqMana) {
-			return false;
-		}
-
-		oldSkillValue = magLevel;
-		oldPercentToNextLevel = static_cast<long double>(manaSpent * 100) / nextReqMana;
-
-		g_events->eventPlayerOnGainSkillTries(this, SKILL_MAGLEVEL, tries);
-		uint32_t currMagLevel = magLevel;
-
-		while ((manaSpent + tries) >= nextReqMana) {
-			tries -= nextReqMana - manaSpent;
-
-			magLevel++;
-			manaSpent = 0;
-
-			g_creatureEvents->playerAdvance(this, SKILL_MAGLEVEL, magLevel - 1, magLevel);
-
-			sendUpdate = true;
-			currReqMana = nextReqMana;
-			nextReqMana = vocation->getReqMana(magLevel + 1);
-
-			if (currReqMana >= nextReqMana) {
-				tries = 0;
-				break;
-			}
-		}
-
-		manaSpent += tries;
-
-		if (magLevel != currMagLevel) {
-			sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("You advanced to magic level {:d}.", magLevel));
-		}
-
-		uint8_t newPercent;
-		if (nextReqMana > currReqMana) {
-			newPercent = Player::getPercentLevel(manaSpent, nextReqMana);
-			newPercentToNextLevel = static_cast<long double>(manaSpent * 100) / nextReqMana;
-		} else {
-			newPercent = 0;
-			newPercentToNextLevel = 0;
-		}
-
-		if (newPercent != magLevelPercent) {
-			magLevelPercent = newPercent;
-			sendUpdate = true;
-		}
-
-		newSkillValue = magLevel;
-	} else {
-		uint64_t currReqTries = vocation->getReqSkillTries(skill, skills[skill].level);
-		uint64_t nextReqTries = vocation->getReqSkillTries(skill, skills[skill].level + 1);
-		if (currReqTries >= nextReqTries) {
-			return false;
-		}
-
-		oldSkillValue = skills[skill].level;
-		oldPercentToNextLevel = static_cast<long double>(skills[skill].tries * 100) / nextReqTries;
-
-		g_events->eventPlayerOnGainSkillTries(this, skill, tries);
-		uint32_t currSkillLevel = skills[skill].level;
-
-		while ((skills[skill].tries + tries) >= nextReqTries) {
-			tries -= nextReqTries - skills[skill].tries;
-
-			skills[skill].level++;
-			skills[skill].tries = 0;
-			skills[skill].percent = 0;
-
-			g_creatureEvents->playerAdvance(this, skill, (skills[skill].level - 1), skills[skill].level);
-
-			sendUpdate = true;
-			currReqTries = nextReqTries;
-			nextReqTries = vocation->getReqSkillTries(skill, skills[skill].level + 1);
-
-			if (currReqTries >= nextReqTries) {
-				tries = 0;
-				break;
-			}
-		}
-
-		skills[skill].tries += tries;
-
-		if (currSkillLevel != skills[skill].level) {
-			sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("You advanced to {:s} level {:d}.", getSkillName(skill), skills[skill].level));
-		}
-
-		uint8_t newPercent;
-		if (nextReqTries > currReqTries) {
-			newPercent = Player::getPercentLevel(skills[skill].tries, nextReqTries);
-			newPercentToNextLevel = static_cast<long double>(skills[skill].tries * 100) / nextReqTries;
-		} else {
-			newPercent = 0;
-			newPercentToNextLevel = 0;
-		}
-
-		if (skills[skill].percent != newPercent) {
-			skills[skill].percent = newPercent;
-			sendUpdate = true;
-		}
-
-		newSkillValue = skills[skill].level;
-	}
-
-	if (sendUpdate) {
-		sendSkills();
-	}
-
-	sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Your {:s} skill changed from level {:d} (with {:.2f}% progress towards level {:d}) to level {:d} (with {:.2f}% progress towards level {:d})", ucwords(getSkillName(skill)), oldSkillValue, oldPercentToNextLevel, (oldSkillValue + 1), newSkillValue, newPercentToNextLevel, (newSkillValue + 1)));
-	return sendUpdate;
-}
-
 bool Player::hasModalWindowOpen(uint32_t modalWindowId) const
 {
 	return find(modalWindows.begin(), modalWindows.end(), modalWindowId) != modalWindows.end();
@@ -4361,16 +4024,10 @@ void Player::setGuild(Guild* guild)
 
 void Player::updateRegeneration()
 {
-	if (!vocation) {
-		return;
-	}
-
 	Condition* condition = getCondition(CONDITION_REGENERATION, CONDITIONID_DEFAULT);
 	if (condition) {
-		condition->setParam(CONDITION_PARAM_HEALTHGAIN, vocation->getHealthGainAmount());
-		condition->setParam(CONDITION_PARAM_HEALTHTICKS, vocation->getHealthGainTicks() * 1000);
-		condition->setParam(CONDITION_PARAM_MANAGAIN, vocation->getManaGainAmount());
-		condition->setParam(CONDITION_PARAM_MANATICKS, vocation->getManaGainTicks() * 1000);
+		condition->setParam(CONDITION_PARAM_HEALTHGAIN, PLAYER_HEALTH_REGEN_AMOUNT);
+		condition->setParam(CONDITION_PARAM_HEALTHTICKS, PLAYER_HEALTH_REGEN_TICKS);
 	}
 }
 

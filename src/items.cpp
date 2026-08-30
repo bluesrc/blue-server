@@ -46,23 +46,9 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"speed", ITEM_PARSE_SPEED},
 	{"healthgain", ITEM_PARSE_HEALTHGAIN},
 	{"healthticks", ITEM_PARSE_HEALTHTICKS},
-	{"managain", ITEM_PARSE_MANAGAIN},
-	{"manaticks", ITEM_PARSE_MANATICKS},
-	{"manashield", ITEM_PARSE_MANASHIELD},
-	{"skillsword", ITEM_PARSE_SKILLSWORD},
-	{"skillaxe", ITEM_PARSE_SKILLAXE},
-	{"skillclub", ITEM_PARSE_SKILLCLUB},
-	{"skilldist", ITEM_PARSE_SKILLDIST},
 	{"skillfish", ITEM_PARSE_SKILLFISH},
-	{"skillshield", ITEM_PARSE_SKILLSHIELD},
-	{"skillfist", ITEM_PARSE_SKILLFIST},
 	{"maxhitpoints", ITEM_PARSE_MAXHITPOINTS},
 	{"maxhitpointspercent", ITEM_PARSE_MAXHITPOINTSPERCENT},
-	{"maxmanapoints", ITEM_PARSE_MAXMANAPOINTS},
-	{"maxmanapointspercent", ITEM_PARSE_MAXMANAPOINTSPERCENT},
-	{"magicpoints", ITEM_PARSE_MAGICPOINTS},
-	{"magiclevelpoints", ITEM_PARSE_MAGICPOINTS},
-	{"magicpointspercent", ITEM_PARSE_MAGICPOINTSPERCENT},
 	{"fieldabsorbpercentenergy", ITEM_PARSE_FIELDABSORBPERCENTENERGY},
 	{"fieldabsorbpercentfire", ITEM_PARSE_FIELDABSORBPERCENTFIRE},
 	{"fieldabsorbpercentpoison", ITEM_PARSE_FIELDABSORBPERCENTPOISON},
@@ -79,7 +65,6 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"absorbpercentholy", ITEM_PARSE_ABSORBPERCENTHOLY},
 	{"absorbpercentdeath", ITEM_PARSE_ABSORBPERCENTDEATH},
 	{"absorbpercentlifedrain", ITEM_PARSE_ABSORBPERCENTLIFEDRAIN},
-	{"absorbpercentmanadrain", ITEM_PARSE_ABSORBPERCENTMANADRAIN},
 	{"absorbpercentdrown", ITEM_PARSE_ABSORBPERCENTDROWN},
 	{"absorbpercentphysical", ITEM_PARSE_ABSORBPERCENTPHYSICAL},
 	{"absorbpercenthealing", ITEM_PARSE_ABSORBPERCENTHEALING},
@@ -152,7 +137,6 @@ const std::unordered_map<std::string, FluidTypes_t> FluidTypesMap = {
 	{"slime", FLUID_SLIME},
 	{"lemonade", FLUID_LEMONADE},
 	{"milk", FLUID_MILK},
-	{"mana", FLUID_MANA},
 	{"life", FLUID_LIFE},
 	{"oil", FLUID_OIL},
 	{"urine", FLUID_URINE},
@@ -762,55 +746,8 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					break;
 				}
 
-				case ITEM_PARSE_MANAGAIN: {
-					abilities.regeneration = true;
-					abilities.manaGain = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANATICKS: {
-					abilities.regeneration = true;
-					abilities.manaTicks = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANASHIELD: {
-					abilities.manaShield = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_SKILLSWORD: {
-					abilities.skills[SKILL_SWORD] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLAXE: {
-					abilities.skills[SKILL_AXE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLCLUB: {
-					abilities.skills[SKILL_CLUB] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLDIST: {
-					abilities.skills[SKILL_DISTANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
 				case ITEM_PARSE_SKILLFISH: {
 					abilities.skills[SKILL_FISHING] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLSHIELD: {
-					abilities.skills[SKILL_SHIELD] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLFIST: {
-					abilities.skills[SKILL_FIST] = pugi::cast<int32_t>(valueAttribute.value());
 					break;
 				}
 
@@ -821,26 +758,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 				case ITEM_PARSE_MAXHITPOINTSPERCENT: {
 					abilities.statsPercent[STAT_MAXHITPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXMANAPOINTS: {
-					abilities.stats[STAT_MAXMANAPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXMANAPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAXMANAPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAGICPOINTS: {
-					abilities.stats[STAT_MAGICPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAGICPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAGICPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
 					break;
 				}
 
@@ -919,11 +836,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 				case ITEM_PARSE_ABSORBPERCENTLIFEDRAIN: {
 					abilities.absorbPercent[combatTypeToIndex(COMBAT_LIFEDRAIN)] += pugi::cast<int16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ABSORBPERCENTMANADRAIN: {
-					abilities.absorbPercent[combatTypeToIndex(COMBAT_MANADRAIN)] += pugi::cast<int16_t>(valueAttribute.value());
 					break;
 				}
 

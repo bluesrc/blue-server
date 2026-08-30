@@ -438,7 +438,6 @@ class Game
 		void combatGetTypeInfo(CombatType_t combatType, Creature* target, TextColor_t& color, uint8_t& effect);
 
 		bool combatChangeHealth(Creature* attacker, Creature* target, CombatDamage& damage);
-		bool combatChangeMana(Creature* attacker, Creature* target, CombatDamage& damage);
 
 		//animation help functions
 		void addCreatureHealth(const Creature* target);
@@ -463,8 +462,6 @@ class Game
 		const std::string& getMotdHash() const { return motdHash; }
 		uint32_t getMotdNum() const { return motdNum; }
 		void incrementMotdNum() { motdNum++; }
-
-		void sendOfflineTrainingDialog(Player* player);
 
 		const std::unordered_map<uint32_t, Player*>& getPlayers() const { return players; }
 		const std::map<uint32_t, Npc*>& getNpcs() const { return npcs; }
@@ -592,7 +589,6 @@ class Game
 
 		std::unordered_set<Tile*> tilesToClean;
 
-		ModalWindow offlineTrainingWindow { std::numeric_limits<uint32_t>::max(), "Choose a Skill", "Please choose a skill:" };
 
 		static constexpr uint8_t LIGHT_DAY = 250;
 		static constexpr uint8_t LIGHT_NIGHT = 40;

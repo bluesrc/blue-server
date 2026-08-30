@@ -10,7 +10,6 @@
 #include "movement.h"
 
 extern Game g_game;
-extern Vocations g_vocations;
 
 MoveEvents::MoveEvents() :
 	scriptInterface("MoveEvents Interface")
@@ -114,7 +113,6 @@ bool MoveEvents::registerEvent(Event_ptr event, const pugi::xml_node& node)
 				ItemType& it = Item::items.getItemType(id);
 				it.wieldInfo = moveEvent->getWieldInfo();
 				it.minReqLevel = moveEvent->getReqLevel();
-				it.vocationString = moveEvent->getVocationString();
 			}
 			addEvent(std::move(*moveEvent), id, itemIdMap);
 		}
@@ -128,7 +126,6 @@ bool MoveEvents::registerEvent(Event_ptr event, const pugi::xml_node& node)
 			ItemType& it = Item::items.getItemType(id);
 			it.wieldInfo = moveEvent->getWieldInfo();
 			it.minReqLevel = moveEvent->getReqLevel();
-			it.vocationString = moveEvent->getVocationString();
 
 			while (++id <= endId) {
 				addEvent(*moveEvent, id, itemIdMap);
@@ -136,7 +133,6 @@ bool MoveEvents::registerEvent(Event_ptr event, const pugi::xml_node& node)
 				ItemType& tit = Item::items.getItemType(id);
 				tit.wieldInfo = moveEvent->getWieldInfo();
 				tit.minReqLevel = moveEvent->getReqLevel();
-				tit.vocationString = moveEvent->getVocationString();
 			}
 		} else {
 			while (++id <= endId) {
@@ -224,7 +220,6 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 				ItemType& it = Item::items.getItemType(id);
 				it.wieldInfo = moveEvent->getWieldInfo();
 				it.minReqLevel = moveEvent->getReqLevel();
-				it.vocationString = moveEvent->getVocationString();
 			}
 		} else {
 			uint32_t iterId = 0;
@@ -233,7 +228,6 @@ bool MoveEvents::registerLuaFunction(MoveEvent* event)
 					ItemType& it = Item::items.getItemType(moveEvent->getItemIdRange().at(iterId));
 					it.wieldInfo = moveEvent->getWieldInfo();
 					it.minReqLevel = moveEvent->getReqLevel();
-					it.vocationString = moveEvent->getVocationString();
 				}
 				addEvent(*moveEvent, moveEvent->getItemIdRange().at(iterId), itemIdMap);
 			}
@@ -272,7 +266,6 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 				ItemType& it = Item::items.getItemType(id);
 				it.wieldInfo = moveEvent->getWieldInfo();
 				it.minReqLevel = moveEvent->getReqLevel();
-				it.vocationString = moveEvent->getVocationString();
 			}
 		} else {
 			auto v = moveEvent->getItemIdRange();
@@ -281,7 +274,6 @@ bool MoveEvents::registerLuaEvent(MoveEvent* event)
 					ItemType& it = Item::items.getItemType(*i);
 					it.wieldInfo = moveEvent->getWieldInfo();
 					it.minReqLevel = moveEvent->getReqLevel();
-					it.vocationString = moveEvent->getVocationString();
 				}
 				addEvent(*moveEvent, *i, itemIdMap);
 			}
@@ -654,40 +646,6 @@ bool MoveEvent::configureEvent(const pugi::xml_node& node)
 			}
 		}
 
-		//Gather vocation information
-		std::list<std::string> vocStringList;
-		for (auto vocationNode : node.children()) {
-			pugi::xml_attribute vocationNameAttribute = vocationNode.attribute("name");
-			if (!vocationNameAttribute) {
-				continue;
-			}
-
-			int32_t vocationId = g_vocations.getVocationId(vocationNameAttribute.as_string());
-			if (vocationId != -1) {
-				vocEquipMap[vocationId] = true;
-				if (vocationNode.attribute("showInDescription").as_bool(true)) {
-					vocStringList.push_back(asLowerCaseString(vocationNameAttribute.as_string()));
-				}
-			}
-		}
-
-		if (!vocEquipMap.empty()) {
-			wieldInfo |= WIELDINFO_VOCREQ;
-		}
-
-		for (const std::string& str : vocStringList) {
-			if (!vocationString.empty()) {
-				if (str != vocStringList.back()) {
-					vocationString.push_back(',');
-					vocationString.push_back(' ');
-				} else {
-					vocationString += " and ";
-				}
-			}
-
-			vocationString += str;
-			vocationString.push_back('s');
-		}
 	}
 	return true;
 }
@@ -730,11 +688,6 @@ uint32_t MoveEvent::RemoveItemField(Item*, Item*, const Position&)
 ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, Player* player, Item* item, slots_t slot, bool isCheck)
 {
 	if (!player->hasFlag(PlayerFlag_IgnoreEquipmentCheck) && moveEvent->getWieldInfo() != 0) {
-		const VocEquipMap& vocEquipMap = moveEvent->getVocEquipMap();
-		if (!vocEquipMap.empty() && vocEquipMap.find(player->getVocationId()) == vocEquipMap.end()) {
-			return RETURNVALUE_YOUDONTHAVEREQUIREDPROFESSION;
-		}
-
 		if (player->getLevel() < moveEvent->getReqLevel()) {
 			return RETURNVALUE_NOTENOUGHLEVEL;
 		}
@@ -769,11 +722,6 @@ ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, Player* player, Item* ite
 		player->addCondition(condition);
 	}
 
-	if (it.abilities->manaShield) {
-		Condition* condition = Condition::createCondition(static_cast<ConditionId_t>(slot), CONDITION_MANASHIELD, -1, 0);
-		player->addCondition(condition);
-	}
-
 	if (it.abilities->speed != 0) {
 		g_game.changeSpeed(player, it.abilities->speed);
 	}
@@ -792,14 +740,6 @@ ReturnValue MoveEvent::EquipItem(MoveEvent* moveEvent, Player* player, Item* ite
 
 		if (it.abilities->healthTicks != 0) {
 			condition->setParam(CONDITION_PARAM_HEALTHTICKS, it.abilities->healthTicks);
-		}
-
-		if (it.abilities->manaGain != 0) {
-			condition->setParam(CONDITION_PARAM_MANAGAIN, it.abilities->manaGain);
-		}
-
-		if (it.abilities->manaTicks != 0) {
-			condition->setParam(CONDITION_PARAM_MANATICKS, it.abilities->manaTicks);
 		}
 
 		player->addCondition(condition);
@@ -861,10 +801,6 @@ ReturnValue MoveEvent::DeEquipItem(MoveEvent*, Player* player, Item* item, slots
 
 	if (it.abilities->invisible) {
 		player->removeCondition(CONDITION_INVISIBLE, static_cast<ConditionId_t>(slot));
-	}
-
-	if (it.abilities->manaShield) {
-		player->removeCondition(CONDITION_MANASHIELD, static_cast<ConditionId_t>(slot));
 	}
 
 	if (it.abilities->speed != 0) {

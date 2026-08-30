@@ -73,22 +73,9 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_SPEED,
 	ITEM_PARSE_HEALTHGAIN,
 	ITEM_PARSE_HEALTHTICKS,
-	ITEM_PARSE_MANAGAIN,
-	ITEM_PARSE_MANATICKS,
-	ITEM_PARSE_MANASHIELD,
-	ITEM_PARSE_SKILLSWORD,
-	ITEM_PARSE_SKILLAXE,
-	ITEM_PARSE_SKILLCLUB,
-	ITEM_PARSE_SKILLDIST,
 	ITEM_PARSE_SKILLFISH,
-	ITEM_PARSE_SKILLSHIELD,
-	ITEM_PARSE_SKILLFIST,
 	ITEM_PARSE_MAXHITPOINTS,
 	ITEM_PARSE_MAXHITPOINTSPERCENT,
-	ITEM_PARSE_MAXMANAPOINTS,
-	ITEM_PARSE_MAXMANAPOINTSPERCENT,
-	ITEM_PARSE_MAGICPOINTS,
-	ITEM_PARSE_MAGICPOINTSPERCENT,
 	ITEM_PARSE_FIELDABSORBPERCENTENERGY,
 	ITEM_PARSE_FIELDABSORBPERCENTFIRE,
 	ITEM_PARSE_FIELDABSORBPERCENTPOISON,
@@ -102,7 +89,6 @@ enum ItemParseAttributes_t {
 	ITEM_PARSE_ABSORBPERCENTHOLY,
 	ITEM_PARSE_ABSORBPERCENTDEATH,
 	ITEM_PARSE_ABSORBPERCENTLIFEDRAIN,
-	ITEM_PARSE_ABSORBPERCENTMANADRAIN,
 	ITEM_PARSE_ABSORBPERCENTDROWN,
 	ITEM_PARSE_ABSORBPERCENTPHYSICAL,
 	ITEM_PARSE_ABSORBPERCENTHEALING,
@@ -139,8 +125,6 @@ enum ItemParseAttributes_t {
 struct Abilities {
 	uint32_t healthGain = 0;
 	uint32_t healthTicks = 0;
-	uint32_t manaGain = 0;
-	uint32_t manaTicks = 0;
 
 	uint32_t conditionImmunities = 0;
 	uint32_t conditionSuppressions = 0;
@@ -164,7 +148,6 @@ struct Abilities {
 	uint16_t elementDamage = 0;
 	CombatType_t elementType = COMBAT_NONE;
 
-	bool manaShield = false;
 	bool invisible = false;
 	bool regeneration = false;
 };
@@ -269,7 +252,6 @@ class ItemType
 		std::string pluralName;
 		std::string description;
 		std::string tmMoveName;
-		std::string vocationString;
 
 		std::unique_ptr<Abilities> abilities;
 		std::unique_ptr<ConditionDamage> conditionDamage;

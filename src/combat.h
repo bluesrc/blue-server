@@ -18,17 +18,6 @@ class Item;
 
 struct Position;
 
-//for luascript callback
-class ValueCallback final : public CallBack
-{
-	public:
-		explicit ValueCallback(formulaType_t type): type(type) {}
-		void getMinMaxValues(Player* player, CombatDamage& damage) const;
-
-	private:
-		formulaType_t type;
-};
-
 class TileCallback final : public CallBack
 {
 	public:
@@ -44,7 +33,6 @@ class TargetCallback final : public CallBack
 struct CombatParams {
 	std::forward_list<std::unique_ptr<const Condition>> conditionList;
 
-	std::unique_ptr<ValueCallback> valueCallback;
 	std::unique_ptr<TileCallback> tileCallback;
 	std::unique_ptr<TargetCallback> targetCallback;
 
@@ -160,7 +148,6 @@ class Combat
 		void clearConditions() {
 			params.conditionList.clear();
 		}
-		void setPlayerCombatValues(formulaType_t formulaType, double mina, double minb, double maxa, double maxb);
 		void postCombatEffects(Creature* caster, const Position& pos) const {
 			postCombatEffects(caster, pos, params);
 		}
@@ -175,13 +162,6 @@ class Combat
 
 		//configurable
 		CombatParams params;
-
-		//formula variables
-		formulaType_t formulaType = COMBAT_FORMULA_UNDEFINED;
-		double mina = 0.0;
-		double minb = 0.0;
-		double maxa = 0.0;
-		double maxb = 0.0;
 
 		std::unique_ptr<AreaCombat> area;
 };

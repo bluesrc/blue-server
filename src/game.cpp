@@ -35,7 +35,6 @@ extern Actions* g_actions;
 extern Chat* g_chat;
 extern TalkActions* g_talkActions;
 extern Moves* g_moves;
-extern Vocations g_vocations;
 extern GlobalEvents* g_globalEvents;
 extern CreatureEvents* g_creatureEvents;
 extern Events* g_events;
@@ -59,19 +58,7 @@ static bool isLootBagCylinder(const Player* player, const Cylinder* cylinder)
 	return cylinderItem && lootBag->isHoldingItem(cylinderItem);
 }
 
-Game::Game()
-{
-	offlineTrainingWindow.defaultEnterButton = 1;
-	offlineTrainingWindow.defaultEscapeButton = 0;
-	offlineTrainingWindow.choices.emplace_back("Sword Fighting and Shielding", SKILL_SWORD);
-	offlineTrainingWindow.choices.emplace_back("Axe Fighting and Shielding", SKILL_AXE);
-	offlineTrainingWindow.choices.emplace_back("Club Fighting and Shielding", SKILL_CLUB);
-	offlineTrainingWindow.choices.emplace_back("Distance Fighting and Shielding", SKILL_DISTANCE);
-	offlineTrainingWindow.choices.emplace_back("Magic Level and Shielding", SKILL_MAGLEVEL);
-	offlineTrainingWindow.buttons.emplace_back("Okay", offlineTrainingWindow.defaultEnterButton);
-	offlineTrainingWindow.buttons.emplace_back("Cancel", offlineTrainingWindow.defaultEscapeButton);
-	offlineTrainingWindow.priority = true;
-}
+Game::Game() = default;
 
 Game::~Game()
 {
@@ -4722,76 +4709,6 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 		message.position = targetPos;
 
 		SpectatorVec spectators;
-		if (targetPlayer && target->hasCondition(CONDITION_MANASHIELD) && damage.primary.type != COMBAT_UNDEFINEDDAMAGE) {
-			int32_t manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
-			if (manaDamage != 0) {
-				if (damage.origin != ORIGIN_NONE) {
-					const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-					if (!events.empty()) {
-						for (CreatureEvent* creatureEvent : events) {
-							creatureEvent->executeManaChange(target, attacker, damage);
-						}
-						healthChange = damage.primary.value + damage.secondary.value;
-						if (healthChange == 0) {
-							return true;
-						}
-						manaDamage = std::min<int32_t>(targetPlayer->getMana(), healthChange);
-					}
-				}
-
-				targetPlayer->drainMana(attacker, manaDamage);
-				map.getSpectators(spectators, targetPos, true, true);
-				addMagicEffect(spectators, targetPos, CONST_ME_LOSEENERGY);
-
-				std::string spectatorMessage;
-
-				message.primary.value = manaDamage;
-				message.primary.color = TEXTCOLOR_BLUE;
-
-				for (Creature* spectator : spectators) {
-					Player* tmpPlayer = spectator->getPlayer();
-					if (tmpPlayer->getPosition().z != targetPos.z) {
-						continue;
-					}
-
-					if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
-						message.type = MESSAGE_DAMAGE_DEALT;
-						message.text = fmt::format("{:s} loses {:d} mana due to your attack.", target->getNameDescription(), manaDamage);
-						message.text[0] = std::toupper(message.text[0]);
-					} else if (tmpPlayer == targetPlayer) {
-						message.type = MESSAGE_DAMAGE_RECEIVED;
-						if (!attacker) {
-							message.text = fmt::format("You lose {:d} mana.", manaDamage);
-						} else if (targetPlayer == attackerPlayer) {
-							message.text = fmt::format("You lose {:d} mana due to your own attack.", manaDamage);
-						} else {
-							message.text = fmt::format("You lose {:d} mana due to an attack by {:s}.", manaDamage, attacker->getNameDescription());
-						}
-					} else {
-						message.type = MESSAGE_DAMAGE_OTHERS;
-						if (spectatorMessage.empty()) {
-							if (!attacker) {
-								spectatorMessage = fmt::format("{:s} loses {:d} mana.", target->getNameDescription(), manaDamage);
-							} else if (attacker == target) {
-								spectatorMessage = fmt::format("{:s} loses {:d} mana due to {:s} own attack.", target->getNameDescription(), manaDamage, targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his");
-							} else {
-								spectatorMessage = fmt::format("{:s} loses {:d} mana due to an attack by {:s}.", target->getNameDescription(), manaDamage, attacker->getNameDescription());
-							}
-							spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-						}
-						message.text = spectatorMessage;
-					}
-					tmpPlayer->sendTextMessage(message);
-				}
-
-				damage.primary.value -= manaDamage;
-				if (damage.primary.value < 0) {
-					damage.secondary.value = std::max<int32_t>(0, damage.secondary.value + damage.primary.value);
-					damage.primary.value = 0;
-				}
-			}
-		}
-
 		int32_t realDamage = damage.primary.value + damage.secondary.value;
 		if (realDamage == 0) {
 			return true;
@@ -4953,125 +4870,6 @@ bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage
 					g_pokemons.executeHeldItemFaint(targetPokemon, currentSource, move);
 				}
 			}
-		}
-	}
-
-	return true;
-}
-
-bool Game::combatChangeMana(Creature* attacker, Creature* target, CombatDamage& damage)
-{
-	Player* targetPlayer = target->getPlayer();
-	if (!targetPlayer) {
-		return true;
-	}
-
-	int32_t manaChange = damage.primary.value + damage.secondary.value;
-	if (manaChange > 0) {
-		if (attacker) {
-		}
-
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-			if (!events.empty()) {
-				for (CreatureEvent* creatureEvent : events) {
-					creatureEvent->executeManaChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeMana(attacker, target, damage);
-			}
-		}
-
-		int32_t realManaChange = targetPlayer->getMana();
-		targetPlayer->changeMana(manaChange);
-		realManaChange = targetPlayer->getMana() - realManaChange;
-
-		if (realManaChange > 0 && !targetPlayer->isInGhostMode()) {
-			TextMessage message(MESSAGE_HEALED, "You gained " + std::to_string(realManaChange) + " mana.");
-			message.position = target->getPosition();
-			message.primary.value = realManaChange;
-			message.primary.color = TEXTCOLOR_MAYABLUE;
-			targetPlayer->sendTextMessage(message);
-		}
-	} else {
-		const Position& targetPos = target->getPosition();
-		if (!target->isAttackable()) {
-			if (!target->isInGhostMode()) {
-				addMagicEffect(targetPos, CONST_ME_POFF);
-			}
-			return false;
-		}
-
-		Player* attackerPlayer;
-		if (attacker) {
-			attackerPlayer = attacker->getPlayer();
-		} else {
-			attackerPlayer = nullptr;
-		}
-
-		int32_t manaLoss = std::min<int32_t>(targetPlayer->getMana(), -manaChange);
-		BlockType_t blockType = target->blockHit(attacker, COMBAT_MANADRAIN, manaLoss);
-		if (blockType != BLOCK_NONE) {
-			addMagicEffect(targetPos, CONST_ME_POFF);
-			return false;
-		}
-
-		if (manaLoss <= 0) {
-			return true;
-		}
-
-		if (damage.origin != ORIGIN_NONE) {
-			const auto& events = target->getCreatureEvents(CREATURE_EVENT_MANACHANGE);
-			if (!events.empty()) {
-				for (CreatureEvent* creatureEvent : events) {
-					creatureEvent->executeManaChange(target, attacker, damage);
-				}
-				damage.origin = ORIGIN_NONE;
-				return combatChangeMana(attacker, target, damage);
-			}
-		}
-
-		targetPlayer->drainMana(attacker, manaLoss);
-
-		std::string spectatorMessage;
-
-		TextMessage message;
-		message.position = targetPos;
-		message.primary.value = manaLoss;
-		message.primary.color = TEXTCOLOR_BLUE;
-
-		SpectatorVec spectators;
-		map.getSpectators(spectators, targetPos, false, true);
-		for (Creature* spectator : spectators) {
-			Player* tmpPlayer = spectator->getPlayer();
-			if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
-				message.type = MESSAGE_DAMAGE_DEALT;
-				message.text = fmt::format("{:s} loses {:d} mana due to your attack.", target->getNameDescription(), manaLoss);
-				message.text[0] = std::toupper(message.text[0]);
-			} else if (tmpPlayer == targetPlayer) {
-				message.type = MESSAGE_DAMAGE_RECEIVED;
-				if (!attacker) {
-					message.text = fmt::format("You lose {:d} mana.", manaLoss);
-				} else if (targetPlayer == attackerPlayer) {
-					message.text = fmt::format("You lose {:d} mana due to your own attack.", manaLoss);
-				} else {
-					message.text = fmt::format("You lose {:d} mana due to an attack by {:s}.", manaLoss, attacker->getNameDescription());
-				}
-			} else {
-				message.type = MESSAGE_DAMAGE_OTHERS;
-				if (spectatorMessage.empty()) {
-					if (!attacker) {
-						spectatorMessage = fmt::format("{:s} loses {:d} mana.", target->getNameDescription(), manaLoss);
-					} else if (attacker == target) {
-						spectatorMessage = fmt::format("{:s} loses {:d} mana due to {:s} own attack.", target->getNameDescription(), manaLoss, targetPlayer->getSex() == PLAYERSEX_FEMALE ? "her" : "his");
-					} else {
-						spectatorMessage = fmt::format("{:s} loses {:d} mana due to an attack by {:s}.", target->getNameDescription(), manaLoss, attacker->getNameDescription());
-					}
-					spectatorMessage[0] = std::toupper(spectatorMessage[0]);
-				}
-				message.text = spectatorMessage;
-			}
-			tmpPlayer->sendTextMessage(message);
 		}
 	}
 
@@ -6577,17 +6375,6 @@ void Game::forceRemoveCondition(uint32_t creatureId, ConditionType_t type)
 	creature->removeCondition(type, true);
 }
 
-void Game::sendOfflineTrainingDialog(Player* player)
-{
-	if (!player) {
-		return;
-	}
-
-	if (!player->hasModalWindowOpen(offlineTrainingWindow.id)) {
-		player->sendModalWindow(offlineTrainingWindow);
-	}
-}
-
 void Game::playerAnswerModalWindow(uint32_t playerId, uint32_t modalWindowId, uint8_t button, uint8_t choice)
 {
 	Player* player = getPlayerByID(playerId);
@@ -6601,25 +6388,8 @@ void Game::playerAnswerModalWindow(uint32_t playerId, uint32_t modalWindowId, ui
 
 	player->onModalWindowHandled(modalWindowId);
 
-	// offline training, hard-coded
-	if (modalWindowId == std::numeric_limits<uint32_t>::max()) {
-		if (button == offlineTrainingWindow.defaultEnterButton) {
-			if (choice == SKILL_SWORD || choice == SKILL_AXE || choice == SKILL_CLUB || choice == SKILL_DISTANCE || choice == SKILL_MAGLEVEL) {
-				BedItem* bedItem = player->getBedItem();
-				if (bedItem && bedItem->sleep(player)) {
-					player->setOfflineTrainingSkill(choice);
-					return;
-				}
-			}
-		} else {
-			player->sendTextMessage(MESSAGE_EVENT_ADVANCE, "Offline training aborted.");
-		}
-
-		player->setBedItem(nullptr);
-	} else {
-		for (auto creatureEvent : player->getCreatureEvents(CREATURE_EVENT_MODALWINDOW)) {
-			creatureEvent->executeModalWindow(player, modalWindowId, button, choice);
-		}
+	for (auto creatureEvent : player->getCreatureEvents(CREATURE_EVENT_MODALWINDOW)) {
+		creatureEvent->executeModalWindow(player, modalWindowId, button, choice);
 	}
 }
 

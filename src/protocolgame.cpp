@@ -1399,7 +1399,6 @@ void ProtocolGame::sendBasicData()
 		msg.addByte(0);
 		msg.add<uint32_t>(0);
 	}
-	msg.addByte(player->getVocation()->getClientId());
 	msg.add<uint16_t>(0); // reserved action list; Pokemon moves use their dedicated packet
 	writeToOutputBuffer(msg);
 }
@@ -1958,10 +1957,10 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 		msg.add<uint16_t>(0x00);
 	}
 
-	// Retired Tibia magic-level requirement field.
+	// Reserved market description field.
 	msg.add<uint16_t>(0x00);
 
-	msg.addString(it.vocationString);
+	msg.add<uint16_t>(0x00);
 
 	// Reserved field kept empty for client protocol compatibility.
 	msg.add<uint16_t>(0x00);
@@ -1982,16 +1981,6 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId)
 			}
 
 			ss << getSkillName(i) << ' ' << std::showpos << it.abilities->skills[i] << std::noshowpos;
-		}
-
-		if (it.abilities->stats[STAT_MAGICPOINTS] != 0) {
-			if (separator) {
-				ss << ", ";
-			} else {
-				separator = true;
-			}
-
-			ss << "magic level " << std::showpos << it.abilities->stats[STAT_MAGICPOINTS] << std::noshowpos;
 		}
 
 		if (it.abilities->speed != 0) {
@@ -3018,40 +3007,14 @@ void ProtocolGame::AddPlayerStats(NetworkMessage& msg)
 {
 	msg.addByte(0xA0);
 
-	msg.add<uint16_t>(std::min<int32_t>(player->getHealth(), std::numeric_limits<uint16_t>::max()));
-	msg.add<uint16_t>(std::min<int32_t>(player->getMaxHealth(), std::numeric_limits<uint16_t>::max()));
-
+	msg.add<uint32_t>(std::max<int32_t>(0, player->getHealth()));
+	msg.add<uint32_t>(std::max<int32_t>(0, player->getMaxHealth()));
 	msg.add<uint64_t>(player->getExperience());
-
 	msg.add<uint16_t>(player->getLevel());
 	msg.addByte(player->getLevelPercent());
-
-	msg.add<uint16_t>(100); // base xp gain rate
-	msg.add<uint16_t>(0); // xp voucher
-	msg.add<uint16_t>(0); // low level bonus
-	msg.add<uint16_t>(0); // xp boost
-	msg.add<uint16_t>(100); // stamina multiplier (100 = x1.0)
-
-	msg.add<uint16_t>(std::min<int32_t>(player->getMana(), std::numeric_limits<uint16_t>::max()));
-	msg.add<uint16_t>(std::min<int32_t>(player->getMaxMana(), std::numeric_limits<uint16_t>::max()));
-
-	msg.addByte(std::min<uint32_t>(player->getMagicLevel(), std::numeric_limits<uint8_t>::max()));
-	msg.addByte(std::min<uint32_t>(player->getBaseMagicLevel(), std::numeric_limits<uint8_t>::max()));
-	msg.addByte(player->getMagicLevelPercent());
-
-	msg.addByte(player->getSoul());
-
 	msg.add<uint16_t>(player->getStaminaMinutes());
-
+	msg.add<uint16_t>(player->getStepSpeed() / 2);
 	msg.add<uint16_t>(player->getBaseSpeed() / 2);
-
-	Condition* condition = player->getCondition(CONDITION_REGENERATION);
-	msg.add<uint16_t>(condition ? condition->getTicks() / 1000 : 0x00);
-
-	msg.add<uint16_t>(player->getOfflineTrainingTime() / 60 / 1000);
-
-	msg.add<uint16_t>(0); // xp boost time (seconds)
-	msg.addByte(0); // enables exp boost in the store
 }
 
 void ProtocolGame::AddPlayerSkills(NetworkMessage& msg)

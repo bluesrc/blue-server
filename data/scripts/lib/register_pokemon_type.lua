@@ -228,11 +228,6 @@ registerPokemonType.race = function(mtype, mask)
 		mtype:race(mask.race)
 	end
 end
-registerPokemonType.manaCost = function(mtype, mask)
-	if mask.manaCost then
-		mtype:manaCost(mask.manaCost)
-	end
-end
 registerPokemonType.speed = function(mtype, mask)
 	if mask.speed then
 		mtype:baseSpeed(mask.speed)

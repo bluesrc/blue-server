@@ -633,7 +633,6 @@ CombatTypeNames combatTypeNames = {
 	{COMBAT_FIREDAMAGE, 		"fire"},
 	{COMBAT_UNDEFINEDDAMAGE, 	"undefined"},
 	{COMBAT_LIFEDRAIN, 		"lifedrain"},
-	{COMBAT_MANADRAIN, 		"manadrain"},
 	{COMBAT_HEALING, 		"healing"},
 	{COMBAT_DROWNDAMAGE, 		"drown"},
 	{COMBAT_ICEDAMAGE, 		"ice"},
@@ -691,29 +690,8 @@ std::string getCombatName(CombatType_t combatType)
 std::string getSkillName(uint8_t skillid)
 {
 	switch (skillid) {
-		case SKILL_FIST:
-			return "fist fighting";
-
-		case SKILL_CLUB:
-			return "club fighting";
-
-		case SKILL_SWORD:
-			return "sword fighting";
-
-		case SKILL_AXE:
-			return "axe fighting";
-
-		case SKILL_DISTANCE:
-			return "distance fighting";
-
-		case SKILL_SHIELD:
-			return "shielding";
-
 		case SKILL_FISHING:
 			return "fishing";
-
-		case SKILL_MAGLEVEL:
-			return "magic level";
 
 		case SKILL_LEVEL:
 			return "level";
@@ -802,8 +780,6 @@ size_t combatTypeToIndex(CombatType_t combatType)
 			return 4;
 		case COMBAT_LIFEDRAIN:
 			return 5;
-		case COMBAT_MANADRAIN:
-			return 6;
 		case COMBAT_HEALING:
 			return 7;
 		case COMBAT_DROWNDAMAGE:
@@ -1107,7 +1083,7 @@ const char* getReturnMessage(ReturnValue value)
 			return "This item cannot be moved there.";
 
 		case RETURNVALUE_YOUCANNOTUSETHISBED:
-			return "This bed can't be used, but Premium Account players can rent houses and sleep in beds there to regain health and mana.";
+			return "This bed can't be used, but Premium Account players can rent houses and sleep in beds there to regain health.";
 
 		case RETURNVALUE_CANNOTGOBACK:
 			return "You cannot use a pokeball yet.";

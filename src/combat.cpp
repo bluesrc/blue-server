@@ -108,26 +108,10 @@ CombatDamage Combat::getCombatDamage(Creature* creature, Creature* target) const
 			return damage;
 		}
 	}
-	if (formulaType == COMBAT_FORMULA_DAMAGE) {
-		damage.primary.value = normal_random(
-			static_cast<int32_t>(mina),
-			static_cast<int32_t>(maxa)
-		);
-	} else if (creature) {
+	if (creature) {
 		int32_t min, max;
 		if (creature->getCombatValues(min, max)) {
 			damage.primary.value = normal_random(min, max);
-		} else if (Player* player = creature->getPlayer()) {
-			if (params.valueCallback) {
-				params.valueCallback->getMinMaxValues(player, damage);
-			} else if (formulaType == COMBAT_FORMULA_LEVELMAGIC) {
-				int32_t levelFormula = player->getLevel() * 2 + player->getMagicLevel() * 3;
-				damage.primary.value = normal_random(std::fma(levelFormula, mina, minb), std::fma(levelFormula, maxa, maxb));
-			} else if (formulaType == COMBAT_FORMULA_SKILL) {
-				// Player combat formulas were removed. Pokemon damage is resolved
-				// above from Pokemon stats and the executing move.
-				damage.primary.value = normal_random(minb, maxb);
-			}
 		}
 	}
 	return damage;
@@ -308,10 +292,6 @@ bool Combat::isProtected(const Player* attacker, const Player* target)
 		return true;
 	}
 
-	if (!attacker->getVocation()->allowsPvp() || !target->getVocation()->allowsPvp()) {
-		return true;
-	}
-
 	return false;
 }
 
@@ -397,15 +377,6 @@ ReturnValue Combat::canDoCombat(Creature* attacker, Creature* target)
 		}
 	}
 	return g_events->eventCreatureOnTargetCombat(attacker, target);
-}
-
-void Combat::setPlayerCombatValues(formulaType_t formulaType, double mina, double minb, double maxa, double maxb)
-{
-	this->formulaType = formulaType;
-	this->mina = mina;
-	this->minb = minb;
-	this->maxa = maxa;
-	this->maxb = maxb;
 }
 
 bool Combat::setParam(CombatParam_t param, uint32_t value)
@@ -505,16 +476,6 @@ int32_t Combat::getParam(CombatParam_t param)
 bool Combat::setCallback(CallBackParam_t key)
 {
 	switch (key) {
-		case CALLBACK_PARAM_LEVELMAGICVALUE: {
-			params.valueCallback.reset(new ValueCallback(COMBAT_FORMULA_LEVELMAGIC));
-			return true;
-		}
-
-		case CALLBACK_PARAM_SKILLVALUE: {
-			params.valueCallback.reset(new ValueCallback(COMBAT_FORMULA_SKILL));
-			return true;
-		}
-
 		case CALLBACK_PARAM_TARGETTILE: {
 			params.tileCallback.reset(new TileCallback());
 			return true;
@@ -531,11 +492,6 @@ bool Combat::setCallback(CallBackParam_t key)
 CallBack* Combat::getCallback(CallBackParam_t key)
 {
 	switch (key) {
-		case CALLBACK_PARAM_LEVELMAGICVALUE:
-		case CALLBACK_PARAM_SKILLVALUE: {
-			return params.valueCallback.get();
-		}
-
 		case CALLBACK_PARAM_TARGETTILE: {
 			return params.tileCallback.get();
 		}
@@ -817,30 +773,24 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 
 	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
 
-	bool success = false;
-	if (damage.primary.type != COMBAT_MANADRAIN) {
-		const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
-		const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
-		if (g_game.combatBlockHit(damage, caster, target,
+	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
+	const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
+	if (g_game.combatBlockHit(damage, caster, target,
 			pokemonFormulaDamage ? false : params.blockedByShield,
 			pokemonFormulaDamage ? false : params.blockedByArmor,
 			params.itemId != 0, pokemonFormulaDamage || params.ignoreResistances)) {
-			return;
-		}
-
-		if (casterPlayer) {
-			Player* targetPlayer = target ? target->getPlayer() : nullptr;
-			if (targetPlayer && casterPlayer != targetPlayer && damage.primary.type != COMBAT_HEALING) {
-				damage.primary.value /= 2;
-				damage.secondary.value /= 2;
-			}
-
-		}
-
-		success = g_game.combatChangeHealth(caster, target, damage);
-	} else {
-		success = g_game.combatChangeMana(caster, target, damage);
+		return;
 	}
+
+	if (casterPlayer) {
+		Player* targetPlayer = target ? target->getPlayer() : nullptr;
+		if (targetPlayer && casterPlayer != targetPlayer && damage.primary.type != COMBAT_HEALING) {
+			damage.primary.value /= 2;
+			damage.secondary.value /= 2;
+		}
+	}
+
+	bool success = g_game.combatChangeHealth(caster, target, damage);
 	if (damage.defensiveAbilityBlocked) {
 		return;
 	}
@@ -961,18 +911,13 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 			}
 		}
 
-		bool success = false;
-		if (damageCopy.primary.type != COMBAT_MANADRAIN) {
-			if (g_game.combatBlockHit(damageCopy, caster, creature,
+		if (g_game.combatBlockHit(damageCopy, caster, creature,
 				pokemonFormulaDamage ? false : params.blockedByShield,
 				pokemonFormulaDamage ? false : params.blockedByArmor,
 				params.itemId != 0, pokemonFormulaDamage || params.ignoreResistances)) {
-				continue;
-			}
-			success = g_game.combatChangeHealth(caster, creature, damageCopy);
-		} else {
-			success = g_game.combatChangeMana(caster, creature, damageCopy);
+			continue;
 		}
+		bool success = g_game.combatChangeHealth(caster, creature, damageCopy);
 		if (damageCopy.defensiveAbilityBlocked) {
 			continue;
 		}
@@ -1003,64 +948,6 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 			params.targetCallback->onTargetCombat(caster, creature);
 		}
 	}
-}
-
-//**********************************************************//
-
-void ValueCallback::getMinMaxValues(Player* player, CombatDamage& damage) const
-{
-	//onGetPlayerMinMaxValues(...)
-	if (!scriptInterface->reserveScriptEnv()) {
-		std::cout << "[Error - ValueCallback::getMinMaxValues] Call stack overflow" << std::endl;
-		return;
-	}
-
-	ScriptEnvironment* env = scriptInterface->getScriptEnv();
-	if (!env->setCallbackId(scriptId, scriptInterface)) {
-		scriptInterface->resetScriptEnv();
-		return;
-	}
-
-	lua_State* L = scriptInterface->getLuaState();
-
-	scriptInterface->pushFunction(scriptId);
-
-	LuaScriptInterface::pushUserdata<Player>(L, player);
-	LuaScriptInterface::setMetatable(L, -1, "Player");
-
-	int parameters = 1;
-	switch (type) {
-		case COMBAT_FORMULA_LEVELMAGIC: {
-			//onGetPlayerMinMaxValues(player, level, maglevel)
-			lua_pushnumber(L, player->getLevel());
-			lua_pushnumber(L, player->getMagicLevel());
-			parameters += 2;
-			break;
-		}
-
-		default: {
-			std::cout << "ValueCallback::getMinMaxValues - unknown callback type" << std::endl;
-			scriptInterface->resetScriptEnv();
-			return;
-		}
-	}
-
-	int size0 = lua_gettop(L);
-	if (lua_pcall(L, parameters, 2, 0) != 0) {
-		LuaScriptInterface::reportError(nullptr, LuaScriptInterface::popString(L));
-	} else {
-		damage.primary.value = normal_random(
-			LuaScriptInterface::getNumber<int32_t>(L, -2),
-			LuaScriptInterface::getNumber<int32_t>(L, -1)
-		);
-		lua_pop(L, 2);
-	}
-
-	if ((lua_gettop(L) + parameters + 1) != size0) {
-		LuaScriptInterface::reportError(nullptr, "Stack size changed!");
-	}
-
-	scriptInterface->resetScriptEnv();
 }
 
 //**********************************************************//

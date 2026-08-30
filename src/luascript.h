@@ -890,39 +890,20 @@ class LuaScriptInterface
 		static int luaPlayerRemoveExperience(lua_State* L);
 		static int luaPlayerGetLevel(lua_State* L);
 
-		static int luaPlayerGetMagicLevel(lua_State* L);
-		static int luaPlayerGetBaseMagicLevel(lua_State* L);
-		static int luaPlayerGetMana(lua_State* L);
-		static int luaPlayerAddMana(lua_State* L);
-		static int luaPlayerGetMaxMana(lua_State* L);
-		static int luaPlayerSetMaxMana(lua_State* L);
-		static int luaPlayerGetManaSpent(lua_State* L);
-		static int luaPlayerAddManaSpent(lua_State* L);
-		static int luaPlayerRemoveManaSpent(lua_State* L);
 
 		static int luaPlayerGetBaseMaxHealth(lua_State* L);
-		static int luaPlayerGetBaseMaxMana(lua_State* L);
 
 		static int luaPlayerGetSkillLevel(lua_State* L);
 		static int luaPlayerGetEffectiveSkillLevel(lua_State* L);
 		static int luaPlayerGetSkillPercent(lua_State* L);
 		static int luaPlayerGetSkillTries(lua_State* L);
+		static int luaPlayerGetRequiredSkillTries(lua_State* L);
 		static int luaPlayerAddSkillTries(lua_State* L);
 		static int luaPlayerRemoveSkillTries(lua_State* L);
-		static int luaPlayerAddOfflineTrainingTime(lua_State* L);
-		static int luaPlayerGetOfflineTrainingTime(lua_State* L);
-		static int luaPlayerRemoveOfflineTrainingTime(lua_State* L);
-
-		static int luaPlayerAddOfflineTrainingTries(lua_State* L);
-
-		static int luaPlayerGetOfflineTrainingSkill(lua_State* L);
-		static int luaPlayerSetOfflineTrainingSkill(lua_State* L);
 
 		static int luaPlayerGetItemCount(lua_State* L);
 		static int luaPlayerGetItemById(lua_State* L);
 
-		static int luaPlayerGetVocation(lua_State* L);
-		static int luaPlayerSetVocation(lua_State* L);
 
 		static int luaPlayerGetSex(lua_State* L);
 		static int luaPlayerSetSex(lua_State* L);
@@ -945,9 +926,6 @@ class LuaScriptInterface
 		static int luaPlayerGetStamina(lua_State* L);
 		static int luaPlayerSetStamina(lua_State* L);
 
-		static int luaPlayerGetSoul(lua_State* L);
-		static int luaPlayerAddSoul(lua_State* L);
-		static int luaPlayerGetMaxSoul(lua_State* L);
 
 		static int luaPlayerGetBankBalance(lua_State* L);
 		static int luaPlayerSetBankBalance(lua_State* L);
@@ -1136,35 +1114,6 @@ class LuaScriptInterface
 		static int luaGroupGetMaxVipEntries(lua_State* L);
 		static int luaGroupHasFlag(lua_State* L);
 
-		// Vocation
-		static int luaVocationCreate(lua_State* L);
-
-		static int luaVocationGetId(lua_State* L);
-		static int luaVocationGetClientId(lua_State* L);
-		static int luaVocationGetName(lua_State* L);
-		static int luaVocationGetDescription(lua_State* L);
-
-		static int luaVocationGetRequiredSkillTries(lua_State* L);
-		static int luaVocationGetRequiredManaSpent(lua_State* L);
-
-		static int luaVocationGetHealthGain(lua_State* L);
-		static int luaVocationGetHealthGainTicks(lua_State* L);
-		static int luaVocationGetHealthGainAmount(lua_State* L);
-
-		static int luaVocationGetManaGain(lua_State* L);
-		static int luaVocationGetManaGainTicks(lua_State* L);
-		static int luaVocationGetManaGainAmount(lua_State* L);
-
-		static int luaVocationGetMaxSoul(lua_State* L);
-		static int luaVocationGetSoulGainTicks(lua_State* L);
-
-		static int luaVocationGetAttackSpeed(lua_State* L);
-		static int luaVocationGetBaseSpeed(lua_State* L);
-
-		static int luaVocationGetDemotion(lua_State* L);
-		static int luaVocationGetPromotion(lua_State* L);
-
-		static int luaVocationAllowsPvp(lua_State* L);
 
 		// Town
 		static int luaTownCreate(lua_State* L);
@@ -1255,7 +1204,6 @@ class LuaScriptInterface
 		static int luaItemTypeGetWieldInfo(lua_State* L);
 		static int luaItemTypeGetDuration(lua_State* L);
 		static int luaItemTypeGetLevelDoor(lua_State* L);
-		static int luaItemTypeGetVocationString(lua_State* L);
 		static int luaItemTypeGetMinReqLevel(lua_State* L);
 
 		static int luaItemTypeHasSubType(lua_State* L);
@@ -1269,7 +1217,6 @@ class LuaScriptInterface
 		static int luaCombatSetParameter(lua_State* L);
 		static int luaCombatGetParameter(lua_State* L);
 
-		static int luaCombatSetFormula(lua_State* L);
 
 		static int luaCombatSetArea(lua_State* L);
 		static int luaCombatAddCondition(lua_State* L);
@@ -1367,7 +1314,6 @@ class LuaScriptInterface
 		static int luaPokemonTypeOutfit(lua_State* L);
 		static int luaPokemonTypeRace(lua_State* L);
 		static int luaPokemonTypeCorpseId(lua_State* L);
-		static int luaPokemonTypeManaCost(lua_State* L);
 		static int luaPokemonTypeBaseSpeed(lua_State* L);
 		static int luaPokemonTypeLight(lua_State* L);
 
@@ -1462,7 +1408,6 @@ class LuaScriptInterface
 		static int luaMoveEventLevel(lua_State* L);
 		static int luaMoveEventSlot(lua_State* L);
 		static int luaMoveEventPremium(lua_State* L);
-		static int luaMoveEventVocation(lua_State* L);
 		static int luaMoveEventTileItem(lua_State* L);
 		static int luaMoveEventItemId(lua_State* L);
 		static int luaMoveEventActionId(lua_State* L);

@@ -2422,10 +2422,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 		mType->info.baseSpeed = pugi::cast<int32_t>(attr.value());
 	}
 
-	if ((attr = pokemonNode.attribute("manacost"))) {
-		mType->info.manaCost = pugi::cast<uint32_t>(attr.value());
-	}
-
 	if ((attr = pokemonNode.attribute("script"))) {
 		if (!scriptInterface) {
 			scriptInterface.reset(new LuaScriptInterface("Pokemon Interface"));
@@ -2532,10 +2528,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 			mType->info.pushable = false;
 		}
 	}
-	if (mType->info.manaCost == 0 && (mType->info.isSummonable || mType->info.isConvinceable)) {
-		std::cout << "[Warning - Pokemons::loadPokemon] manaCost missing or zero on pokemon with summonable and/or convinceable flags: " << file << std::endl;
-	}
-
 	if ((node = pokemonNode.child("targetchange"))) {
 		if ((attr = node.attribute("speed")) || (attr = node.attribute("interval"))) {
 			mType->info.changeTargetSpeed = pugi::cast<uint32_t>(attr.value());
@@ -2624,8 +2616,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 					mType->info.conditionImmunities |= CONDITION_CURSED;
 				} else if (tmpStrValue == "lifedrain") {
 					mType->info.damageImmunities |= COMBAT_LIFEDRAIN;
-				} else if (tmpStrValue == "manadrain") {
-					mType->info.damageImmunities |= COMBAT_MANADRAIN;
 				} else if (tmpStrValue == "paralyze") {
 					mType->info.conditionImmunities |= CONDITION_PARALYZE;
 				} else if (tmpStrValue == "outfit") {
@@ -2682,10 +2672,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 			} else if ((attr = immunityNode.attribute("lifedrain"))) {
 				if (attr.as_bool()) {
 					mType->info.damageImmunities |= COMBAT_LIFEDRAIN;
-				}
-			} else if ((attr = immunityNode.attribute("manadrain"))) {
-				if (attr.as_bool()) {
-					mType->info.damageImmunities |= COMBAT_MANADRAIN;
 				}
 			} else if ((attr = immunityNode.attribute("paralyze"))) {
 				if (attr.as_bool()) {
@@ -2805,11 +2791,6 @@ PokemonType* Pokemons::loadPokemon(const std::string& file, const std::string& p
 				mType->info.elementMap[COMBAT_LIFEDRAIN] = pugi::cast<int32_t>(attr.value());
 				if (mType->info.damageImmunities & COMBAT_LIFEDRAIN) {
 					std::cout << "[Warning - Pokemons::loadPokemon] Same element \"lifedrain\" on immunity and element tags. " << file << std::endl;
-				}
-			} else if ((attr = elementNode.attribute("manadrainPercent"))) {
-				mType->info.elementMap[COMBAT_MANADRAIN] = pugi::cast<int32_t>(attr.value());
-				if (mType->info.damageImmunities & COMBAT_MANADRAIN) {
-					std::cout << "[Warning - Pokemons::loadPokemon] Same element \"manadrain\" on immunity and element tags. " << file << std::endl;
 				}
 			} else {
 				std::cout << "[Warning - Pokemons::loadPokemon] Unknown element percent. " << file << std::endl;

@@ -129,9 +129,6 @@ class Pokemon final : public Creature
 		bool canSeeInvisibility() const override {
 			return isImmune(CONDITION_INVISIBLE);
 		}
-		uint32_t getManaCost() const {
-			return mType->info.manaCost;
-		}
 		void setSpawn(Spawn* spawn) {
 			this->spawn = spawn;
 		}

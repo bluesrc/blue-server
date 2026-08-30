@@ -27,8 +27,6 @@
 			<flag cansenseinvisibility="1" />
 			<flag ignoredbypokemons="1" />
 			<flag notgaininfight="1" />
-			<flag hasinfinitemana="0" />
-			<flag hasinfinitesoul="0" />
 			<flag hasnoexhaustion="1" />
 			<flag cannotusemoves="1" />
 			<flag cannotpickupitem="1" />
@@ -42,7 +40,6 @@
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
 			<flag notgainexperience="1" />
-			<flag notgainmana="1" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -67,8 +64,6 @@
 			<flag cansenseinvisibility="1" />
 			<flag ignoredbypokemons="1" />
 			<flag notgaininfight="1" />
-			<flag hasinfinitemana="1" />
-			<flag hasinfinitesoul="1" />
 			<flag hasnoexhaustion="1" />
 			<flag cannotusemoves="0" />
 			<flag cannotpickupitem="0" />
@@ -82,7 +77,6 @@
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
 			<flag notgainexperience="1" />
-			<flag notgainmana="1" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -107,8 +101,6 @@
 			<flag cansenseinvisibility="1" />
 			<flag ignoredbypokemons="1" />
 			<flag notgaininfight="1" />
-			<flag hasinfinitemana="1" />
-			<flag hasinfinitesoul="1" />
 			<flag hasnoexhaustion="1" />
 			<flag cannotusemoves="0" />
 			<flag cannotpickupitem="0" />
@@ -122,7 +114,6 @@
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
 			<flag notgainexperience="1" />
-			<flag notgainmana="1" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />

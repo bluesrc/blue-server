@@ -158,8 +158,6 @@ do
 				ss:append(' (invisibility)')
 			elseif abilities.regeneration then
 				ss:append(' (faster regeneration)')
-			elseif abilities.manashield then
-				ss:append(' (mana shield)')
 			else
 				found = false
 			end
@@ -281,12 +279,7 @@ do
 				ss:append('premium ')
 			end
 
-			local vocStr = it:getVocationString()
-			if vocStr ~= '' then
-				ss:append(vocStr)
-			else
-				ss:append('players')
-			end
+			ss:append('players')
 
 			if bit.band(wieldInfo, WIELDINFO_LEVEL) ~= 0 then
 				ss:append(' of level %d or higher', it:getMinReqLevel())

@@ -5,16 +5,9 @@ function Player.feed(self, food)
 	if condition then
 		condition:setTicks(condition:getTicks() + (food * 1000))
 	else
-		local vocation = self:getVocation()
-		if not vocation then
-			return nil
-		end
-
 		foodCondition:setTicks(food * 1000)
-		foodCondition:setParameter(CONDITION_PARAM_HEALTHGAIN, vocation:getHealthGainAmount())
-		foodCondition:setParameter(CONDITION_PARAM_HEALTHTICKS, vocation:getHealthGainTicks() * 1000)
-		foodCondition:setParameter(CONDITION_PARAM_MANAGAIN, vocation:getManaGainAmount())
-		foodCondition:setParameter(CONDITION_PARAM_MANATICKS, vocation:getManaGainTicks() * 1000)
+		foodCondition:setParameter(CONDITION_PARAM_HEALTHGAIN, 1)
+		foodCondition:setParameter(CONDITION_PARAM_HEALTHTICKS, 6000)
 
 		self:addCondition(foodCondition)
 	end
@@ -125,14 +118,6 @@ local addSkillTriesFunc = Player.addSkillTries
 function Player.addSkillTries(...)
 	APPLY_SKILL_MULTIPLIER = false
 	local ret = addSkillTriesFunc(...)
-	APPLY_SKILL_MULTIPLIER = true
-	return ret
-end
-
-local addManaSpentFunc = Player.addManaSpent
-function Player.addManaSpent(...)
-	APPLY_SKILL_MULTIPLIER = false
-	local ret = addManaSpentFunc(...)
 	APPLY_SKILL_MULTIPLIER = true
 	return ret
 end
@@ -257,35 +242,13 @@ function Player.addLevel(self, amount, round)
 	end
 end
 
-function Player.addMagicLevel(self, value)
-	local currentMagLevel = self:getBaseMagicLevel()
-	local sum = 0
-
-	if value > 0 then
-		while value > 0 do
-			sum = sum + self:getVocation():getRequiredManaSpent(currentMagLevel + value)
-			value = value - 1
-		end
-
-		return self:addManaSpent(sum - self:getManaSpent())
-	else
-		value = math.min(currentMagLevel, math.abs(value))
-		while value > 0 do
-			sum = sum + self:getVocation():getRequiredManaSpent(currentMagLevel - value + 1)
-			value = value - 1
-		end
-
-		return self:removeManaSpent(sum + self:getManaSpent())
-	end
-end
-
 function Player.addSkillLevel(self, skillId, value)
 	local currentSkillLevel = self:getSkillLevel(skillId)
 	local sum = 0
 
 	if value > 0 then
 		while value > 0 do
-			sum = sum + self:getVocation():getRequiredSkillTries(skillId, currentSkillLevel + value)
+			sum = sum + self:getRequiredSkillTries(skillId, currentSkillLevel + value)
 			value = value - 1
 		end
 
@@ -293,7 +256,7 @@ function Player.addSkillLevel(self, skillId, value)
 	else
 		value = math.min(currentSkillLevel, math.abs(value))
 		while value > 0 do
-			sum = sum + self:getVocation():getRequiredSkillTries(skillId, currentSkillLevel - value + 1)
+			sum = sum + self:getRequiredSkillTries(skillId, currentSkillLevel - value + 1)
 			value = value - 1
 		end
 
@@ -304,8 +267,6 @@ end
 function Player.addSkill(self, skillId, value, round)
 	if skillId == SKILL_LEVEL then
 		return self:addLevel(value, round or false)
-	elseif skillId == SKILL_MAGLEVEL then
-		return self:addMagicLevel(value)
 	end
 	return self:addSkillLevel(skillId, value)
 end

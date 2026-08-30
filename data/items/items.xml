@@ -6,7 +6,6 @@
 	<item id="4" name="slime" />
 	<item id="5" name="lemonade" />
 	<item id="6" name="milk" />
-	<item id="7" name="manafluid" />
 	<item id="10" name="lifefluid" />
 	<item id="11" name="oil" />
 	<item id="13" name="urine" />
@@ -2051,7 +2050,6 @@
 		<attribute key="slotType" value="necklace" />
 		<attribute key="charges" value="200" />
 		<attribute key="showcharges" value="1" />
-		<attribute key="absorbPercentManaDrain" value="20" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="2173" article="an" name="amulet of loss">
@@ -2169,7 +2167,6 @@
 		<attribute key="slotType" value="ring" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="transformDeEquipTo" value="2166" />
-		<attribute key="skillFist" value="6" />
 		<attribute key="duration" value="1800" />
 		<attribute key="showduration" value="1" />
 	</item>
@@ -2179,7 +2176,6 @@
 		<attribute key="transformDeEquipTo" value="2167" />
 		<attribute key="duration" value="600" />
 		<attribute key="showduration" value="1" />
-		<attribute key="manashield" value="1" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="2205" article="a" name="life ring (faster regeneration)">
@@ -2189,8 +2185,6 @@
 		<attribute key="duration" value="1200" />
 		<attribute key="healthGain" value="2" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="8" />
-		<attribute key="manaTicks" value="6000" />
 		<attribute key="showduration" value="1" />
 		<attribute key="showattributes" value="1" />
 	</item>
@@ -2225,7 +2219,6 @@
 		<attribute key="slotType" value="ring" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="transformDeEquipTo" value="2207" />
-		<attribute key="skillSword" value="4" />
 		<attribute key="duration" value="1800" />
 		<attribute key="showduration" value="1" />
 	</item>
@@ -2233,7 +2226,6 @@
 		<attribute key="slotType" value="ring" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="transformDeEquipTo" value="2208" />
-		<attribute key="skillAxe" value="4" />
 		<attribute key="duration" value="1800" />
 		<attribute key="showduration" value="1" />
 	</item>
@@ -2241,7 +2233,6 @@
 		<attribute key="slotType" value="ring" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="transformDeEquipTo" value="2209" />
-		<attribute key="skillClub" value="4" />
 		<attribute key="duration" value="1800" />
 		<attribute key="showduration" value="1" />
 	</item>
@@ -2273,8 +2264,6 @@
 		<attribute key="duration" value="450" />
 		<attribute key="healthGain" value="6" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="24" />
-		<attribute key="manaTicks" value="6000" />
 		<attribute key="showduration" value="1" />
 		<attribute key="showattributes" value="1" />
 	</item>
@@ -2372,7 +2361,6 @@
 	</item>
 	<item id="2323" article="a" name="hat of the mad">
 		<attribute key="description" value="You have a vague feeling that it looks somewhat silly." />
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="2324" article="a" name="witchesbroom">
@@ -2879,7 +2867,6 @@
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="2500" article="an" name="amazon armor">
-		<attribute key="skillDist" value="3" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="2501" article="a" name="ceremonial mask">
@@ -3169,8 +3156,6 @@
 		<attribute key="duration" value="14400" />
 		<attribute key="healthGain" value="3" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="12" />
-		<attribute key="manaTicks" value="6000" />
 		<attribute key="showduration" value="1" />
 		<attribute key="showattributes" value="1" />
 	</item>
@@ -3247,7 +3232,6 @@
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="2664" article="a" name="wood cape">
-		<attribute key="skillDist" value="1" />
 		<attribute key="absorbPercentEarth" value="4" />
 		<attribute key="slotType" value="head" />
 	</item>
@@ -8853,7 +8837,6 @@
 		<attribute key="decayTo" value="0" />
 		<attribute key="transformDeEquipTo" value="6300" />
 		<attribute key="duration" value="480" />
-		<attribute key="skillShield" value="-10" />
 		<attribute key="showduration" value="1" />
 		<attribute key="description" value="Wearing it makes you feel a little weaker than usual." />
 	</item>
@@ -10698,9 +10681,6 @@
 		<attribute key="description" value="This is Budrik's old mining helmet." />
 		<attribute key="slotType" value="head" />
 	</item>
-	<item id="7498" article="a" name="package of potions">
-		<attribute key="description" value="It contains 5 health and 5 mana potions." />
-	</item>
 	<item id="7499" article="a" name="cigar">
 	</item>
 	<item id="7500" article="a" name="bale of white cloth">
@@ -10805,12 +10785,6 @@
 	<item id="7588" article="a" name="strong health potion">
 		<attribute key="description" value="This potion can only be consumed by paladins and knights of level 50 or higher." />
 	</item>
-	<item id="7589" article="a" name="strong mana potion">
-		<attribute key="description" value="This potion can only be consumed by sorcerers, druids and paladins of level 50 or higher." />
-	</item>
-	<item id="7590" article="a" name="great mana potion">
-		<attribute key="description" value="This potion can only be consumed by sorcerers and druids of level 80 or higher." />
-	</item>
 	<item id="7591" article="a" name="great health potion">
 		<attribute key="description" value="This potion can only be consumed by knights of level 80 or higher." />
 	</item>
@@ -10822,8 +10796,6 @@
 	<item id="7618" article="a" name="health potion">
 	</item>
 	<item id="7619" name="linen" />
-	<item id="7620" article="a" name="mana potion">
-	</item>
 	<item id="7621" article="a" name="dead dragon hatchling">
 		<attribute key="containerSize" value="30" />
 		<attribute key="decayTo" value="7623" />
@@ -12891,11 +12863,9 @@
 	</item>
 	<item id="8870" article="a" name="spirit cloak">
 		<attribute key="slotType" value="body" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="8871" article="a" name="focus cape">
 		<attribute key="slotType" value="body" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="8872" article="a" name="belted cape">
 		<attribute key="slotType" value="body" />
@@ -12934,25 +12904,21 @@
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="8881" article="a" name="fireborn giant armor">
-		<attribute key="skillSword" value="2" />
 		<attribute key="absorbPercentFire" value="5" />
 		<attribute key="absorbPercentIce" value="-5" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="8882" article="an" name="earthborn titan armor">
 		<attribute key="slotType" value="body" />
-		<attribute key="skillAxe" value="2" />
 		<attribute key="absorbPercentEarth" value="5" />
 		<attribute key="absorbPercentFire" value="-5" />
 	</item>
 	<item id="8883" article="a" name="windborn colossus armor">
 		<attribute key="absorbPercentEnergy" value="5" />
 		<attribute key="absorbPercentEarth" value="-5" />
-		<attribute key="skillClub" value="2" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="8884" article="an" name="oceanborn leviathan armor">
-		<attribute key="skillShield" value="1" />
 		<attribute key="absorbPercentIce" value="5" />
 		<attribute key="absorbPercentEnergy" value="-5" />
 		<attribute key="slotType" value="body" />
@@ -12974,7 +12940,6 @@
 	</item>
 	<item id="8888" article="a" name="master archer's armor">
 		<attribute key="slotType" value="body" />
-		<attribute key="skillDist" value="3" />
 	</item>
 	<item id="8889" article="a" name="skullcracker armor">
 		<attribute key="absorbPercentDeath" value="5" />
@@ -12988,33 +12953,26 @@
 	</item>
 	<item id="8891" article="a" name="paladin armor">
 		<attribute key="slotType" value="body" />
-		<attribute key="skillDist" value="2" />
 	</item>
 	<item id="8892" article="an" name="ethno coat">
 		<attribute key="slotType" value="body" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item fromid="8894" toid="8897" article="a" name="mysterious machine" />
 	<item fromid="8898" toid="8899" article="a" name="chalk board" />
 	<item id="8900" article="a" name="movebook of enlightenment">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="8901" article="a" name="movebook of warding">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="8902" article="a" name="movebook of mind control">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="2" />
 	</item>
 	<item id="8903" article="a" name="movebook of lost souls">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="2" />
 	</item>
 	<item id="8904" article="a" name="movescroll of prophecies">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="3" />
 	</item>
 	<item id="8905" article="a" name="rainbow shield">
 		<attribute key="description" value="Strange elemental magic flows over this shield." />
@@ -13023,7 +12981,6 @@
 		<attribute key="description" value="It has been temporarily imbued with fire magic and boosts your shielding skill." />
 		<attribute key="duration" value="900" />
 		<attribute key="decayTo" value="8905" />
-		<attribute key="skillShield" value="3" />
 	</item>
 	<item id="8907" article="an" name="icy rainbow shield">
 		<attribute key="description" value="It has been temporarily imbued with ice magic and has a greatly increased shielding value." />
@@ -13042,8 +12999,6 @@
 		<attribute key="decayTo" value="8905" />
 		<attribute key="healthGain" value="1" />
 		<attribute key="healthTicks" value="3000" />
-		<attribute key="manaGain" value="4" />
-		<attribute key="manaTicks" value="3000" />
 	</item>
 	<item id="8910" article="an" name="underworld rod">
 		<attribute key="description" value="No one knows which hell this unholy rod comes from." />
@@ -13057,7 +13012,6 @@
 	<item fromid="8913" toid="8917" name="earth" />
 	<item id="8918" article="a" name="movebook of dark mysteries">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="3" />
 	</item>
 	<item id="8919" article="a" name="move rune">
 		<attribute key="description" value="It is Yandur's healing rune. You can't remove it from his house, but you may use it." />
@@ -13412,7 +13366,6 @@
 	</item>
 	<item id="9080" article="a" name="hat of the mad" editorsuffix=" (Old one)">
 		<attribute key="description" value="You have a vague feeling that it looks somewhat silly." />
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="9081" article="a" name="parcel">
@@ -13943,11 +13896,9 @@
 	<item id="9777" article="a" name="yalahari leg piece">
 		<attribute key="slotType" value="legs" />
 		<attribute key="absorbPercentDeath" value="5" />
-		<attribute key="skillDist" value="2" />
 	</item>
 	<item id="9778" article="a" name="yalahari mask">
 		<attribute key="slotType" value="head" />
-		<attribute key="magiclevelpoints" value="2" />
 	</item>
 	<item id="9779" article="a" name="crystal column" />
 	<item id="9780" article="a" name="dead tortoise">
@@ -14585,7 +14536,6 @@
 	<item id="10015" article="a" name="dead rift creature" />
 	<item id="10016" article="a" name="batwing hat">
 		<attribute key="slotType" value="head" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="10017" article="a" name="football" />
 	<item id="10019" name="ocean floor" />
@@ -15583,7 +15533,6 @@
 	<item id="10569" article="a" name="witch broom">
 	</item>
 	<item id="10570" article="a" name="witch hat">
-		<attribute key="absorbPercentManaDrain" value="5" />
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="10571" article="a" name="war crystal">
@@ -16619,7 +16568,6 @@
 	<item id="11367" article="an" name="undead heart">
 	</item>
 	<item id="11368" article="a" name="jade hat">
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="11369" article="a" name="terramite shell">
@@ -17674,7 +17622,6 @@
 	<item id="12629" article="a" name="scale of corruption" plural="scales of corruption">
 	</item>
 	<item id="12630" article="a" name="cobra crown">
-		<attribute key="magiclevelpoints" value="2" />
 		<attribute key="absorbPercentFire" value="-5" />
 		<attribute key="absorbPercentEarth" value="5" />
 		<attribute key="slotType" value="head" />
@@ -17720,22 +17667,18 @@
 	</item>
 	<item id="12642" article="a" name="royal draken mail">
 		<attribute key="slotType" value="body" />
-		<attribute key="skillShield" value="3" />
 		<attribute key="absorbPercentPhysical" value="5" />
 	</item>
 	<item id="12643" article="a" name="royal scale robe">
 		<attribute key="slotType" value="body" />
-		<attribute key="magiclevelpoints" value="2" />
 		<attribute key="absorbPercentFire" value="5" />
 	</item>
 	<item id="12644" article="a" name="shield of corruption">
-		<attribute key="skillSword" value="3" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="12645" article="an" name="elite draken helmet">
 		<attribute key="slotType" value="head" />
 		<attribute key="absorbPercentDeath" value="3" />
-		<attribute key="skillDist" value="1" />
 	</item>
 	<item id="12646" name="draken boots">
 		<attribute key="speed" value="30" />
@@ -17743,7 +17686,6 @@
 	</item>
 	<item id="12647" article="a" name="snake god's wristguard">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="3" />
 	</item>
 	<item id="12648" article="a" name="snake god's sceptre">
 	</item>
@@ -18975,7 +18917,6 @@
 	</item>
 	<item fromid="13822" toid="13824" article="a" name="water pump" />
 	<item fromid="13825" toid="13826" article="a" name="star ring">
-		<attribute key="description" value="If you wear it on your ring slot, it will boost your health regeneration when you're not hungry. Professions: players without vocation" />
 		<attribute key="slotType" value="ring" />
 	</item>
 	<item id="13827" article="a" name="sack of herbs">
@@ -20184,13 +20125,11 @@
 	</item>
 	<item id="15406" article="an" name="ornate chestplate">
 		<attribute key="slotType" value="body" />
-		<attribute key="skillShield" value="3" />
 		<attribute key="absorbPercentPhysical" value="8" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="15407" article="a" name="depth lorica">
 		<attribute key="slotType" value="body" />
-		<attribute key="skillDist" value="3" />
 		<attribute key="absorbPercentDeath" value="5" />
 		<attribute key="showattributes" value="1" />
 	</item>
@@ -20201,7 +20140,6 @@
 	</item>
 	<item id="15409" article="a" name="depth ocrea">
 		<attribute key="slotType" value="legs" />
-		<attribute key="absorbPercentManaDrain" value="15" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="15410" name="depth calcei">
@@ -20211,7 +20149,6 @@
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="15411" article="a" name="depth scutum">
-		<attribute key="magiclevelpoints" value="2" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="15412" name="ornate legs">
@@ -20381,7 +20318,6 @@
 	</item>
 	<item id="15489" article="a" name="calopteryx cape">
 		<attribute key="slotType" value="body" />
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="absorbPercentIce" value="5" />
 	</item>
 	<item id="15490" name="grasshopper legs">
@@ -20650,7 +20586,6 @@
 	<item id="16112" article="a" name="movebook of ancient arcana">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
 		<attribute key="absorbPercentDeath" value="5" />
-		<attribute key="magiclevelpoints" value="4" />
 		<attribute key="showattributes" value="1" />
 	</item>
 	<item id="16619" article="a" name="miniature house">
@@ -21472,7 +21407,6 @@
 	</item>
 	<item id="18390" article="a" name="wand of defiance">
 		<attribute key="description" value="It reveals devastating energy arcs." />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="18391" article="a" name="glowing mushroom">
 	</item>
@@ -21498,23 +21432,19 @@
 		<attribute key="slotType" value="head" />
 		<attribute key="absorbPercentEarth" value="6" />
 		<attribute key="absorbPercentFire" value="-6" />
-		<attribute key="magiclevelpoints" value="2" />
 	</item>
 	<item id="18399" article="a" name="gill coat">
 		<attribute key="slotType" value="body" />
 		<attribute key="absorbPercentEarth" value="10" />
 		<attribute key="absorbPercentFire" value="-10" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="18400" name="gill legs">
 		<attribute key="slotType" value="legs" />
 		<attribute key="absorbPercentEarth" value="8" />
 		<attribute key="absorbPercentFire" value="-8" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="18401" article="a" name="movebook of vigilance">
 		<attribute key="description" value="It shows your moves and can also shield against attacks when worn." />
-		<attribute key="magiclevelpoints" value="3" />
 		<attribute key="absorbPercentEarth" value="3" />
 		<attribute key="absorbPercentFire" value="-3" />
 		<attribute key="showattributes" value="1" />
@@ -21530,7 +21460,6 @@
 	<item id="18403" article="a" name="prismatic helmet">
 		<attribute key="slotType" value="head" />
 		<attribute key="absorbPercentPhysical" value="5" />
-		<attribute key="skillShield" value="1" />
 	</item>
 	<item id="18404" article="a" name="prismatic armor">
 		<attribute key="absorbPercentPhysical" value="5" />
@@ -21540,7 +21469,6 @@
 	<item id="18405" name="prismatic legs">
 		<attribute key="slotType" value="legs" />
 		<attribute key="absorbPercentPhysical" value="3" />
-		<attribute key="skillDist" value="2" />
 	</item>
 	<item id="18406" name="prismatic boots">
 		<attribute key="slotType" value="feet" />
@@ -21567,20 +21495,16 @@
 	</item>
 	<item id="18409" article="a" name="wand of everblazing">
 		<attribute key="description" value="It contains the everblazing fire." />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="18410" article="a" name="prismatic shield">
-		<attribute key="skillShield" value="2" />
 		<attribute key="showattributes" value="1" />
 		<attribute key="absorbPercentPhysical" value="4" />
 	</item>
 	<item id="18411" article="a" name="muck rod">
 		<attribute key="description" value="A true staff of old, spitting slimy orbs." />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="18412" article="a" name="glacial rod">
 		<attribute key="description" value="Hurls the icy essence of the Svargrond glaciers." />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="18413" article="a" name="blue crystal shard">
 	</item>
@@ -21700,10 +21624,8 @@
 	</item>
 	<item id="18451" article="a" name="crystalline axe">
 		<attribute key="description" value="Even in the light of day, the stars seem to reflect in each facet of this crystalline axe." />
-		<attribute key="skillAxe" value="1" />
 	</item>
 	<item id="18452" article="a" name="mycological mace">
-		<attribute key="skillClub" value="1" />
 	</item>
 	<item id="18453" article="a" name="crystal crossbow">
 		<attribute key="slotType" value="two-handed" />
@@ -21734,7 +21656,6 @@
 	<item id="18463" name="loose earth" />
 	<item id="18464" name="crystal glass floor" />
 	<item id="18465" article="a" name="shiny blade">
-		<attribute key="skillSword" value="1" />
 	</item>
 	<item id="18466" article="a" name="dead crystal golem">
 		<attribute key="containerSize" value="25" />
@@ -21850,7 +21771,6 @@
 		<attribute key="description" value="Use this statue to train your distance fighting and shielding skill offline." />
 	</item>
 	<item id="18492" article="a" name="skill trainer">
-		<attribute key="description" value="Use this statue to train your magic level and shielding skill offline." />
 	</item>
 	<item id="18493" name="timber floor" />
 	<item id="18494" name="dirt floor" />
@@ -26155,7 +26075,6 @@
 	<item id="21725" article="a" name="furious frock">
 		<attribute key="slotType" value="body" />
 		<attribute key="absorbPercentFire" value="5" />
-		<attribute key="magiclevelpoints" value="2" />
 	</item>
 	<item id="21726" article="an" name="aligned opticording sphere">
 		<attribute key="description" value="This strange box holds a dark sphere. There is some kind of button at one side and a lens up front." />
@@ -26381,7 +26300,6 @@
 	<item id="22399" article="an" name="umbral blade">
 	</item>
 	<item id="22400" article="an" name="umbral masterblade">
-		<attribute key="skillSword" value="1" />
 	</item>
 	<item id="22401" article="a" name="crude umbral slayer">
 		<attribute key="slotType" value="two-handed" />
@@ -26390,16 +26308,13 @@
 		<attribute key="slotType" value="two-handed" />
 	</item>
 	<item id="22403" article="an" name="umbral master slayer">
-		<attribute key="skillSword" value="3" />
 		<attribute key="slotType" value="two-handed" />
-		<attribute key="skillSword" value="3" />
 	</item>
 	<item id="22404" article="a" name="crude umbral axe">
 	</item>
 	<item id="22405" article="an" name="umbral axe">
 	</item>
 	<item id="22406" article="an" name="umbral master axe">
-		<attribute key="skillAxe" value="1" />
 	</item>
 	<item id="22407" article="a" name="crude umbral chopper">
 		<attribute key="slotType" value="two-handed" />
@@ -26408,7 +26323,6 @@
 		<attribute key="slotType" value="two-handed" />
 	</item>
 	<item id="22409" article="an" name="umbral master chopper">
-		<attribute key="skillAxe" value="3" />
 		<attribute key="slotType" value="two-handed" />
 	</item>
 	<item id="22410" article="a" name="crude umbral mace">
@@ -26416,7 +26330,6 @@
 	<item id="22411" article="an" name="umbral mace">
 	</item>
 	<item id="22412" article="an" name="umbral master mace">
-		<attribute key="skillClub" value="1" />
 	</item>
 	<item id="22413" article="a" name="crude umbral hammer">
 		<attribute key="slotType" value="two-handed" />
@@ -26425,7 +26338,6 @@
 		<attribute key="slotType" value="two-handed" />
 	</item>
 	<item id="22415" article="an" name="umbral master hammer">
-		<attribute key="skillClub" value="3" />
 		<attribute key="slotType" value="two-handed" />
 	</item>
 	<item id="22416" article="a" name="crude umbral bow">
@@ -26436,7 +26348,6 @@
 	</item>
 	<item id="22418" article="an" name="umbral master bow">
 		<attribute key="slotType" value="two-handed" />
-		<attribute key="skillDist" value="3" />
 	</item>
 	<item id="22419" article="a" name="crude umbral crossbow">
 		<attribute key="slotType" value="two-handed" />
@@ -26446,24 +26357,20 @@
 	</item>
 	<item id="22421" article="an" name="umbral master crossbow">
 		<attribute key="slotType" value="two-handed" />
-		<attribute key="skillDist" value="3" />
 	</item>
 	<item id="22422" article="a" name="crude umbral movebook">
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="absorbPercentEarth" value="2" />
 		<attribute key="absorbPercentFire" value="2" />
 		<attribute key="absorbPercentIce" value="2" />
 		<attribute key="absorbPercentEnergy" value="2" />
 	</item>
 	<item id="22423" article="an" name="umbral movebook">
-		<attribute key="magiclevelpoints" value="2" />
 		<attribute key="absorbPercentEarth" value="3" />
 		<attribute key="absorbPercentFire" value="3" />
 		<attribute key="absorbPercentIce" value="3" />
 		<attribute key="absorbPercentEnergy" value="3" />
 	</item>
 	<item id="22424" article="an" name="umbral master movebook">
-		<attribute key="magiclevelpoints" value="4" />
 		<attribute key="absorbPercentEarth" value="5" />
 		<attribute key="absorbPercentFire" value="5" />
 		<attribute key="absorbPercentIce" value="5" />
@@ -27854,7 +27761,6 @@
 		<attribute key="slotType" value="head" />
 		<attribute key="absorbPercentEarth" value="3" />
 		<attribute key="absorbPercentFire" value="-3" />
-		<attribute key="magiclevelpoints" value="1" />
 	</item>
 	<item id="23537" article="a" name="mooh'tah plate">
 		<attribute key="slotType" value="body" />
@@ -29713,121 +29619,101 @@
 		<attribute key="floorchange" value="north" />
 	</item>
 	<item id="25174" article="a" name="fireheart cuirass">
-		<attribute key="skillSword" value="4" />
 		<attribute key="absorbPercentFire" value="8" />
 		<attribute key="absorbPercentIce" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25175" article="a" name="fireheart hauberk">
-		<attribute key="skillAxe" value="4" />
 		<attribute key="absorbPercentFire" value="8" />
 		<attribute key="absorbPercentIce" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25176" article="a" name="fireheart platemail">
-		<attribute key="skillClub" value="4" />
 		<attribute key="absorbPercentFire" value="8" />
 		<attribute key="absorbPercentIce" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25177" article="an" name="earthheart cuirass">
-		<attribute key="skillSword" value="4" />
 		<attribute key="absorbPercentEarth" value="8" />
 		<attribute key="absorbPercentFire" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25178" article="an" name="earthheart hauberk">
-		<attribute key="skillAxe" value="4" />
 		<attribute key="absorbPercentEarth" value="8" />
 		<attribute key="absorbPercentFire" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25179" article="an" name="earthheart platemail">
-		<attribute key="skillClub" value="4" />
 		<attribute key="absorbPercentEarth" value="8" />
 		<attribute key="absorbPercentFire" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25180" article="a" name="thunderheart cuirass">
-		<attribute key="skillSword" value="4" />
 		<attribute key="absorbPercentEnergy" value="8" />
 		<attribute key="absorbPercentEarth" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25181" article="a" name="thunderheart hauberk">
-		<attribute key="skillAxe" value="4" />
 		<attribute key="absorbPercentEnergy" value="8" />
 		<attribute key="absorbPercentEarth" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25182" article="a" name="thunderheart platemail">
-		<attribute key="skillClub" value="4" />
 		<attribute key="absorbPercentEnergy" value="8" />
 		<attribute key="absorbPercentEarth" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25183" article="a" name="frostheart cuirass">
-		<attribute key="skillSword" value="4" />
 		<attribute key="absorbPercentIce" value="8" />
 		<attribute key="absorbPercentEnergy" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25184" article="a" name="frostheart hauberk">
-		<attribute key="skillAxe" value="4" />
 		<attribute key="absorbPercentIce" value="8" />
 		<attribute key="absorbPercentEnergy" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25185" article="a" name="frostheart platemail">
-		<attribute key="skillClub" value="4" />
 		<attribute key="absorbPercentIce" value="8" />
 		<attribute key="absorbPercentEnergy" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25186" article="a" name="firesoul tabard">
-		<attribute key="skillDist" value="4" />
 		<attribute key="absorbPercentFire" value="8" />
 		<attribute key="absorbPercentIce" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25187" article="an" name="earthsoul tabard">
-		<attribute key="skillDist" value="4" />
 		<attribute key="absorbPercentEarth" value="8" />
 		<attribute key="absorbPercentFire" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25188" article="a" name="thundersoul tabard">
-		<attribute key="skillDist" value="4" />
 		<attribute key="absorbPercentEnergy" value="8" />
 		<attribute key="absorbPercentEarth" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25189" article="a" name="frostsoul tabard">
-		<attribute key="skillDist" value="4" />
 		<attribute key="absorbPercentIce" value="8" />
 		<attribute key="absorbPercentEnergy" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25190" article="a" name="firemind raiment">
-		<attribute key="magiclevelpoints" value="4" />
 		<attribute key="absorbPercentFire" value="8" />
 		<attribute key="absorbPercentIce" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25191" article="an" name="earthmind raiment">
-		<attribute key="magiclevelpoints" value="4" />
 		<attribute key="absorbPercentEarth" value="8" />
 		<attribute key="absorbPercentFire" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25192" article="a" name="thundermind raiment">
-		<attribute key="magiclevelpoints" value="4" />
 		<attribute key="absorbPercentEnergy" value="8" />
 		<attribute key="absorbPercentEarth" value="-8" />
 		<attribute key="slotType" value="body" />
 	</item>
 	<item id="25193" article="a" name="frostmind raiment">
-		<attribute key="magiclevelpoints" value="4" />
 		<attribute key="absorbPercentIce" value="8" />
 		<attribute key="absorbPercentEnergy" value="-8" />
 		<attribute key="slotType" value="body" />
@@ -30138,7 +30024,6 @@
 		<attribute key="slotType" value="head" />
 	</item>
 	<item id="25411" article="a" name="book of lies">
-		<attribute key="magiclevelpoints" value="4" />
 	</item>
 	<item id="25412" name="treader of torment">
 		<attribute key="slotType" value="feet" />
@@ -30174,7 +30059,6 @@
 	</item>
 	<item id="25422" name="Ferumbras' staff">
 		<attribute key="description" value="It is made of platinum and emeralds and topped by a large F made of gold." />
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="showduration" value="0" />
 		<attribute key="decayTo" value="25420" />
 		<attribute key="duration" value="43200" />
@@ -30189,15 +30073,6 @@
 		<attribute key="showduration" value="0" />
 		<attribute key="decayTo" value="25423" />
 		<attribute key="duration" value="3600" />
-	</item>
-	<item id="25425" name="Ferumbras' mana keg">
-		<attribute key="description" value="It is made of dark oak and crested with a large golden F." />
-	</item>
-	<item id="25426" name="Ferumbras' mana keg">
-		<attribute key="description" value="It is made of dark oak and crested with a large golden F." />
-		<attribute key="showduration" value="0" />
-		<attribute key="decayTo" value="25425" />
-		<attribute key="duration" value="86400" />
 	</item>
 	<item id="25427" article="a" name="scroll of ascension">
 		<attribute key="description" value="It is inscribed with faintly glowing ink and sealed with the letter F." />
@@ -30580,9 +30455,6 @@
 	<item id="26026" article="a" name="spike trap" />
 	<item id="26027" name="strange slits" />
 	<item id="26028" name="strange holes" />
-	<item id="26029" article="an" name="ultimate mana potion">
-		<attribute key="description" value="This potion can only be consumed by sorcerers and druids of level 130 or higher." />
-	</item>
 	<item id="26030" article="an" name="ultimate spirit potion">
 		<attribute key="description" value="This potion can only be consumed by paladins of level 130 or higher." />
 	</item>
@@ -30852,8 +30724,6 @@
 		<attribute key="speed" value="20" />
 		<attribute key="healthGain" value="2" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="8" />
-		<attribute key="manaTicks" value="6000" />
 		<attribute key="absorbPercentEnergy" value="8" />
 	</item>
 	<item id="26132" name="void boots">
@@ -30865,8 +30735,6 @@
 		<attribute key="speed" value="60" />
 		<attribute key="healthGain" value="3" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="12" />
-		<attribute key="manaTicks" value="6000" />
 		<attribute key="absorbPercentEnergy" value="10" />
 		<attribute key="showattributes" value="1" />
 	</item>
@@ -30983,8 +30851,6 @@
 		<attribute key="slotType" value="necklace" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="duration" value="1800" />
-		<attribute key="skillDist" value="4" />
-		<attribute key="magiclevelpoints" value="2" />
 		<attribute key="showduration" value="1" />
 		<attribute key="transformDeEquipTo" value="26198" />
 	</item>
@@ -30994,9 +30860,6 @@
 		<attribute key="duration" value="1800" />
 		<attribute key="healthGain" value="2" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="8" />
-		<attribute key="manaTicks" value="6000" />
-		<attribute key="magiclevelpoints" value="3" />
 		<attribute key="showduration" value="1" />
 		<attribute key="transformDeEquipTo" value="26199" />
 	</item>
@@ -31004,9 +30867,6 @@
 		<attribute key="slotType" value="necklace" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="duration" value="1800" />
-		<attribute key="skillSword" value="4" />
-		<attribute key="skillClub" value="4" />
-		<attribute key="skillAxe" value="4" />
 		<attribute key="absorbPercentPhysical" value="5" />
 		<attribute key="showduration" value="1" />
 		<attribute key="transformDeEquipTo" value="26200" />
@@ -31021,8 +30881,6 @@
 		<attribute key="slotType" value="ring" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="duration" value="1800" />
-		<attribute key="skillDist" value="3" />
-		<attribute key="magiclevelpoints" value="1" />
 		<attribute key="showduration" value="1" />
 		<attribute key="transformDeEquipTo" value="26185" />
 	</item>
@@ -31038,9 +30896,6 @@
 		<attribute key="duration" value="1800" />
 		<attribute key="healthGain" value="1" />
 		<attribute key="healthTicks" value="6000" />
-		<attribute key="manaGain" value="4" />
-		<attribute key="manaTicks" value="6000" />
-		<attribute key="magiclevelpoints" value="2" />
 		<attribute key="showduration" value="1" />
 		<attribute key="transformDeEquipTo" value="26187" />
 	</item>
@@ -31054,9 +30909,6 @@
 		<attribute key="slotType" value="ring" />
 		<attribute key="decayTo" value="0" />
 		<attribute key="duration" value="1800" />
-		<attribute key="skillSword" value="3" />
-		<attribute key="skillClub" value="3" />
-		<attribute key="skillAxe" value="3" />
 		<attribute key="absorbPercentPhysical" value="3" />
 		<attribute key="showduration" value="1" />
 		<attribute key="transformDeEquipTo" value="26189" />

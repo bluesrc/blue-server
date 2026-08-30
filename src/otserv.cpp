@@ -33,7 +33,6 @@ Scheduler g_scheduler;
 Game g_game;
 ConfigManager g_config;
 Pokemons g_pokemons;
-Vocations g_vocations;
 extern Scripts* g_scripts;
 RSA g_RSA;
 
@@ -204,13 +203,6 @@ void mainLoader(int, char*[], ServiceManager* services)
 
 	if (g_config.getBoolean(ConfigManager::OPTIMIZE_DATABASE) && !DatabaseManager::optimizeTables()) {
 		std::cout << "> No tables were optimized." << std::endl;
-	}
-
-	//load vocations
-	std::cout << ">> Loading vocations" << std::endl;
-	if (!g_vocations.loadFromXml()) {
-		startupErrorMessage("Unable to load vocations!");
-		return;
 	}
 
 	// load item data

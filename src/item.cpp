@@ -19,7 +19,6 @@
 
 extern Game g_game;
 extern Moves* g_moves;
-extern Vocations g_vocations;
 
 Items Item::items;
 
@@ -815,8 +814,6 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 				s << " (invisibility)";
 			} else if (it.abilities->regeneration) {
 				s << " (faster regeneration)";
-			} else if (it.abilities->manaShield) {
-				s << " (mana shield)";
 			} else {
 				found = false;
 			}
@@ -942,11 +939,7 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 			s << "premium ";
 		}
 
-		if (!it.vocationString.empty()) {
-			s << it.vocationString;
-		} else {
-			s << "players";
-		}
+		s << "players";
 
 		if (it.wieldInfo & WIELDINFO_LEVEL) {
 			s << " of level " << it.minReqLevel << " or higher";

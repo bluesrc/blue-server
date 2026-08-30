@@ -34,7 +34,6 @@ extern Chat* g_chat;
 extern Game g_game;
 extern Pokemons g_pokemons;
 extern ConfigManager g_config;
-extern Vocations g_vocations;
 extern Moves* g_moves;
 extern Events* g_events;
 extern Actions* g_actions;
@@ -1286,15 +1285,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(BUG_CATEGORY_TECHNICAL)
 	registerEnum(BUG_CATEGORY_OTHER)
 
-	registerEnum(CALLBACK_PARAM_LEVELMAGICVALUE)
-	registerEnum(CALLBACK_PARAM_SKILLVALUE)
 	registerEnum(CALLBACK_PARAM_TARGETTILE)
 	registerEnum(CALLBACK_PARAM_TARGETCREATURE)
 
-	registerEnum(COMBAT_FORMULA_UNDEFINED)
-	registerEnum(COMBAT_FORMULA_LEVELMAGIC)
-	registerEnum(COMBAT_FORMULA_SKILL)
-	registerEnum(COMBAT_FORMULA_DAMAGE)
 
 	registerEnum(DIRECTION_NORTH)
 	registerEnum(DIRECTION_EAST)
@@ -1312,7 +1305,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(COMBAT_FIREDAMAGE)
 	registerEnum(COMBAT_UNDEFINEDDAMAGE)
 	registerEnum(COMBAT_LIFEDRAIN)
-	registerEnum(COMBAT_MANADRAIN)
 	registerEnum(COMBAT_HEALING)
 	registerEnum(COMBAT_DROWNDAMAGE)
 	registerEnum(COMBAT_ICEDAMAGE)
@@ -1358,11 +1350,9 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITION_OUTFIT)
 	registerEnum(CONDITION_INVISIBLE)
 	registerEnum(CONDITION_LIGHT)
-	registerEnum(CONDITION_MANASHIELD)
 	registerEnum(CONDITION_INFIGHT)
 	registerEnum(CONDITION_DRUNK)
 	registerEnum(CONDITION_REGENERATION)
-	registerEnum(CONDITION_SOUL)
 	registerEnum(CONDITION_DROWN)
 	registerEnum(CONDITION_MUTED)
 	registerEnum(CONDITION_CHANNELMUTEDTICKS)
@@ -1392,41 +1382,19 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CONDITION_PARAM_DRUNKENNESS)
 	registerEnum(CONDITION_PARAM_HEALTHGAIN)
 	registerEnum(CONDITION_PARAM_HEALTHTICKS)
-	registerEnum(CONDITION_PARAM_MANAGAIN)
-	registerEnum(CONDITION_PARAM_MANATICKS)
 	registerEnum(CONDITION_PARAM_DELAYED)
 	registerEnum(CONDITION_PARAM_SPEED)
 	registerEnum(CONDITION_PARAM_LIGHT_LEVEL)
 	registerEnum(CONDITION_PARAM_LIGHT_COLOR)
-	registerEnum(CONDITION_PARAM_SOULGAIN)
-	registerEnum(CONDITION_PARAM_SOULTICKS)
 	registerEnum(CONDITION_PARAM_MINVALUE)
 	registerEnum(CONDITION_PARAM_MAXVALUE)
 	registerEnum(CONDITION_PARAM_STARTVALUE)
 	registerEnum(CONDITION_PARAM_TICKINTERVAL)
 	registerEnum(CONDITION_PARAM_FORCEUPDATE)
-	registerEnum(CONDITION_PARAM_SKILL_MELEE)
-	registerEnum(CONDITION_PARAM_SKILL_FIST)
-	registerEnum(CONDITION_PARAM_SKILL_CLUB)
-	registerEnum(CONDITION_PARAM_SKILL_SWORD)
-	registerEnum(CONDITION_PARAM_SKILL_AXE)
-	registerEnum(CONDITION_PARAM_SKILL_DISTANCE)
-	registerEnum(CONDITION_PARAM_SKILL_SHIELD)
 	registerEnum(CONDITION_PARAM_SKILL_FISHING)
 	registerEnum(CONDITION_PARAM_STAT_MAXHITPOINTS)
-	registerEnum(CONDITION_PARAM_STAT_MAXMANAPOINTS)
-	registerEnum(CONDITION_PARAM_STAT_MAGICPOINTS)
 	registerEnum(CONDITION_PARAM_STAT_MAXHITPOINTSPERCENT)
-	registerEnum(CONDITION_PARAM_STAT_MAXMANAPOINTSPERCENT)
-	registerEnum(CONDITION_PARAM_STAT_MAGICPOINTSPERCENT)
 	registerEnum(CONDITION_PARAM_PERIODICDAMAGE)
-	registerEnum(CONDITION_PARAM_SKILL_MELEEPERCENT)
-	registerEnum(CONDITION_PARAM_SKILL_FISTPERCENT)
-	registerEnum(CONDITION_PARAM_SKILL_CLUBPERCENT)
-	registerEnum(CONDITION_PARAM_SKILL_SWORDPERCENT)
-	registerEnum(CONDITION_PARAM_SKILL_AXEPERCENT)
-	registerEnum(CONDITION_PARAM_SKILL_DISTANCEPERCENT)
-	registerEnum(CONDITION_PARAM_SKILL_SHIELDPERCENT)
 	registerEnum(CONDITION_PARAM_SKILL_FISHINGPERCENT)
 	registerEnum(CONDITION_PARAM_BUFF_MOVE)
 	registerEnum(CONDITION_PARAM_SUBID)
@@ -1608,7 +1576,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(CREATURE_EVENT_MODALWINDOW)
 	registerEnum(CREATURE_EVENT_TEXTEDIT)
 	registerEnum(CREATURE_EVENT_HEALTHCHANGE)
-	registerEnum(CREATURE_EVENT_MANACHANGE)
 	registerEnum(CREATURE_EVENT_EXTENDED_OPCODE)
 
 	registerEnum(GAME_STATE_STARTUP)
@@ -1732,7 +1699,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerEnum(WIELDINFO_NONE)
 	registerEnum(WIELDINFO_LEVEL)
-	registerEnum(WIELDINFO_VOCREQ)
 	registerEnum(WIELDINFO_PREMIUM)
 
 	registerEnum(PlayerFlag_CannotUseCombat)
@@ -1745,8 +1711,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(PlayerFlag_CanSenseInvisibility)
 	registerEnum(PlayerFlag_IgnoredByPokemons)
 	registerEnum(PlayerFlag_NotGainInFight)
-	registerEnum(PlayerFlag_HasInfiniteMana)
-	registerEnum(PlayerFlag_HasInfiniteSoul)
 	registerEnum(PlayerFlag_HasNoExhaustion)
 	registerEnum(PlayerFlag_CannotUseMoves)
 	registerEnum(PlayerFlag_CannotPickupItem)
@@ -1760,7 +1724,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(PlayerFlag_CanTalkRedChannel)
 	registerEnum(PlayerFlag_TalkOrangeHelpChannel)
 	registerEnum(PlayerFlag_NotGainExperience)
-	registerEnum(PlayerFlag_NotGainMana)
 	registerEnum(PlayerFlag_NotGainHealth)
 	registerEnum(PlayerFlag_NotGainSkill)
 	registerEnum(PlayerFlag_SetMaxSpeed)
@@ -1801,16 +1764,8 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(REPORT_TYPE_STATEMENT)
 	registerEnum(REPORT_TYPE_BOT)
 
-	registerEnum(VOCATION_NONE)
 
-	registerEnum(SKILL_FIST)
-	registerEnum(SKILL_CLUB)
-	registerEnum(SKILL_SWORD)
-	registerEnum(SKILL_AXE)
-	registerEnum(SKILL_DISTANCE)
-	registerEnum(SKILL_SHIELD)
 	registerEnum(SKILL_FISHING)
-	registerEnum(SKILL_MAGLEVEL)
 	registerEnum(SKILL_LEVEL)
 
 	registerEnum(TALKTYPE_SAY)
@@ -2218,7 +2173,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::RATE_EXPERIENCE)
 	registerEnumIn("configKeys", ConfigManager::RATE_SKILL)
 	registerEnumIn("configKeys", ConfigManager::RATE_LOOT)
-	registerEnumIn("configKeys", ConfigManager::RATE_MAGIC)
 	registerEnumIn("configKeys", ConfigManager::RATE_SPAWN)
 	registerEnumIn("configKeys", ConfigManager::HOUSE_PRICE)
 	registerEnumIn("configKeys", ConfigManager::MAX_MESSAGEBUFFER)
@@ -2616,40 +2570,18 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "removeExperience", LuaScriptInterface::luaPlayerRemoveExperience);
 	registerMethod("Player", "getLevel", LuaScriptInterface::luaPlayerGetLevel);
 
-	registerMethod("Player", "getMagicLevel", LuaScriptInterface::luaPlayerGetMagicLevel);
-	registerMethod("Player", "getBaseMagicLevel", LuaScriptInterface::luaPlayerGetBaseMagicLevel);
-	registerMethod("Player", "getMana", LuaScriptInterface::luaPlayerGetMana);
-	registerMethod("Player", "addMana", LuaScriptInterface::luaPlayerAddMana);
-	registerMethod("Player", "getMaxMana", LuaScriptInterface::luaPlayerGetMaxMana);
-	registerMethod("Player", "setMaxMana", LuaScriptInterface::luaPlayerSetMaxMana);
-	registerMethod("Player", "getManaSpent", LuaScriptInterface::luaPlayerGetManaSpent);
-	registerMethod("Player", "addManaSpent", LuaScriptInterface::luaPlayerAddManaSpent);
-	registerMethod("Player", "removeManaSpent", LuaScriptInterface::luaPlayerRemoveManaSpent);
-
 	registerMethod("Player", "getBaseMaxHealth", LuaScriptInterface::luaPlayerGetBaseMaxHealth);
-	registerMethod("Player", "getBaseMaxMana", LuaScriptInterface::luaPlayerGetBaseMaxMana);
 
 	registerMethod("Player", "getSkillLevel", LuaScriptInterface::luaPlayerGetSkillLevel);
 	registerMethod("Player", "getEffectiveSkillLevel", LuaScriptInterface::luaPlayerGetEffectiveSkillLevel);
 	registerMethod("Player", "getSkillPercent", LuaScriptInterface::luaPlayerGetSkillPercent);
 	registerMethod("Player", "getSkillTries", LuaScriptInterface::luaPlayerGetSkillTries);
+	registerMethod("Player", "getRequiredSkillTries", LuaScriptInterface::luaPlayerGetRequiredSkillTries);
 	registerMethod("Player", "addSkillTries", LuaScriptInterface::luaPlayerAddSkillTries);
 	registerMethod("Player", "removeSkillTries", LuaScriptInterface::luaPlayerRemoveSkillTries);
 
-	registerMethod("Player", "addOfflineTrainingTime", LuaScriptInterface::luaPlayerAddOfflineTrainingTime);
-	registerMethod("Player", "getOfflineTrainingTime", LuaScriptInterface::luaPlayerGetOfflineTrainingTime);
-	registerMethod("Player", "removeOfflineTrainingTime", LuaScriptInterface::luaPlayerRemoveOfflineTrainingTime);
-
-	registerMethod("Player", "addOfflineTrainingTries", LuaScriptInterface::luaPlayerAddOfflineTrainingTries);
-
-	registerMethod("Player", "getOfflineTrainingSkill", LuaScriptInterface::luaPlayerGetOfflineTrainingSkill);
-	registerMethod("Player", "setOfflineTrainingSkill", LuaScriptInterface::luaPlayerSetOfflineTrainingSkill);
-
 	registerMethod("Player", "getItemCount", LuaScriptInterface::luaPlayerGetItemCount);
 	registerMethod("Player", "getItemById", LuaScriptInterface::luaPlayerGetItemById);
-
-	registerMethod("Player", "getVocation", LuaScriptInterface::luaPlayerGetVocation);
-	registerMethod("Player", "setVocation", LuaScriptInterface::luaPlayerSetVocation);
 
 	registerMethod("Player", "getSex", LuaScriptInterface::luaPlayerGetSex);
 	registerMethod("Player", "setSex", LuaScriptInterface::luaPlayerSetSex);
@@ -2671,10 +2603,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Player", "getStamina", LuaScriptInterface::luaPlayerGetStamina);
 	registerMethod("Player", "setStamina", LuaScriptInterface::luaPlayerSetStamina);
-
-	registerMethod("Player", "getSoul", LuaScriptInterface::luaPlayerGetSoul);
-	registerMethod("Player", "addSoul", LuaScriptInterface::luaPlayerAddSoul);
-	registerMethod("Player", "getMaxSoul", LuaScriptInterface::luaPlayerGetMaxSoul);
 
 	registerMethod("Player", "getBankBalance", LuaScriptInterface::luaPlayerGetBankBalance);
 	registerMethod("Player", "setBankBalance", LuaScriptInterface::luaPlayerSetBankBalance);
@@ -2864,37 +2792,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Group", "getMaxVipEntries", LuaScriptInterface::luaGroupGetMaxVipEntries);
 	registerMethod("Group", "hasFlag", LuaScriptInterface::luaGroupHasFlag);
 
-	// Vocation
-	registerClass("Vocation", "", LuaScriptInterface::luaVocationCreate);
-	registerMetaMethod("Vocation", "__eq", LuaScriptInterface::luaUserdataCompare);
-
-	registerMethod("Vocation", "getId", LuaScriptInterface::luaVocationGetId);
-	registerMethod("Vocation", "getClientId", LuaScriptInterface::luaVocationGetClientId);
-	registerMethod("Vocation", "getName", LuaScriptInterface::luaVocationGetName);
-	registerMethod("Vocation", "getDescription", LuaScriptInterface::luaVocationGetDescription);
-
-	registerMethod("Vocation", "getRequiredSkillTries", LuaScriptInterface::luaVocationGetRequiredSkillTries);
-	registerMethod("Vocation", "getRequiredManaSpent", LuaScriptInterface::luaVocationGetRequiredManaSpent);
-
-	registerMethod("Vocation", "getHealthGain", LuaScriptInterface::luaVocationGetHealthGain);
-	registerMethod("Vocation", "getHealthGainTicks", LuaScriptInterface::luaVocationGetHealthGainTicks);
-	registerMethod("Vocation", "getHealthGainAmount", LuaScriptInterface::luaVocationGetHealthGainAmount);
-
-	registerMethod("Vocation", "getManaGain", LuaScriptInterface::luaVocationGetManaGain);
-	registerMethod("Vocation", "getManaGainTicks", LuaScriptInterface::luaVocationGetManaGainTicks);
-	registerMethod("Vocation", "getManaGainAmount", LuaScriptInterface::luaVocationGetManaGainAmount);
-
-	registerMethod("Vocation", "getMaxSoul", LuaScriptInterface::luaVocationGetMaxSoul);
-	registerMethod("Vocation", "getSoulGainTicks", LuaScriptInterface::luaVocationGetSoulGainTicks);
-
-	registerMethod("Vocation", "getAttackSpeed", LuaScriptInterface::luaVocationGetAttackSpeed);
-	registerMethod("Vocation", "getBaseSpeed", LuaScriptInterface::luaVocationGetBaseSpeed);
-
-	registerMethod("Vocation", "getDemotion", LuaScriptInterface::luaVocationGetDemotion);
-	registerMethod("Vocation", "getPromotion", LuaScriptInterface::luaVocationGetPromotion);
-
-	registerMethod("Vocation", "allowsPvp", LuaScriptInterface::luaVocationAllowsPvp);
-
 	// Town
 	registerClass("Town", "", LuaScriptInterface::luaTownCreate);
 	registerMetaMethod("Town", "__eq", LuaScriptInterface::luaUserdataCompare);
@@ -2988,7 +2885,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("ItemType", "getWieldInfo", LuaScriptInterface::luaItemTypeGetWieldInfo);
 	registerMethod("ItemType", "getDuration", LuaScriptInterface::luaItemTypeGetDuration);
 	registerMethod("ItemType", "getLevelDoor", LuaScriptInterface::luaItemTypeGetLevelDoor);
-	registerMethod("ItemType", "getVocationString", LuaScriptInterface::luaItemTypeGetVocationString);
 	registerMethod("ItemType", "getMinReqLevel", LuaScriptInterface::luaItemTypeGetMinReqLevel);
 
 	registerMethod("ItemType", "hasSubType", LuaScriptInterface::luaItemTypeHasSubType);
@@ -3004,7 +2900,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Combat", "setParameter", LuaScriptInterface::luaCombatSetParameter);
 	registerMethod("Combat", "getParameter", LuaScriptInterface::luaCombatGetParameter);
 
-	registerMethod("Combat", "setFormula", LuaScriptInterface::luaCombatSetFormula);
 
 	registerMethod("Combat", "setArea", LuaScriptInterface::luaCombatSetArea);
 	registerMethod("Combat", "addCondition", LuaScriptInterface::luaCombatAddCondition);
@@ -3107,7 +3002,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "outfit", LuaScriptInterface::luaPokemonTypeOutfit);
 	registerMethod("PokemonType", "race", LuaScriptInterface::luaPokemonTypeRace);
 	registerMethod("PokemonType", "corpseId", LuaScriptInterface::luaPokemonTypeCorpseId);
-	registerMethod("PokemonType", "manaCost", LuaScriptInterface::luaPokemonTypeManaCost);
 	registerMethod("PokemonType", "baseSpeed", LuaScriptInterface::luaPokemonTypeBaseSpeed);
 	registerMethod("PokemonType", "light", LuaScriptInterface::luaPokemonTypeLight);
 
@@ -3207,7 +3101,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("CreatureEvent", "onModalWindow", LuaScriptInterface::luaCreatureEventOnCallback);
 	registerMethod("CreatureEvent", "onTextEdit", LuaScriptInterface::luaCreatureEventOnCallback);
 	registerMethod("CreatureEvent", "onHealthChange", LuaScriptInterface::luaCreatureEventOnCallback);
-	registerMethod("CreatureEvent", "onManaChange", LuaScriptInterface::luaCreatureEventOnCallback);
 	registerMethod("CreatureEvent", "onExtendedOpcode", LuaScriptInterface::luaCreatureEventOnCallback);
 
 	// MoveEvent
@@ -3222,7 +3115,6 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("MoveEvent", "zoneid", LuaScriptInterface::luaMoveEventZoneId);
 	registerMethod("MoveEvent", "position", LuaScriptInterface::luaMoveEventPosition);
 	registerMethod("MoveEvent", "premium", LuaScriptInterface::luaMoveEventPremium);
-	registerMethod("MoveEvent", "vocation", LuaScriptInterface::luaMoveEventVocation);
 	registerMethod("MoveEvent", "tileItem", LuaScriptInterface::luaMoveEventTileItem);
 	registerMethod("MoveEvent", "onEquip", LuaScriptInterface::luaMoveEventOnCallback);
 	registerMethod("MoveEvent", "onDeEquip", LuaScriptInterface::luaMoveEventOnCallback);
@@ -8716,148 +8608,12 @@ int LuaScriptInterface::luaPlayerGetLevel(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPlayerGetMagicLevel(lua_State* L)
-{
-	// player:getMagicLevel()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getMagicLevel());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetBaseMagicLevel(lua_State* L)
-{
-	// player:getBaseMagicLevel()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getBaseMagicLevel());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetMana(lua_State* L)
-{
-	// player:getMana()
-	const Player* player = getUserdata<const Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getMana());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerAddMana(lua_State* L)
-{
-	// player:addMana(manaChange[, animationOnLoss = false])
-	Player* player = getUserdata<Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	int32_t manaChange = getNumber<int32_t>(L, 2);
-	bool animationOnLoss = getBoolean(L, 3, false);
-	if (!animationOnLoss && manaChange < 0) {
-		player->changeMana(manaChange);
-	} else {
-		CombatDamage damage;
-		damage.primary.value = manaChange;
-		damage.origin = ORIGIN_NONE;
-		g_game.combatChangeMana(nullptr, player, damage);
-	}
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetMaxMana(lua_State* L)
-{
-	// player:getMaxMana()
-	const Player* player = getUserdata<const Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getMaxMana());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerSetMaxMana(lua_State* L)
-{
-	// player:setMaxMana(maxMana)
-	Player* player = getPlayer(L, 1);
-	if (player) {
-		player->manaMax = getNumber<int32_t>(L, 2);
-		player->mana = std::min<int32_t>(player->mana, player->manaMax);
-		player->sendStats();
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetManaSpent(lua_State* L)
-{
-	// player:getManaSpent()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getSpentMana());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerAddManaSpent(lua_State* L)
-{
-	// player:addManaSpent(amount)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		player->addManaSpent(getNumber<uint64_t>(L, 2));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerRemoveManaSpent(lua_State* L)
-{
-	// player:removeManaSpent(amount[, notify = true])
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		player->removeManaSpent(getNumber<uint64_t>(L, 2), getBoolean(L, 3, true));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
 int LuaScriptInterface::luaPlayerGetBaseMaxHealth(lua_State* L)
 {
 	// player:getBaseMaxHealth()
 	Player* player = getUserdata<Player>(L, 1);
 	if (player) {
 		lua_pushnumber(L, player->healthMax);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetBaseMaxMana(lua_State* L)
-{
-	// player:getBaseMaxMana()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->manaMax);
 	} else {
 		lua_pushnil(L);
 	}
@@ -8916,6 +8672,19 @@ int LuaScriptInterface::luaPlayerGetSkillTries(lua_State* L)
 	return 1;
 }
 
+int LuaScriptInterface::luaPlayerGetRequiredSkillTries(lua_State* L)
+{
+	// player:getRequiredSkillTries(skillType, level)
+	Player* player = getUserdata<Player>(L, 1);
+	const skills_t skillType = getNumber<skills_t>(L, 2);
+	if (player && skillType <= SKILL_LAST) {
+		lua_pushnumber(L, Player::getRequiredSkillTries(skillType, getNumber<uint16_t>(L, 3)));
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 int LuaScriptInterface::luaPlayerAddSkillTries(lua_State* L)
 {
 	// player:addSkillTries(skillType, tries)
@@ -8939,88 +8708,6 @@ int LuaScriptInterface::luaPlayerRemoveSkillTries(lua_State* L)
 		skills_t skillType = getNumber<skills_t>(L, 2);
 		uint64_t tries = getNumber<uint64_t>(L, 3);
 		player->removeSkillTries(skillType, tries, getBoolean(L, 4, true));
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerAddOfflineTrainingTime(lua_State* L)
-{
-	// player:addOfflineTrainingTime(time)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		int32_t time = getNumber<int32_t>(L, 2);
-		player->addOfflineTrainingTime(time);
-		player->sendStats();
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetOfflineTrainingTime(lua_State* L)
-{
-	// player:getOfflineTrainingTime()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getOfflineTrainingTime());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerRemoveOfflineTrainingTime(lua_State* L)
-{
-	// player:removeOfflineTrainingTime(time)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		int32_t time = getNumber<int32_t>(L, 2);
-		player->removeOfflineTrainingTime(time);
-		player->sendStats();
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerAddOfflineTrainingTries(lua_State* L)
-{
-	// player:addOfflineTrainingTries(skillType, tries)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		skills_t skillType = getNumber<skills_t>(L, 2);
-		uint64_t tries = getNumber<uint64_t>(L, 3);
-		pushBoolean(L, player->addOfflineTrainingTries(skillType, tries));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetOfflineTrainingSkill(lua_State* L)
-{
-	// player:getOfflineTrainingSkill()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getOfflineTrainingSkill());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerSetOfflineTrainingSkill(lua_State* L)
-{
-	// player:setOfflineTrainingSkill(skillId)
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		uint32_t skillId = getNumber<uint32_t>(L, 2);
-		player->setOfflineTrainingSkill(skillId);
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);
@@ -9082,49 +8769,6 @@ int LuaScriptInterface::luaPlayerGetItemById(lua_State* L)
 	} else {
 		lua_pushnil(L);
 	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetVocation(lua_State* L)
-{
-	// player:getVocation()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		pushUserdata<Vocation>(L, player->getVocation());
-		setMetatable(L, -1, "Vocation");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerSetVocation(lua_State* L)
-{
-	// player:setVocation(id or name or userdata)
-	Player* player = getUserdata<Player>(L, 1);
-	if (!player) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	Vocation* vocation;
-	if (isNumber(L, 2)) {
-		vocation = g_vocations.getVocation(getNumber<uint16_t>(L, 2));
-	} else if (isString(L, 2)) {
-		vocation = g_vocations.getVocation(g_vocations.getVocationId(getString(L, 2)));
-	} else if (isUserdata(L, 2)) {
-		vocation = getUserdata<Vocation>(L, 2);
-	} else {
-		vocation = nullptr;
-	}
-
-	if (!vocation) {
-		pushBoolean(L, false);
-		return 1;
-	}
-
-	player->setVocation(vocation->getId());
-	pushBoolean(L, true);
 	return 1;
 }
 
@@ -9332,44 +8976,6 @@ int LuaScriptInterface::luaPlayerSetStamina(lua_State* L)
 		player->staminaMinutes = std::min<uint16_t>(2520, stamina);
 		player->sendStats();
 		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetSoul(lua_State* L)
-{
-	// player:getSoul()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		lua_pushnumber(L, player->getSoul());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerAddSoul(lua_State* L)
-{
-	// player:addSoul(soulChange)
-	int32_t soulChange = getNumber<int32_t>(L, 2);
-	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		player->changeSoul(soulChange);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaPlayerGetMaxSoul(lua_State* L)
-{
-	// player:getMaxSoul()
-	Player* player = getUserdata<Player>(L, 1);
-	if (player && player->vocation) {
-		lua_pushnumber(L, player->vocation->getSoulMax());
 	} else {
 		lua_pushnil(L);
 	}
@@ -11264,285 +10870,6 @@ int LuaScriptInterface::luaGroupHasFlag(lua_State* L)
 	return 1;
 }
 
-// Vocation
-int LuaScriptInterface::luaVocationCreate(lua_State* L)
-{
-	// Vocation(id or name)
-	uint32_t id;
-	if (isNumber(L, 2)) {
-		id = getNumber<uint32_t>(L, 2);
-	} else {
-		id = g_vocations.getVocationId(getString(L, 2));
-	}
-
-	Vocation* vocation = g_vocations.getVocation(id);
-	if (vocation) {
-		pushUserdata<Vocation>(L, vocation);
-		setMetatable(L, -1, "Vocation");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetId(lua_State* L)
-{
-	// vocation:getId()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getId());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetClientId(lua_State* L)
-{
-	// vocation:getClientId()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getClientId());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetName(lua_State* L)
-{
-	// vocation:getName()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		pushString(L, vocation->getVocName());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetDescription(lua_State* L)
-{
-	// vocation:getDescription()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		pushString(L, vocation->getVocDescription());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetRequiredSkillTries(lua_State* L)
-{
-	// vocation:getRequiredSkillTries(skillType, skillLevel)
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		skills_t skillType = getNumber<skills_t>(L, 2);
-		uint16_t skillLevel = getNumber<uint16_t>(L, 3);
-		lua_pushnumber(L, vocation->getReqSkillTries(skillType, skillLevel));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetRequiredManaSpent(lua_State* L)
-{
-	// vocation:getRequiredManaSpent(magicLevel)
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		uint32_t magicLevel = getNumber<uint32_t>(L, 2);
-		lua_pushnumber(L, vocation->getReqMana(magicLevel));
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetHealthGain(lua_State* L)
-{
-	// vocation:getHealthGain()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getHPGain());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetHealthGainTicks(lua_State* L)
-{
-	// vocation:getHealthGainTicks()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getHealthGainTicks());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetHealthGainAmount(lua_State* L)
-{
-	// vocation:getHealthGainAmount()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getHealthGainAmount());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetManaGain(lua_State* L)
-{
-	// vocation:getManaGain()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getManaGain());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetManaGainTicks(lua_State* L)
-{
-	// vocation:getManaGainTicks()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getManaGainTicks());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetManaGainAmount(lua_State* L)
-{
-	// vocation:getManaGainAmount()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getManaGainAmount());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetMaxSoul(lua_State* L)
-{
-	// vocation:getMaxSoul()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getSoulMax());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetSoulGainTicks(lua_State* L)
-{
-	// vocation:getSoulGainTicks()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getSoulGainTicks());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetAttackSpeed(lua_State* L)
-{
-	// vocation:getAttackSpeed()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getAttackSpeed());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetBaseSpeed(lua_State* L)
-{
-	// vocation:getBaseSpeed()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		lua_pushnumber(L, vocation->getBaseSpeed());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetDemotion(lua_State* L)
-{
-	// vocation:getDemotion()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (!vocation) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint16_t fromId = vocation->getFromVocation();
-	if (fromId == VOCATION_NONE) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	Vocation* demotedVocation = g_vocations.getVocation(fromId);
-	if (demotedVocation && demotedVocation != vocation) {
-		pushUserdata<Vocation>(L, demotedVocation);
-		setMetatable(L, -1, "Vocation");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationGetPromotion(lua_State* L)
-{
-	// vocation:getPromotion()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (!vocation) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	uint16_t promotedId = g_vocations.getPromotedVocation(vocation->getId());
-	if (promotedId == VOCATION_NONE) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	Vocation* promotedVocation = g_vocations.getVocation(promotedId);
-	if (promotedVocation && promotedVocation != vocation) {
-		pushUserdata<Vocation>(L, promotedVocation);
-		setMetatable(L, -1, "Vocation");
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaVocationAllowsPvp(lua_State* L)
-{
-	// vocation:allowsPvp()
-	Vocation* vocation = getUserdata<Vocation>(L, 1);
-	if (vocation) {
-		pushBoolean(L, vocation->allowsPvp());
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-// Town
 int LuaScriptInterface::luaTownCreate(lua_State* L)
 {
 	// Town(id or name)
@@ -12317,16 +11644,12 @@ int LuaScriptInterface::luaItemTypeGetAbilities(lua_State* L)
 		lua_createtable(L, 6, 12);
 		setField(L, "healthGain", abilities.healthGain);
 		setField(L, "healthTicks", abilities.healthTicks);
-		setField(L, "manaGain", abilities.manaGain);
-		setField(L, "manaTicks", abilities.manaTicks);
 		setField(L, "conditionImmunities", abilities.conditionImmunities);
 		setField(L, "conditionSuppressions", abilities.conditionSuppressions);
 		setField(L, "speed", abilities.speed);
 		setField(L, "elementDamage", abilities.elementDamage);
 		setField(L, "elementType", abilities.elementType);
 
-		lua_pushboolean(L, abilities.manaShield);
-		lua_setfield(L, -2, "manaShield");
 		lua_pushboolean(L, abilities.invisible);
 		lua_setfield(L, -2, "invisible");
 		lua_pushboolean(L, abilities.regeneration);
@@ -12465,18 +11788,6 @@ int LuaScriptInterface::luaItemTypeGetLevelDoor(lua_State* L)
 	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
 	if (itemType) {
 		lua_pushinteger(L, itemType->levelDoor);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaItemTypeGetVocationString(lua_State* L)
-{
-	// itemType:getVocationString()
-	const ItemType* itemType = getUserdata<const ItemType>(L, 1);
-	if (itemType) {
-		pushString(L, itemType->vocationString);
 	} else {
 		lua_pushnil(L);
 	}
@@ -12672,26 +11983,6 @@ int LuaScriptInterface::luaCombatGetParameter(lua_State* L)
 	}
 
 	lua_pushnumber(L, value);
-	return 1;
-}
-
-int LuaScriptInterface::luaCombatSetFormula(lua_State* L)
-{
-	// combat:setFormula(type, mina, minb, maxa, maxb)
-	const Combat_ptr& combat = getSharedPtr<Combat>(L, 1);
-	if (!combat) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_COMBAT_NOT_FOUND));
-		lua_pushnil(L);
-		return 1;
-	}
-
-	formulaType_t type = getNumber<formulaType_t>(L, 2);
-	double mina = getNumber<double>(L, 3);
-	double minb = getNumber<double>(L, 4);
-	double maxa = getNumber<double>(L, 5);
-	double maxb = getNumber<double>(L, 6);
-	combat->setPlayerCombatValues(type, mina, minb, maxa, maxb);
-	pushBoolean(L, true);
 	return 1;
 }
 
@@ -14072,8 +13363,6 @@ int LuaScriptInterface::luaPokemonTypeCombatImmunities(lua_State* L)
 			} else if (immunity == "lifedrain") {
 				pokemonType->info.damageImmunities |= COMBAT_LIFEDRAIN;
 				pushBoolean(L, true);
-			} else if (immunity == "manadrain") {
-				pokemonType->info.damageImmunities |= COMBAT_MANADRAIN;
 				pushBoolean(L, true);
 			} else {
 				std::cout << "[Warning - Pokemons::loadPokemon] Unknown immunity name " << immunity << " for pokemon: " << pokemonType->name << std::endl;
@@ -15012,22 +14301,6 @@ int LuaScriptInterface::luaPokemonTypeCorpseId(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaPokemonTypeManaCost(lua_State* L)
-{
-	// get: pokemonType:manaCost() set: pokemonType:manaCost(mana)
-	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
-	if (pokemonType) {
-		if (lua_gettop(L) == 1) {
-			lua_pushnumber(L, pokemonType->info.manaCost);
-		} else {
-			pokemonType->info.manaCost = getNumber<uint32_t>(L, 2);
-			pushBoolean(L, true);
-		}
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
 
 int LuaScriptInterface::luaPokemonTypeBaseSpeed(lua_State* L)
 {
@@ -15836,8 +15109,6 @@ int LuaScriptInterface::luaCreatureEventType(lua_State* L)
 			creature->setEventType(CREATURE_EVENT_TEXTEDIT);
 		} else if (tmpStr == "healthchange") {
 			creature->setEventType(CREATURE_EVENT_HEALTHCHANGE);
-		} else if (tmpStr == "manachange") {
-			creature->setEventType(CREATURE_EVENT_MANACHANGE);
 		} else if (tmpStr == "extendedopcode") {
 			creature->setEventType(CREATURE_EVENT_EXTENDED_OPCODE);
 		} else {
@@ -16066,46 +15337,6 @@ int LuaScriptInterface::luaMoveEventPremium(lua_State* L)
 	if (moveevent) {
 		moveevent->setNeedPremium(getBoolean(L, 2));
 		moveevent->setWieldInfo(WIELDINFO_PREMIUM);
-		pushBoolean(L, true);
-	} else {
-		lua_pushnil(L);
-	}
-	return 1;
-}
-
-int LuaScriptInterface::luaMoveEventVocation(lua_State* L)
-{
-	// moveevent:vocation(vocName[, showInDescription = false, lastVoc = false])
-	MoveEvent* moveevent = getUserdata<MoveEvent>(L, 1);
-	if (moveevent) {
-		moveevent->addVocEquipMap(getString(L, 2));
-		moveevent->setWieldInfo(WIELDINFO_VOCREQ);
-		std::string tmp;
-		bool showInDescription = false;
-		bool lastVoc = false;
-		if (getBoolean(L, 3)) {
-			showInDescription = getBoolean(L, 3);
-		}
-		if (getBoolean(L, 4)) {
-			lastVoc = getBoolean(L, 4);
-		}
-		if (showInDescription) {
-			if (moveevent->getVocationString().empty()) {
-				tmp = asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				moveevent->setVocationString(tmp);
-			} else {
-				tmp = moveevent->getVocationString();
-				if (lastVoc) {
-					tmp += " and ";
-				} else {
-					tmp += ", ";
-				}
-				tmp += asLowerCaseString(getString(L, 2));
-				tmp += "s";
-				moveevent->setVocationString(tmp);
-			}
-		}
 		pushBoolean(L, true);
 	} else {
 		lua_pushnil(L);

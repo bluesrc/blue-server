@@ -62,39 +62,6 @@ if Modules == nil then
 		-- local node1 = keywordHandler:addKeyword({"promot"}, StdModule.say, {npcHandler = npcHandler, text = "I can promote you for 20000 gold coins. Do you want me to promote you?"})
 		-- node1:addChildKeyword({"yes"}, StdModule.promotePlayer, {npcHandler = npcHandler, cost = 20000, level = 20}, text = "Congratulations! You are now promoted.")
 		-- node1:addChildKeyword({"no"}, StdModule.say, {npcHandler = npcHandler, text = "Allright then. Come back when you are ready."}, reset = true)
-	function StdModule.promotePlayer(cid, message, keywords, parameters, node)
-		local npcHandler = parameters.npcHandler
-		if npcHandler == nil then
-			error("StdModule.promotePlayer called without any npcHandler instance.")
-		end
-
-		if not npcHandler:isFocused(cid) then
-			return false
-		end
-
-		local player = Player(cid)
-		if player:isPremium() or not parameters.premium then
-			local promotion = player:getVocation():getPromotion()
-			if player:getStorageValue(PlayerStorageKeys.promotion) == 1 then
-				npcHandler:say("You are already promoted!", cid)
-			elseif player:getLevel() < parameters.level then
-				npcHandler:say("I am sorry, but I can only promote you once you have reached level " .. parameters.level .. ".", cid)
-			elseif not player:removeTotalMoney(parameters.cost) then
-				npcHandler:say("You do not have enough money!", cid)
-			else
-				npcHandler:say(parameters.text, cid)
-				player:setVocation(promotion)
-				player:setStorageValue(PlayerStorageKeys.promotion, 1)
-			end
-		else
-			npcHandler:say("You need a premium account in order to get promoted.", cid)
-		end
-		npcHandler:resetNpc(cid)
-		return true
-	end
-
-
-	function StdModule.bless(cid, message, keywords, parameters, node)
 		local npcHandler = parameters.npcHandler
 		if npcHandler == nil then
 			error("StdModule.bless called without any npcHandler instance.")
