@@ -157,7 +157,6 @@ enum ShootType_t : uint8_t {
 	CONST_ANI_SIMPLEARROW = 54,
 
 	// for internal use, don't send to client
-	CONST_ANI_WEAPONTYPE = 0xFE, // 254
 };
 
 enum SpeakClasses : uint8_t {
@@ -225,7 +224,6 @@ enum FluidTypes_t : uint8_t {
 	FLUID_SLIME = FLUID_GREEN,
 	FLUID_LEMONADE = FLUID_YELLOW,
 	FLUID_MILK = FLUID_WHITE,
-	FLUID_MANA = FLUID_PURPLE,
 
 	FLUID_LIFE = FLUID_RED + 8,
 	FLUID_OIL = FLUID_BROWN + 8,
@@ -248,7 +246,7 @@ enum FluidTypes_t : uint8_t {
 const uint8_t reverseFluidMap[] = {
 	FLUID_EMPTY,
 	FLUID_WATER,
-	FLUID_MANA,
+	FLUID_PURPLE,
 	FLUID_BEER,
 	FLUID_EMPTY,
 	FLUID_BLOOD,
@@ -261,7 +259,7 @@ const uint8_t reverseFluidMap[] = {
 const uint8_t clientToServerFluidMap[] = {
 	FLUID_EMPTY,
 	FLUID_WATER,
-	FLUID_MANA,
+	FLUID_PURPLE,
 	FLUID_BEER,
 	FLUID_MUD,
 	FLUID_BLOOD,
@@ -330,7 +328,6 @@ enum Icons_t {
 	ICON_BURN = 1 << 1,
 	ICON_ENERGY =  1 << 2,
 	ICON_DRUNK = 1 << 3,
-	ICON_MANASHIELD = 1 << 4,
 	ICON_PARALYZE = 1 << 5,
 	ICON_HASTE = 1 << 6,
 	ICON_SWORDS = 1 << 7,
@@ -344,51 +341,11 @@ enum Icons_t {
 	ICON_BLEEDING = 1 << 15,
 };
 
-enum WeaponType_t : uint8_t {
-	WEAPON_NONE,
-	WEAPON_SWORD,
-	WEAPON_CLUB,
-	WEAPON_AXE,
-	WEAPON_SHIELD,
-	WEAPON_DISTANCE,
-	WEAPON_WAND,
-	WEAPON_AMMO,
-};
-
-enum Ammo_t : uint8_t {
-	AMMO_NONE,
-	AMMO_BOLT,
-	AMMO_ARROW,
-	AMMO_SPEAR,
-	AMMO_THROWINGSTAR,
-	AMMO_THROWINGKNIFE,
-	AMMO_STONE,
-	AMMO_SNOWBALL,
-};
-
-enum WeaponAction_t : uint8_t {
-	WEAPONACTION_NONE,
-	WEAPONACTION_REMOVECOUNT,
-	WEAPONACTION_REMOVECHARGE,
-	WEAPONACTION_MOVE,
-};
-
 enum WieldInfo_t {
 	WIELDINFO_NONE = 0 << 0,
 	WIELDINFO_LEVEL = 1 << 0,
-	WIELDINFO_MAGLV = 1 << 1,
-	WIELDINFO_VOCREQ = 1 << 2,
+	WIELDINFO_RESERVED = 1 << 2,
 	WIELDINFO_PREMIUM = 1 << 3,
-};
-
-enum Skulls_t : uint8_t {
-	SKULL_NONE = 0,
-	SKULL_YELLOW = 1,
-	SKULL_GREEN = 2,
-	SKULL_WHITE = 3,
-	SKULL_RED = 4,
-	SKULL_BLACK = 5,
-	SKULL_ORANGE = 6,
 };
 
 enum PartyShields_t : uint8_t {
@@ -408,9 +365,6 @@ enum PartyShields_t : uint8_t {
 
 enum GuildEmblems_t : uint8_t {
 	GUILDEMBLEM_NONE = 0,
-	GUILDEMBLEM_ALLY = 1,
-	GUILDEMBLEM_ENEMY = 2,
-	GUILDEMBLEM_NEUTRAL = 3,
 	GUILDEMBLEM_MEMBER = 4,
 	GUILDEMBLEM_OTHER = 5,
 };
@@ -418,31 +372,31 @@ enum GuildEmblems_t : uint8_t {
 enum item_t : uint16_t {
 	ITEM_BROWSEFIELD = 460, // for internal use
 
-	ITEM_FIREFIELD_PVP_FULL = 1487,
-	ITEM_FIREFIELD_PVP_MEDIUM = 1488,
-	ITEM_FIREFIELD_PVP_SMALL = 1489,
+	ITEM_FIREFIELD_ACTIVE_FULL = 1487,
+	ITEM_FIREFIELD_ACTIVE_MEDIUM = 1488,
+	ITEM_FIREFIELD_ACTIVE_SMALL = 1489,
 	ITEM_FIREFIELD_PERSISTENT_FULL = 1492,
 	ITEM_FIREFIELD_PERSISTENT_MEDIUM = 1493,
 	ITEM_FIREFIELD_PERSISTENT_SMALL = 1494,
-	ITEM_FIREFIELD_NOPVP = 1500,
+	ITEM_FIREFIELD_SAFE = 1500,
 
-	ITEM_POISONFIELD_PVP = 1490,
+	ITEM_POISONFIELD_ACTIVE = 1490,
 	ITEM_POISONFIELD_PERSISTENT = 1496,
-	ITEM_POISONFIELD_NOPVP = 1503,
+	ITEM_POISONFIELD_SAFE = 1503,
 
-	ITEM_ENERGYFIELD_PVP = 1491,
+	ITEM_ENERGYFIELD_ACTIVE = 1491,
 	ITEM_ENERGYFIELD_PERSISTENT = 1495,
-	ITEM_ENERGYFIELD_NOPVP = 1504,
+	ITEM_ENERGYFIELD_SAFE = 1504,
 
 	ITEM_MAGICWALL = 1497,
 	ITEM_MAGICWALL_PERSISTENT = 1498,
 	ITEM_MAGICWALL_SAFE = 11098,
-	ITEM_MAGICWALL_NOPVP = 20669,
+	ITEM_MAGICWALL_TRANSIENT = 20669,
 
 	ITEM_WILDGROWTH = 1499,
 	ITEM_WILDGROWTH_PERSISTENT = 2721,
 	ITEM_WILDGROWTH_SAFE = 11099,
-	ITEM_WILDGROWTH_NOPVP = 20670,
+	ITEM_WILDGROWTH_TRANSIENT = 20670,
 
 	ITEM_BAG = 1987,
 	ITEM_BACKPACK = 1988,
@@ -495,7 +449,6 @@ enum item_t : uint16_t {
 
 enum PlayerFlags : uint64_t {
 	PlayerFlag_CannotUseCombat = 1 << 0,
-	PlayerFlag_CannotAttackPlayer = 1 << 1,
 	PlayerFlag_CannotAttackPokemon = 1 << 2,
 	PlayerFlag_CannotBeAttacked = 1 << 3,
 	PlayerFlag_CanConvinceAll = 1 << 4,
@@ -504,8 +457,6 @@ enum PlayerFlags : uint64_t {
 	PlayerFlag_CanSenseInvisibility = 1 << 7,
 	PlayerFlag_IgnoredByPokemons = 1 << 8,
 	PlayerFlag_NotGainInFight = 1 << 9,
-	PlayerFlag_HasInfiniteMana = 1 << 10,
-	PlayerFlag_HasInfiniteSoul = 1 << 11,
 	PlayerFlag_HasNoExhaustion = 1 << 12,
 	PlayerFlag_CannotUseMoves = 1 << 13,
 	PlayerFlag_CannotPickupItem = 1 << 14,
@@ -514,13 +465,11 @@ enum PlayerFlags : uint64_t {
 	PlayerFlag_CanEditHouses = 1 << 17,
 	PlayerFlag_CannotBeBanned = 1 << 18,
 	PlayerFlag_CannotBePushed = 1 << 19,
-	PlayerFlag_HasInfiniteCapacity = 1 << 20,
 	PlayerFlag_CanPushAllCreatures = 1 << 21,
 	PlayerFlag_CanTalkRedPrivate = 1 << 22,
 	PlayerFlag_CanTalkRedChannel = 1 << 23,
 	PlayerFlag_TalkOrangeHelpChannel = 1 << 24,
 	PlayerFlag_NotGainExperience = 1 << 25,
-	PlayerFlag_NotGainMana = 1 << 26,
 	PlayerFlag_NotGainHealth = 1 << 27,
 	PlayerFlag_NotGainSkill = 1 << 28,
 	PlayerFlag_SetMaxSpeed = 1 << 29,
@@ -529,7 +478,7 @@ enum PlayerFlags : uint64_t {
 	// PlayerFlag with exponent 32 existed but was deprecated (feature dropped from client).
 	PlayerFlag_IgnoreProtectionZone = static_cast<uint64_t>(1) << 33,
 	PlayerFlag_IgnoreMoveCheck = static_cast<uint64_t>(1) << 34,
-	PlayerFlag_IgnoreWeaponCheck = static_cast<uint64_t>(1) << 35,
+	PlayerFlag_IgnoreEquipmentCheck = static_cast<uint64_t>(1) << 35,
 	PlayerFlag_CannotBeMuted = static_cast<uint64_t>(1) << 36,
 	PlayerFlag_IsAlwaysPremium = static_cast<uint64_t>(1) << 37,
 };
@@ -553,7 +502,6 @@ enum ReloadTypes_t : uint8_t  {
 	RELOAD_TYPE_SCRIPTS,
 	RELOAD_TYPE_MOVES,
 	RELOAD_TYPE_TALKACTIONS,
-	RELOAD_TYPE_WEAPONS,
 };
 
 enum LevelRate_t : uint8_t {

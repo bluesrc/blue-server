@@ -10,7 +10,6 @@
 
 const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 	{"cannotusecombat", PlayerFlag_CannotUseCombat},
-	{"cannotattackplayer", PlayerFlag_CannotAttackPlayer},
 	{"cannotattackpokemon", PlayerFlag_CannotAttackPokemon},
 	{"cannotbeattacked", PlayerFlag_CannotBeAttacked},
 	{"canconvinceall", PlayerFlag_CanConvinceAll},
@@ -19,8 +18,6 @@ const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 	{"cansenseinvisibility", PlayerFlag_CanSenseInvisibility},
 	{"ignoredbypokemons", PlayerFlag_IgnoredByPokemons},
 	{"notgaininfight", PlayerFlag_NotGainInFight},
-	{"hasinfinitemana", PlayerFlag_HasInfiniteMana},
-	{"hasinfinitesoul", PlayerFlag_HasInfiniteSoul},
 	{"hasnoexhaustion", PlayerFlag_HasNoExhaustion},
 	{"cannotusemoves", PlayerFlag_CannotUseMoves},
 	{"cannotpickupitem", PlayerFlag_CannotPickupItem},
@@ -29,13 +26,11 @@ const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 	{"canedithouses", PlayerFlag_CanEditHouses},
 	{"cannotbebanned", PlayerFlag_CannotBeBanned},
 	{"cannotbepushed", PlayerFlag_CannotBePushed},
-	{"hasinfinitecapacity", PlayerFlag_HasInfiniteCapacity},
 	{"canpushallcreatures", PlayerFlag_CanPushAllCreatures},
 	{"cantalkredprivate", PlayerFlag_CanTalkRedPrivate},
 	{"cantalkredchannel", PlayerFlag_CanTalkRedChannel},
 	{"talkorangehelpchannel", PlayerFlag_TalkOrangeHelpChannel},
 	{"notgainexperience", PlayerFlag_NotGainExperience},
-	{"notgainmana", PlayerFlag_NotGainMana},
 	{"notgainhealth", PlayerFlag_NotGainHealth},
 	{"notgainskill", PlayerFlag_NotGainSkill},
 	{"setmaxspeed", PlayerFlag_SetMaxSpeed},
@@ -43,7 +38,7 @@ const std::unordered_map<std::string, PlayerFlags> ParsePlayerFlagMap = {
 	{"notgenerateloot", PlayerFlag_NotGenerateLoot},
 	{"ignoreprotectionzone", PlayerFlag_IgnoreProtectionZone},
 	{"ignoremovecheck", PlayerFlag_IgnoreMoveCheck},
-	{"ignoreweaponcheck", PlayerFlag_IgnoreWeaponCheck},
+	{"ignoreequipmentcheck", PlayerFlag_IgnoreEquipmentCheck},
 	{"cannotbemuted", PlayerFlag_CannotBeMuted},
 	{"isalwayspremium", PlayerFlag_IsAlwaysPremium}
 };

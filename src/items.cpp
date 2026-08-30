@@ -4,27 +4,17 @@
 #include "otpch.h"
 
 #include "items.h"
-#include "moves.h"
 #include "movement.h"
-#include "weapons.h"
 
 #include "pugicast.h"
 
 extern MoveEvents* g_moveEvents;
-extern Weapons* g_weapons;
 
 const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributesMap = {
 	{"type", ITEM_PARSE_TYPE},
 	{"description", ITEM_PARSE_DESCRIPTION},
-	{"runemovename", ITEM_PARSE_RUNEMOVENAME},
 	{"tmmove", ITEM_PARSE_TMMOVENAME},
-	{"weight", ITEM_PARSE_WEIGHT},
 	{"showcount", ITEM_PARSE_SHOWCOUNT},
-	{"armor", ITEM_PARSE_ARMOR},
-	{"defense", ITEM_PARSE_DEFENSE},
-	{"extradef", ITEM_PARSE_EXTRADEF},
-	{"attack", ITEM_PARSE_ATTACK},
-	{"attackspeed", ITEM_PARSE_ATTACK_SPEED},
 	{"rotateto", ITEM_PARSE_ROTATETO},
 	{"moveable", ITEM_PARSE_MOVEABLE},
 	{"movable", ITEM_PARSE_MOVEABLE},
@@ -41,12 +31,8 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"writeable", ITEM_PARSE_WRITEABLE},
 	{"maxtextlen", ITEM_PARSE_MAXTEXTLEN},
 	{"writeonceitemid", ITEM_PARSE_WRITEONCEITEMID},
-	{"weapontype", ITEM_PARSE_WEAPONTYPE},
 	{"slottype", ITEM_PARSE_SLOTTYPE},
-	{"ammotype", ITEM_PARSE_AMMOTYPE},
-	{"shoottype", ITEM_PARSE_SHOOTTYPE},
 	{"effect", ITEM_PARSE_EFFECT},
-	{"range", ITEM_PARSE_RANGE},
 	{"stopduration", ITEM_PARSE_STOPDURATION},
 	{"decayto", ITEM_PARSE_DECAYTO},
 	{"transformequipto", ITEM_PARSE_TRANSFORMEQUIPTO},
@@ -56,35 +42,13 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"charges", ITEM_PARSE_CHARGES},
 	{"showcharges", ITEM_PARSE_SHOWCHARGES},
 	{"showattributes", ITEM_PARSE_SHOWATTRIBUTES},
-	{"hitchance", ITEM_PARSE_HITCHANCE},
-	{"maxhitchance", ITEM_PARSE_MAXHITCHANCE},
 	{"invisible", ITEM_PARSE_INVISIBLE},
 	{"speed", ITEM_PARSE_SPEED},
 	{"healthgain", ITEM_PARSE_HEALTHGAIN},
 	{"healthticks", ITEM_PARSE_HEALTHTICKS},
-	{"managain", ITEM_PARSE_MANAGAIN},
-	{"manaticks", ITEM_PARSE_MANATICKS},
-	{"manashield", ITEM_PARSE_MANASHIELD},
-	{"skillsword", ITEM_PARSE_SKILLSWORD},
-	{"skillaxe", ITEM_PARSE_SKILLAXE},
-	{"skillclub", ITEM_PARSE_SKILLCLUB},
-	{"skilldist", ITEM_PARSE_SKILLDIST},
 	{"skillfish", ITEM_PARSE_SKILLFISH},
-	{"skillshield", ITEM_PARSE_SKILLSHIELD},
-	{"skillfist", ITEM_PARSE_SKILLFIST},
 	{"maxhitpoints", ITEM_PARSE_MAXHITPOINTS},
 	{"maxhitpointspercent", ITEM_PARSE_MAXHITPOINTSPERCENT},
-	{"maxmanapoints", ITEM_PARSE_MAXMANAPOINTS},
-	{"maxmanapointspercent", ITEM_PARSE_MAXMANAPOINTSPERCENT},
-	{"magicpoints", ITEM_PARSE_MAGICPOINTS},
-	{"magiclevelpoints", ITEM_PARSE_MAGICPOINTS},
-	{"magicpointspercent", ITEM_PARSE_MAGICPOINTSPERCENT},
-	{"criticalhitchance", ITEM_PARSE_CRITICALHITCHANCE},
-	{"criticalhitamount", ITEM_PARSE_CRITICALHITAMOUNT},
-	{"lifeleechchance", ITEM_PARSE_LIFELEECHCHANCE},
-	{"lifeleechamount", ITEM_PARSE_LIFELEECHAMOUNT},
-	{"manaleechchance", ITEM_PARSE_MANALEECHCHANCE},
-	{"manaleechamount", ITEM_PARSE_MANALEECHAMOUNT},
 	{"fieldabsorbpercentenergy", ITEM_PARSE_FIELDABSORBPERCENTENERGY},
 	{"fieldabsorbpercentfire", ITEM_PARSE_FIELDABSORBPERCENTFIRE},
 	{"fieldabsorbpercentpoison", ITEM_PARSE_FIELDABSORBPERCENTPOISON},
@@ -101,7 +65,6 @@ const std::unordered_map<std::string, ItemParseAttributes_t> ItemParseAttributes
 	{"absorbpercentholy", ITEM_PARSE_ABSORBPERCENTHOLY},
 	{"absorbpercentdeath", ITEM_PARSE_ABSORBPERCENTDEATH},
 	{"absorbpercentlifedrain", ITEM_PARSE_ABSORBPERCENTLIFEDRAIN},
-	{"absorbpercentmanadrain", ITEM_PARSE_ABSORBPERCENTMANADRAIN},
 	{"absorbpercentdrown", ITEM_PARSE_ABSORBPERCENTDROWN},
 	{"absorbpercentphysical", ITEM_PARSE_ABSORBPERCENTPHYSICAL},
 	{"absorbpercenthealing", ITEM_PARSE_ABSORBPERCENTHEALING},
@@ -147,7 +110,6 @@ const std::unordered_map<std::string, ItemTypes_t> ItemTypesMap = {
 	{"teleport", ITEM_TYPE_TELEPORT},
 	{"door", ITEM_TYPE_DOOR},
 	{"bed", ITEM_TYPE_BED},
-	{"rune", ITEM_TYPE_RUNE},
 };
 
 const std::unordered_map<std::string, tileflags_t> TileStatesMap = {
@@ -168,16 +130,6 @@ const std::unordered_map<std::string, RaceType_t> RaceTypesMap = {
 	{"energy", RACE_ENERGY},
 };
 
-const std::unordered_map<std::string, WeaponType_t> WeaponTypesMap = {
-	{"sword", WEAPON_SWORD},
-	{"club", WEAPON_CLUB},
-	{"axe", WEAPON_AXE},
-	{"shield", WEAPON_SHIELD},
-	{"distance", WEAPON_DISTANCE},
-	{"wand", WEAPON_WAND},
-	{"ammunition", WEAPON_AMMO},
-};
-
 const std::unordered_map<std::string, FluidTypes_t> FluidTypesMap = {
 	{"water", FLUID_WATER},
 	{"blood", FLUID_BLOOD},
@@ -185,7 +137,6 @@ const std::unordered_map<std::string, FluidTypes_t> FluidTypesMap = {
 	{"slime", FLUID_SLIME},
 	{"lemonade", FLUID_LEMONADE},
 	{"milk", FLUID_MILK},
-	{"mana", FLUID_MANA},
 	{"life", FLUID_LIFE},
 	{"oil", FLUID_OIL},
 	{"urine", FLUID_URINE},
@@ -224,8 +175,6 @@ bool Items::reload()
 	}
 
 	g_moveEvents->reload();
-	g_weapons->reload();
-	g_weapons->loadDefaults();
 	return true;
 }
 
@@ -511,12 +460,9 @@ void Items::buildInventoryList()
 {
 	inventory.reserve(items.size());
 	for (const auto& type: items) {
-		if (type.weaponType != WEAPON_NONE || type.ammoType != AMMO_NONE ||
-			type.attack != 0 || type.defense != 0 ||
-			type.extraDefense != 0 || type.armor != 0 ||
-			type.slotPosition & SLOTP_NECKLACE ||
+		if (type.slotPosition & SLOTP_NECKLACE ||
 			type.slotPosition & SLOTP_RING ||
-			type.slotPosition & SLOTP_AMMO ||
+			type.slotPosition & SLOTP_UTILITY ||
 			type.slotPosition & SLOTP_FEET ||
 			type.slotPosition & SLOTP_HEAD ||
 			type.slotPosition & SLOTP_ARMOR ||
@@ -597,52 +543,13 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					break;
 				}
 
-				case ITEM_PARSE_RUNEMOVENAME: {
-					it.runeMoveName = valueAttribute.as_string();
-					break;
-				}
-
 				case ITEM_PARSE_TMMOVENAME: {
 					it.tmMoveName = valueAttribute.as_string();
 					break;
 				}
 
-				case ITEM_PARSE_WEIGHT: {
-					it.weight = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
 				case ITEM_PARSE_SHOWCOUNT: {
 					it.showCount = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_ARMOR: {
-					it.armor = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_DEFENSE: {
-					it.defense = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_EXTRADEF: {
-					it.extraDefense = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ATTACK: {
-					it.attack = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ATTACK_SPEED: {
-					it.attackSpeed = pugi::cast<uint32_t>(valueAttribute.value());
-					if (it.attackSpeed > 0 && it.attackSpeed < 100) {
-						std::cout << "[Warning - Items::parseItemNode] AttackSpeed lower than 100 for item: " << it.id << std::endl;
-						it.attackSpeed = 100;
-					}
 					break;
 				}
 
@@ -730,17 +637,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					break;
 				}
 
-				case ITEM_PARSE_WEAPONTYPE: {
-					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
-					auto it2 = WeaponTypesMap.find(tmpStrValue);
-					if (it2 != WeaponTypesMap.end()) {
-						it.weaponType = it2->second;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown weaponType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
 				case ITEM_PARSE_SLOTTYPE: {
 					tmpStrValue = asLowerCaseString(valueAttribute.as_string());
 					if (tmpStrValue == "head") {
@@ -763,30 +659,12 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 						it.slotPosition |= SLOTP_NECKLACE;
 					} else if (tmpStrValue == "ring") {
 						it.slotPosition |= SLOTP_RING;
-					} else if (tmpStrValue == "ammo") {
-						it.slotPosition |= SLOTP_AMMO;
+					} else if (tmpStrValue == "utility") {
+						it.slotPosition |= SLOTP_UTILITY;
 					} else if (tmpStrValue == "hand") {
 						it.slotPosition |= SLOTP_HAND;
 					} else {
 						std::cout << "[Warning - Items::parseItemNode] Unknown slotType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_AMMOTYPE: {
-					it.ammoType = getAmmoType(asLowerCaseString(valueAttribute.as_string()));
-					if (it.ammoType == AMMO_NONE) {
-						std::cout << "[Warning - Items::parseItemNode] Unknown ammoType: " << valueAttribute.as_string() << std::endl;
-					}
-					break;
-				}
-
-				case ITEM_PARSE_SHOOTTYPE: {
-					ShootType_t shoot = getShootType(asLowerCaseString(valueAttribute.as_string()));
-					if (shoot != CONST_ANI_NONE) {
-						it.shootType = shoot;
-					} else {
-						std::cout << "[Warning - Items::parseItemNode] Unknown shootType: " << valueAttribute.as_string() << std::endl;
 					}
 					break;
 				}
@@ -798,11 +676,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					} else {
 						std::cout << "[Warning - Items::parseItemNode] Unknown effect: " << valueAttribute.as_string() << std::endl;
 					}
-					break;
-				}
-
-				case ITEM_PARSE_RANGE: {
-					it.shootRange = pugi::cast<uint16_t>(valueAttribute.value());
 					break;
 				}
 
@@ -851,16 +724,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					break;
 				}
 
-				case ITEM_PARSE_HITCHANCE: {
-					it.hitChance = std::min<int8_t>(100, std::max<int8_t>(-100, pugi::cast<int16_t>(valueAttribute.value())));
-					break;
-				}
-
-				case ITEM_PARSE_MAXHITCHANCE: {
-					it.maxHitChance = std::min<uint32_t>(100, pugi::cast<uint32_t>(valueAttribute.value()));
-					break;
-				}
-
 				case ITEM_PARSE_INVISIBLE: {
 					abilities.invisible = valueAttribute.as_bool();
 					break;
@@ -883,85 +746,8 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 					break;
 				}
 
-				case ITEM_PARSE_MANAGAIN: {
-					abilities.regeneration = true;
-					abilities.manaGain = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANATICKS: {
-					abilities.regeneration = true;
-					abilities.manaTicks = pugi::cast<uint32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANASHIELD: {
-					abilities.manaShield = valueAttribute.as_bool();
-					break;
-				}
-
-				case ITEM_PARSE_SKILLSWORD: {
-					abilities.skills[SKILL_SWORD] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLAXE: {
-					abilities.skills[SKILL_AXE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLCLUB: {
-					abilities.skills[SKILL_CLUB] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLDIST: {
-					abilities.skills[SKILL_DISTANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
 				case ITEM_PARSE_SKILLFISH: {
 					abilities.skills[SKILL_FISHING] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLSHIELD: {
-					abilities.skills[SKILL_SHIELD] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_SKILLFIST: {
-					abilities.skills[SKILL_FIST] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_CRITICALHITAMOUNT: {
-					abilities.specialSkills[SPECIALSKILL_CRITICALHITAMOUNT] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_CRITICALHITCHANCE: {
-					abilities.specialSkills[SPECIALSKILL_CRITICALHITCHANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANALEECHAMOUNT: {
-					abilities.specialSkills[SPECIALSKILL_MANALEECHAMOUNT] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MANALEECHCHANCE: {
-					abilities.specialSkills[SPECIALSKILL_MANALEECHCHANCE] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_LIFELEECHAMOUNT: {
-					abilities.specialSkills[SPECIALSKILL_LIFELEECHAMOUNT] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_LIFELEECHCHANCE: {
-					abilities.specialSkills[SPECIALSKILL_LIFELEECHCHANCE] = pugi::cast<int32_t>(valueAttribute.value());
 					break;
 				}
 
@@ -972,26 +758,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 				case ITEM_PARSE_MAXHITPOINTSPERCENT: {
 					abilities.statsPercent[STAT_MAXHITPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXMANAPOINTS: {
-					abilities.stats[STAT_MAXMANAPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAXMANAPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAXMANAPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAGICPOINTS: {
-					abilities.stats[STAT_MAGICPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_MAGICPOINTSPERCENT: {
-					abilities.statsPercent[STAT_MAGICPOINTS] = pugi::cast<int32_t>(valueAttribute.value());
 					break;
 				}
 
@@ -1070,11 +836,6 @@ void Items::parseItemNode(const pugi::xml_node& itemNode, uint16_t id)
 
 				case ITEM_PARSE_ABSORBPERCENTLIFEDRAIN: {
 					abilities.absorbPercent[combatTypeToIndex(COMBAT_LIFEDRAIN)] += pugi::cast<int16_t>(valueAttribute.value());
-					break;
-				}
-
-				case ITEM_PARSE_ABSORBPERCENTMANADRAIN: {
-					abilities.absorbPercent[combatTypeToIndex(COMBAT_MANADRAIN)] += pugi::cast<int16_t>(valueAttribute.value());
 					break;
 				}
 

@@ -1,4 +1,4 @@
-local classes = {Action, CreatureEvent, Move, TalkAction, MoveEvent, GlobalEvent, Weapon}
+local classes = {Action, CreatureEvent, TalkAction, MoveEvent, GlobalEvent}
 
 for _, class in ipairs(classes) do
 	local MT = getmetatable(class)

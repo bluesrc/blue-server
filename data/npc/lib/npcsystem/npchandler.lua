@@ -88,8 +88,8 @@ if NpcHandler == nil then
 			[MESSAGE_NEEDMONEY] = "You don't have enough money.",
 			[MESSAGE_MISSINGITEM] = "You don't have so many.",
 			[MESSAGE_NEEDITEM] = "You do not have this object.",
-			[MESSAGE_NEEDSPACE] = "You do not have enough capacity.",
-			[MESSAGE_NEEDMORESPACE] = "You do not have enough capacity for all items.",
+			[MESSAGE_NEEDSPACE] = "You do not have enough inventory space.",
+			[MESSAGE_NEEDMORESPACE] = "You do not have enough inventory space for all items.",
 			[MESSAGE_IDLETIMEOUT] = "Good bye.",
 			[MESSAGE_WALKAWAY] = "Good bye.",
 			[MESSAGE_DECLINE] = "Then not.",
@@ -451,22 +451,22 @@ if NpcHandler == nil then
 	end
 
 	-- Handles onBuy events. If you wish to handle this yourself, use the CALLBACK_ONBUY callback.
-	function NpcHandler:onBuy(creature, itemid, subType, amount, ignoreCap, inBackpacks)
+	function NpcHandler:onBuy(creature, itemid, subType, amount, canDropOnMap, inBackpacks)
 		local cid = creature:getId()
 		local callback = self:getCallback(CALLBACK_ONBUY)
-		if callback == nil or callback(cid, itemid, subType, amount, ignoreCap, inBackpacks) then
-			if self:processModuleCallback(CALLBACK_ONBUY, cid, itemid, subType, amount, ignoreCap, inBackpacks) then
+		if callback == nil or callback(cid, itemid, subType, amount, canDropOnMap, inBackpacks) then
+			if self:processModuleCallback(CALLBACK_ONBUY, cid, itemid, subType, amount, canDropOnMap, inBackpacks) then
 				--
 			end
 		end
 	end
 
 	-- Handles onSell events. If you wish to handle this yourself, use the CALLBACK_ONSELL callback.
-	function NpcHandler:onSell(creature, itemid, subType, amount, ignoreCap, inBackpacks)
+	function NpcHandler:onSell(creature, itemid, subType, amount, ignoreEquipped, inBackpacks)
 		local cid = creature:getId()
 		local callback = self:getCallback(CALLBACK_ONSELL)
-		if callback == nil or callback(cid, itemid, subType, amount, ignoreCap, inBackpacks) then
-			if self:processModuleCallback(CALLBACK_ONSELL, cid, itemid, subType, amount, ignoreCap, inBackpacks) then
+		if callback == nil or callback(cid, itemid, subType, amount, ignoreEquipped, inBackpacks) then
+			if self:processModuleCallback(CALLBACK_ONSELL, cid, itemid, subType, amount, ignoreEquipped, inBackpacks) then
 				--
 			end
 		end

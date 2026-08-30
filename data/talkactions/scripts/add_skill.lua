@@ -1,20 +1,6 @@
 local function getSkillId(skillName)
-	if skillName == "club" then
-		return SKILL_CLUB
-	elseif skillName == "sword" then
-		return SKILL_SWORD
-	elseif skillName == "axe" then
-		return SKILL_AXE
-	elseif skillName:sub(1, 4) == "dist" then
-		return SKILL_DISTANCE
-	elseif skillName:sub(1, 6) == "shield" then
-		return SKILL_SHIELD
-	elseif skillName:sub(1, 4) == "fish" then
+	if skillName:sub(1, 4) == "fish" then
 		return SKILL_FISHING
-	elseif skillName:sub(1, 4) == "fist" then
-		return SKILL_FIST
-	elseif skillName:sub(1, 1) == "m" then
-		return SKILL_MAGLEVEL
 	elseif skillName == "level" or skillName:sub(1, 1) == "l" or skillName:sub(1, 1) == "e" then
 		return SKILL_LEVEL
 	end

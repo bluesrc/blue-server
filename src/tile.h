@@ -31,9 +31,9 @@ enum tileflags_t : uint32_t {
 	TILESTATE_FLOORCHANGE_SOUTH_ALT = 1 << 5,
 	TILESTATE_FLOORCHANGE_EAST_ALT = 1 << 6,
 	TILESTATE_PROTECTIONZONE = 1 << 7,
-	TILESTATE_NOPVPZONE = 1 << 8,
+	TILESTATE_RESERVED_ZONE = 1 << 8,
 	TILESTATE_NOLOGOUT = 1 << 9,
-	TILESTATE_PVPZONE = 1 << 10,
+	TILESTATE_ARENAZONE = 1 << 10,
 	TILESTATE_TELEPORT = 1 << 11,
 	TILESTATE_MAGICFIELD = 1 << 12,
 	TILESTATE_MAILBOX = 1 << 13,
@@ -53,8 +53,7 @@ enum tileflags_t : uint32_t {
 
 enum ZoneType_t {
 	ZONE_PROTECTION,
-	ZONE_NOPVP,
-	ZONE_PVP,
+	ZONE_ARENA,
 	ZONE_NOLOGOUT,
 	ZONE_NORMAL,
 };
@@ -203,10 +202,8 @@ class Tile : public Cylinder
 		ZoneType_t getZone() const {
 			if (hasFlag(TILESTATE_PROTECTIONZONE)) {
 				return ZONE_PROTECTION;
-			} else if (hasFlag(TILESTATE_NOPVPZONE)) {
-				return ZONE_NOPVP;
-			} else if (hasFlag(TILESTATE_PVPZONE)) {
-				return ZONE_PVP;
+			} else if (hasFlag(TILESTATE_ARENAZONE)) {
+				return ZONE_ARENA;
 			} else {
 				return ZONE_NORMAL;
 			}

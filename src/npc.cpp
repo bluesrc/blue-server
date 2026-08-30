@@ -169,10 +169,6 @@ bool Npc::loadFromXml()
 		speechBubble = pugi::cast<uint32_t>(attr.value());
 	}
 
-	if ((attr = npcNode.attribute("skull"))) {
-		setSkull(getSkullType(asLowerCaseString(attr.as_string())));
-	}
-
 	pugi::xml_node healthNode = npcNode.child("health");
 	if (healthNode) {
 		if ((attr = healthNode.attribute("now"))) {

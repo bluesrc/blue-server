@@ -27,8 +27,6 @@
 			<flag cansenseinvisibility="1" />
 			<flag ignoredbypokemons="1" />
 			<flag notgaininfight="1" />
-			<flag hasinfinitemana="0" />
-			<flag hasinfinitesoul="0" />
 			<flag hasnoexhaustion="1" />
 			<flag cannotusemoves="1" />
 			<flag cannotpickupitem="1" />
@@ -37,13 +35,11 @@
 			<flag canedithouses="0" />
 			<flag cannotbebanned="1" />
 			<flag cannotbepushed="1" />
-			<flag hasinfinitecapacity="1" />
 			<flag canpushallcreatures="1" />
 			<flag cantalkredprivate="1" />
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
 			<flag notgainexperience="1" />
-			<flag notgainmana="1" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -51,7 +47,7 @@
 			<flag notgenerateloot="1" />
 			<flag ignoreprotectionzone="1" />
 			<flag ignoremovecheck="1" />
-			<flag ignoreweaponcheck="1" />
+			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
 		</flags>
@@ -68,8 +64,6 @@
 			<flag cansenseinvisibility="1" />
 			<flag ignoredbypokemons="1" />
 			<flag notgaininfight="1" />
-			<flag hasinfinitemana="1" />
-			<flag hasinfinitesoul="1" />
 			<flag hasnoexhaustion="1" />
 			<flag cannotusemoves="0" />
 			<flag cannotpickupitem="0" />
@@ -78,13 +72,11 @@
 			<flag canedithouses="0" />
 			<flag cannotbebanned="1" />
 			<flag cannotbepushed="1" />
-			<flag hasinfinitecapacity="1" />
 			<flag canpushallcreatures="1" />
 			<flag cantalkredprivate="1" />
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
 			<flag notgainexperience="1" />
-			<flag notgainmana="1" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -92,7 +84,7 @@
 			<flag notgenerateloot="1" />
 			<flag ignoreprotectionzone="1" />
 			<flag ignoremovecheck="1" />
-			<flag ignoreweaponcheck="1" />
+			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
 		</flags>
@@ -109,8 +101,6 @@
 			<flag cansenseinvisibility="1" />
 			<flag ignoredbypokemons="1" />
 			<flag notgaininfight="1" />
-			<flag hasinfinitemana="1" />
-			<flag hasinfinitesoul="1" />
 			<flag hasnoexhaustion="1" />
 			<flag cannotusemoves="0" />
 			<flag cannotpickupitem="0" />
@@ -119,13 +109,11 @@
 			<flag canedithouses="1" />
 			<flag cannotbebanned="1" />
 			<flag cannotbepushed="1" />
-			<flag hasinfinitecapacity="1" />
 			<flag canpushallcreatures="1" />
 			<flag cantalkredprivate="1" />
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
 			<flag notgainexperience="1" />
-			<flag notgainmana="1" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -133,7 +121,7 @@
 			<flag notgenerateloot="0" />
 			<flag ignoreprotectionzone="1" />
 			<flag ignoremovecheck="1" />
-			<flag ignoreweaponcheck="1" />
+			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
 		</flags>

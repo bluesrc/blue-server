@@ -12,7 +12,6 @@
 #include "moves.h"
 #include "talkaction.h"
 #include "movement.h"
-#include "weapons.h"
 #include "raids.h"
 #include "quests.h"
 #include "mounts.h"
@@ -32,7 +31,6 @@ extern Pokemons g_pokemons;
 extern TalkActions* g_talkActions;
 extern MoveEvents* g_moveEvents;
 extern Moves* g_moves;
-extern Weapons* g_weapons;
 extern Game g_game;
 extern CreatureEvents* g_creatureEvents;
 extern GlobalEvents* g_globalEvents;
@@ -85,10 +83,6 @@ void sighupHandler()
 
 	Item::items.reload();
 	std::cout << "Reloaded items." << std::endl;
-
-	g_weapons->reload();
-	g_weapons->loadDefaults();
-	std::cout << "Reloaded weapons." << std::endl;
 
 	g_game.quests.reload();
 	std::cout << "Reloaded quests." << std::endl;

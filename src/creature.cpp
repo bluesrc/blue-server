@@ -79,12 +79,6 @@ bool Creature::canSeeCreature(const Creature* creature) const
 	return true;
 }
 
-void Creature::setSkull(Skulls_t newSkull)
-{
-	skull = newSkull;
-	g_game.updateCreatureSkull(this);
-}
-
 int64_t Creature::getTimeSinceLastMove() const
 {
 	if (lastStep) {
@@ -643,12 +637,10 @@ CreatureVector Creature::getKillers()
 
 void Creature::onDeath()
 {
-	bool lastHitUnjustified = false;
-	bool mostDamageUnjustified = false;
 	Creature* lastHitCreature = g_game.getCreatureByID(lastHitCreatureId);
 	Creature* lastHitCreatureMaster;
 	if (lastHitCreature) {
-		lastHitUnjustified = lastHitCreature->onKilledCreature(this);
+		lastHitCreature->onKilledCreature(this);
 		lastHitCreatureMaster = lastHitCreature->getMaster();
 	} else {
 		lastHitCreatureMaster = nullptr;
@@ -671,8 +663,6 @@ void Creature::onDeath()
 			if (attacker != this) {
 				uint64_t gainExp = getGainedExperience(attacker);
 				if (Player* attackerPlayer = attacker->getPlayer()) {
-					attackerPlayer->removeAttacked(getPlayer());
-
 					Party* party = attackerPlayer->getParty();
 					if (party && party->getLeader() && party->isSharedExperienceActive() && party->isSharedExperienceEnabled()) {
 						attacker = party->getLeader();
@@ -697,7 +687,7 @@ void Creature::onDeath()
 		if (mostDamageCreature != lastHitCreature && mostDamageCreature != lastHitCreatureMaster) {
 			Creature* mostDamageCreatureMaster = mostDamageCreature->getMaster();
 			if (lastHitCreature != mostDamageCreatureMaster && (lastHitCreatureMaster == nullptr || mostDamageCreatureMaster != lastHitCreatureMaster)) {
-				mostDamageUnjustified = mostDamageCreature->onKilledCreature(this, false);
+				mostDamageCreature->onKilledCreature(this);
 			}
 		}
 	}
@@ -716,7 +706,7 @@ void Creature::onDeath()
 		setMaster(nullptr);
 	}
 
-	bool droppedCorpse = dropCorpse(lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
+	bool droppedCorpse = dropCorpse(lastHitCreature, mostDamageCreature);
 	death(lastHitCreature);
 
 	if (droppedCorpse) {
@@ -724,14 +714,14 @@ void Creature::onDeath()
 	}
 }
 
-bool Creature::dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature, bool lastHitUnjustified, bool mostDamageUnjustified)
+bool Creature::dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature)
 {
 	if (!lootDrop && getPokemon()) {
 		if (master) {
 			//scripting event - onDeath
 			const CreatureEventList& deathEvents = getCreatureEvents(CREATURE_EVENT_DEATH);
 			for (CreatureEvent* deathEvent : deathEvents) {
-				deathEvent->executeOnDeath(this, nullptr, lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
+				deathEvent->executeOnDeath(this, nullptr, lastHitCreature, mostDamageCreature);
 			}
 		}
 
@@ -767,7 +757,7 @@ bool Creature::dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreatur
 
 		//scripting event - onDeath
 		for (CreatureEvent* deathEvent : getCreatureEvents(CREATURE_EVENT_DEATH)) {
-			deathEvent->executeOnDeath(this, corpse, lastHitCreature, mostDamageCreature, lastHitUnjustified, mostDamageUnjustified);
+			deathEvent->executeOnDeath(this, corpse, lastHitCreature, mostDamageCreature);
 		}
 
 		Container* lootContainer = corpse ? corpse->getContainer() : nullptr;
@@ -1130,7 +1120,7 @@ void Creature::onAttackedCreatureDrainHealth(Creature* target, int32_t points)
 	target->addDamagePoints(this, points);
 }
 
-bool Creature::onKilledCreature(Creature* target, bool)
+void Creature::onKilledCreature(Creature* target)
 {
 	if (master) {
 		master->onKilledCreature(target);
@@ -1141,7 +1131,6 @@ bool Creature::onKilledCreature(Creature* target, bool)
 	for (CreatureEvent* killEvent : killEvents) {
 		killEvent->executeOnKill(this, target);
 	}
-	return false;
 }
 
 void Creature::onGainExperience(uint64_t gainExp, Creature* target)

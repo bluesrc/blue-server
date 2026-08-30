@@ -197,32 +197,13 @@ bool IOLoginData::preloadPlayer(Player* player, const std::string& name)
 bool IOLoginData::loadPlayerById(Player* player, uint32_t id)
 {
 	Database& db = Database::getInstance();
-	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `total_caught`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `id` = {:d}", id)));
+	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `experience`, `level`, `health`, `healthmax`, `blessings`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `town_id`, `balance`, `total_caught`, `stamina`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `id` = {:d}", id)));
 }
 
 bool IOLoginData::loadPlayerByName(Player* player, const std::string& name)
 {
 	Database& db = Database::getInstance();
-	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `vocation`, `experience`, `level`, `maglevel`, `health`, `healthmax`, `blessings`, `mana`, `manamax`, `manaspent`, `soul`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `cap`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `skulltime`, `skull`, `town_id`, `balance`, `total_caught`, `offlinetraining_time`, `offlinetraining_skill`, `stamina`, `skill_fist`, `skill_fist_tries`, `skill_club`, `skill_club_tries`, `skill_sword`, `skill_sword_tries`, `skill_axe`, `skill_axe_tries`, `skill_dist`, `skill_dist_tries`, `skill_shielding`, `skill_shielding_tries`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `name` = {:s}", db.escapeString(name))));
-}
-
-static GuildWarVector getWarList(uint32_t guildId)
-{
-	DBResult_ptr result = Database::getInstance().storeQuery(fmt::format("SELECT `guild1`, `guild2` FROM `guild_wars` WHERE (`guild1` = {:d} OR `guild2` = {:d}) AND `ended` = 0 AND `status` = 1", guildId, guildId));
-	if (!result) {
-		return {};
-	}
-
-	GuildWarVector guildWarVector;
-	do {
-		uint32_t guild1 = result->getNumber<uint32_t>("guild1");
-		if (guildId != guild1) {
-			guildWarVector.push_back(guild1);
-		} else {
-			guildWarVector.push_back(result->getNumber<uint32_t>("guild2"));
-		}
-	} while (result->next());
-	return std::move(guildWarVector);
+	return loadPlayer(player, db.storeQuery(fmt::format("SELECT `id`, `name`, `account_id`, `group_id`, `sex`, `experience`, `level`, `health`, `healthmax`, `blessings`, `lookbody`, `lookfeet`, `lookhead`, `looklegs`, `looktype`, `lookaddons`, `posx`, `posy`, `posz`, `lastlogin`, `lastlogout`, `lastip`, `conditions`, `town_id`, `balance`, `total_caught`, `stamina`, `skill_fishing`, `skill_fishing_tries`, `direction` FROM `players` WHERE `name` = {:s}", db.escapeString(name))));
 }
 
 bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
@@ -273,8 +254,6 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 		player->levelPercent = 0;
 	}
 
-	player->soul = result->getNumber<uint16_t>("soul");
-	player->capacity = result->getNumber<uint32_t>("cap") * 100;
 	player->blessings = result->getNumber<uint16_t>("blessings");
 
 	unsigned long conditionsSize;
@@ -292,24 +271,6 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 		condition = Condition::createCondition(propStream);
 	}
 
-	if (!player->setVocation(result->getNumber<uint16_t>("vocation"))) {
-		std::cout << "[Error - IOLoginData::loadPlayer] " << player->name << " has Vocation ID " << result->getNumber<uint16_t>("vocation") << " which doesn't exist" << std::endl;
-		return false;
-	}
-
-	player->mana = result->getNumber<uint32_t>("mana");
-	player->manaMax = result->getNumber<uint32_t>("manamax");
-	player->magLevel = result->getNumber<uint32_t>("maglevel");
-
-	uint64_t nextManaCount = player->vocation->getReqMana(player->magLevel + 1);
-	uint64_t manaSpent = result->getNumber<uint64_t>("manaspent");
-	if (manaSpent > nextManaCount) {
-		manaSpent = 0;
-	}
-
-	player->manaSpent = manaSpent;
-	player->magLevelPercent = Player::getPercentLevel(player->manaSpent, nextManaCount);
-
 	player->health = result->getNumber<int32_t>("health");
 	player->healthMax = result->getNumber<int32_t>("healthmax");
 
@@ -322,30 +283,12 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	player->currentOutfit = player->defaultOutfit;
 	player->direction = static_cast<Direction> (result->getNumber<uint16_t>("direction"));
 
-	if (g_game.getWorldType() != WORLD_TYPE_PVP_ENFORCED) {
-		const time_t skullSeconds = result->getNumber<time_t>("skulltime") - time(nullptr);
-		if (skullSeconds > 0) {
-			//ensure that we round up the number of ticks
-			player->skullTicks = (skullSeconds + 2);
-
-			uint16_t skull = result->getNumber<uint16_t>("skull");
-			if (skull == SKULL_RED) {
-				player->skull = SKULL_RED;
-			} else if (skull == SKULL_BLACK) {
-				player->skull = SKULL_BLACK;
-			}
-		}
-	}
-
 	player->loginPosition.x = result->getNumber<uint16_t>("posx");
 	player->loginPosition.y = result->getNumber<uint16_t>("posy");
 	player->loginPosition.z = result->getNumber<uint16_t>("posz");
 
 	player->lastLoginSaved = result->getNumber<time_t>("lastlogin");
 	player->lastLogout = result->getNumber<time_t>("lastlogout");
-
-	player->offlineTrainingTime = result->getNumber<int32_t>("offlinetraining_time") * 1000;
-	player->offlineTrainingSkill = result->getNumber<int32_t>("offlinetraining_skill");
 
 	Town* town = g_game.map.towns.getTown(result->getNumber<uint32_t>("town_id"));
 	if (!town) {
@@ -362,13 +305,12 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 
 	player->staminaMinutes = result->getNumber<uint16_t>("stamina");
 
-	static const std::string skillNames[] = {"skill_fist", "skill_club", "skill_sword", "skill_axe", "skill_dist", "skill_shielding", "skill_fishing"};
-	static const std::string skillNameTries[] = {"skill_fist_tries", "skill_club_tries", "skill_sword_tries", "skill_axe_tries", "skill_dist_tries", "skill_shielding_tries", "skill_fishing_tries"};
-	static constexpr size_t size = sizeof(skillNames) / sizeof(std::string);
-	for (uint8_t i = 0; i < size; ++i) {
+	static constexpr std::array<const char*, SKILL_LAST + 1> skillNames {"skill_fishing"};
+	static constexpr std::array<const char*, SKILL_LAST + 1> skillNameTries {"skill_fishing_tries"};
+	for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; ++i) {
 		uint16_t skillLevel = result->getNumber<uint16_t>(skillNames[i]);
 		uint64_t skillTries = result->getNumber<uint64_t>(skillNameTries[i]);
-		uint64_t nextSkillTries = player->vocation->getReqSkillTries(i, skillLevel + 1);
+		uint64_t nextSkillTries = Player::getRequiredSkillTries(static_cast<skills_t>(i), skillLevel + 1);
 		if (skillTries > nextSkillTries) {
 			skillTries = 0;
 		}
@@ -408,18 +350,10 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 			}
 
 			player->guildRank = rank;
-			player->guildWarVector = getWarList(guildId);
-
 			if ((result = db.storeQuery(fmt::format("SELECT COUNT(*) AS `members` FROM `guild_membership` WHERE `guild_id` = {:d}", guildId)))) {
 				guild->setMemberCount(result->getNumber<uint32_t>("members"));
 			}
 		}
-	}
-
-	if ((result = db.storeQuery(fmt::format("SELECT `player_id`, `name` FROM `player_moves` WHERE `player_id` = {:d}", player->getGUID())))) {
-		do {
-			player->learnedInstantMoveList.emplace_front(result->getString("name"));
-		} while (result->next());
 	}
 
 	if ((result = db.storeQuery(fmt::format("SELECT `pokemon_number`, `caught_count` FROM `player_pokedex` WHERE `player_id` = {:d}", player->getGUID())))) {
@@ -575,7 +509,6 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 	}
 
 	player->updateBaseSpeed();
-	player->updateInventoryWeight();
 	player->updateItemsLight(true);
 	return true;
 }
@@ -670,7 +603,6 @@ bool IOLoginData::savePlayer(Player* player)
 	query << "UPDATE `players` SET ";
 	query << "`level` = " << player->level << ',';
 	query << "`group_id` = " << player->group->id << ',';
-	query << "`vocation` = " << player->getVocationId() << ',';
 	query << "`health` = " << player->health << ',';
 	query << "`healthmax` = " << player->healthMax << ',';
 	query << "`experience` = " << player->experience << ',';
@@ -680,11 +612,6 @@ bool IOLoginData::savePlayer(Player* player)
 	query << "`looklegs` = " << static_cast<uint32_t>(player->defaultOutfit.lookLegs) << ',';
 	query << "`looktype` = " << player->defaultOutfit.lookType << ',';
 	query << "`lookaddons` = " << static_cast<uint32_t>(player->defaultOutfit.lookAddons) << ',';
-	query << "`maglevel` = " << player->magLevel << ',';
-	query << "`mana` = " << player->mana << ',';
-	query << "`manamax` = " << player->manaMax << ',';
-	query << "`manaspent` = " << player->manaSpent << ',';
-	query << "`soul` = " << static_cast<uint16_t>(player->soul) << ',';
 	query << "`town_id` = " << player->town->getID() << ',';
 
 	const Position& loginPosition = player->getLoginPosition();
@@ -692,7 +619,6 @@ bool IOLoginData::savePlayer(Player* player)
 	query << "`posy` = " << loginPosition.getY() << ',';
 	query << "`posz` = " << loginPosition.getZ() << ',';
 
-	query << "`cap` = " << (player->capacity / 100) << ',';
 	query << "`sex` = " << static_cast<uint16_t>(player->sex) << ',';
 
 	if (player->lastLoginSaved != 0) {
@@ -705,42 +631,11 @@ bool IOLoginData::savePlayer(Player* player)
 
 	query << "`conditions` = " << db.escapeBlob(conditions, conditionsSize) << ',';
 
-	if (g_game.getWorldType() != WORLD_TYPE_PVP_ENFORCED) {
-		int64_t skullTime = 0;
-
-		if (player->skullTicks > 0) {
-			skullTime = time(nullptr) + player->skullTicks;
-		}
-		query << "`skulltime` = " << skullTime << ',';
-
-		Skulls_t skull = SKULL_NONE;
-		if (player->skull == SKULL_RED) {
-			skull = SKULL_RED;
-		} else if (player->skull == SKULL_BLACK) {
-			skull = SKULL_BLACK;
-		}
-		query << "`skull` = " << static_cast<int64_t>(skull) << ',';
-	}
-
 	query << "`lastlogout` = " << player->getLastLogout() << ',';
 	query << "`balance` = " << player->bankBalance << ',';
 	query << "`total_caught` = " << player->totalCaught << ',';
-	query << "`offlinetraining_time` = " << player->getOfflineTrainingTime() / 1000 << ',';
-	query << "`offlinetraining_skill` = " << player->getOfflineTrainingSkill() << ',';
 	query << "`stamina` = " << player->getStaminaMinutes() << ',';
 
-	query << "`skill_fist` = " << player->skills[SKILL_FIST].level << ',';
-	query << "`skill_fist_tries` = " << player->skills[SKILL_FIST].tries << ',';
-	query << "`skill_club` = " << player->skills[SKILL_CLUB].level << ',';
-	query << "`skill_club_tries` = " << player->skills[SKILL_CLUB].tries << ',';
-	query << "`skill_sword` = " << player->skills[SKILL_SWORD].level << ',';
-	query << "`skill_sword_tries` = " << player->skills[SKILL_SWORD].tries << ',';
-	query << "`skill_axe` = " << player->skills[SKILL_AXE].level << ',';
-	query << "`skill_axe_tries` = " << player->skills[SKILL_AXE].tries << ',';
-	query << "`skill_dist` = " << player->skills[SKILL_DISTANCE].level << ',';
-	query << "`skill_dist_tries` = " << player->skills[SKILL_DISTANCE].tries << ',';
-	query << "`skill_shielding` = " << player->skills[SKILL_SHIELD].level << ',';
-	query << "`skill_shielding_tries` = " << player->skills[SKILL_SHIELD].tries << ',';
 	query << "`skill_fishing` = " << player->skills[SKILL_FISHING].level << ',';
 	query << "`skill_fishing_tries` = " << player->skills[SKILL_FISHING].tries << ',';
 	query << "`direction` = " << static_cast<uint16_t> (player->getDirection()) << ',';
@@ -757,22 +652,6 @@ bool IOLoginData::savePlayer(Player* player)
 	}
 
 	if (!db.executeQuery(query.str())) {
-		return false;
-	}
-
-	// learned moves
-	if (!db.executeQuery(fmt::format("DELETE FROM `player_moves` WHERE `player_id` = {:d}", player->getGUID()))) {
-		return false;
-	}
-
-	DBInsert movesQuery("INSERT INTO `player_moves` (`player_id`, `name` ) VALUES ");
-	for (const std::string& moveName : player->learnedInstantMoveList) {
-		if (!movesQuery.addRow(fmt::format("{:d}, {:s}", player->getGUID(), db.escapeString(moveName)))) {
-			return false;
-		}
-	}
-
-	if (!movesQuery.execute()) {
 		return false;
 	}
 

@@ -48,7 +48,6 @@ struct summonBlock_t {
 	bool force = false;
 };
 
-class BaseMove;
 class Pokemon;
 enum PokemonMoveTarget_t : uint8_t {
 	POKEMON_MOVE_TARGET_TARGET = 0,
@@ -189,33 +188,6 @@ struct PokemonAbilityOption {
 	uint8_t slot = 0;
 };
 
-struct moveBlock_t {
-	constexpr moveBlock_t() = default;
-	~moveBlock_t();
-	moveBlock_t(const moveBlock_t& other) = delete;
-	moveBlock_t& operator=(const moveBlock_t& other) = delete;
-	moveBlock_t(moveBlock_t&& other) :
-		move(other.move),
-		chance(other.chance),
-		speed(other.speed),
-		range(other.range),
-		minCombatValue(other.minCombatValue),
-		maxCombatValue(other.maxCombatValue),
-		combatMove(other.combatMove),
-		isMelee(other.isMelee) {
-		other.move = nullptr;
-	}
-
-	BaseMove* move = nullptr;
-	uint32_t chance = 100;
-	uint32_t speed = 2000;
-	uint32_t range = 0;
-	int32_t minCombatValue = 0;
-	int32_t maxCombatValue = 0;
-	bool combatMove = false;
-	bool isMelee = false;
-};
-
 struct voiceBlock_t {
 	std::string text;
 	bool yellText;
@@ -256,10 +228,8 @@ class PokemonType
 
 		std::vector<LootBlock> lootItems;
 		std::vector<std::string> scripts;
-		std::vector<moveBlock_t> defenseMoves;
 		std::vector<summonBlock_t> summons;
 
-		Skulls_t skull = SKULL_NONE;
 		Outfit_t outfit = {};
 		RaceType_t race = RACE_BLOOD;
 
@@ -268,7 +238,6 @@ class PokemonType
 
 		uint64_t experience = 0;
 
-		uint32_t manaCost = 0;
 		uint32_t yellChance = 0;
 		uint32_t yellSpeedTicks = 0;
 		uint32_t staticAttackChance = 95;
@@ -288,8 +257,6 @@ class PokemonType
 		int32_t health = 100;
 		int32_t healthMax = 100;
 		int32_t changeTargetChance = 0;
-		int32_t defense = 0;
-		int32_t armor = 0;
 
 		bool canPushItems = false;
 		bool canPushCreatures = false;
@@ -353,51 +320,6 @@ class PokemonType
 		void loadLoot(PokemonType* pokemonType, LootBlock lootBlock);
 
 		uint8_t getCatchRate() { return info.catch_rate; }
-};
-
-class PokemonMove
-{
-	public:
-		PokemonMove() = default;
-
-		PokemonMove(const PokemonMove&) = delete;
-		PokemonMove& operator=(const PokemonMove&) = delete;
-
-		std::string name = "";
-		std::string scriptName = "";
-
-		uint8_t chance = 100;
-		uint8_t range = 0;
-		uint8_t drunkenness = 0;
-
-		uint16_t interval = 2000;
-
-		int32_t minCombatValue = 0;
-		int32_t maxCombatValue = 0;
-		int32_t attack = 0;
-		int32_t skill = 0;
-		int32_t length = 0;
-		int32_t spread = 0;
-		int32_t radius = 0;
-		int32_t conditionMinDamage = 0;
-		int32_t conditionMaxDamage = 0;
-		int32_t conditionStartDamage = 0;
-		int32_t tickInterval = 0;
-		int32_t minSpeedChange = 0;
-		int32_t maxSpeedChange = 0;
-		int32_t duration = 0;
-
-		bool isScripted = false;
-		bool needTarget = false;
-		bool needDirection = false;
-		bool combatMove = false;
-		bool isMelee = false;
-
-		Outfit_t outfit = {};
-		ShootType_t shoot = CONST_ANI_NONE;
-		MagicEffectClasses effect = CONST_ME_NONE;
-		ConditionType_t conditionType = CONDITION_NONE;
-		CombatType_t combatType = COMBAT_UNDEFINEDDAMAGE;
 };
 
 class Pokemons
@@ -489,7 +411,6 @@ class Pokemons
 			const PokemonMoveType* move, int32_t amount, bool ownerIsSource);
 		void executeAbilityAfterHeal(Pokemon* owner, Creature* source, Creature* target,
 			const PokemonMoveType* move, int32_t amount, bool ownerIsSource);
-		bool deserializeMove(PokemonMove* move, moveBlock_t& sb, const std::string& description = "");
 
 		std::unique_ptr<LuaScriptInterface> scriptInterface;
 		std::map<std::string, PokemonType> pokemons;
@@ -502,9 +423,6 @@ class Pokemons
 		bool prepareHeldItemEvent(Pokemon* owner, int32_t eventId, const char* eventName);
 		void finishHeldItemEvent(Pokemon* owner);
 		void callHeldItemVoidFunction(Pokemon* owner, int32_t parameterCount);
-		ConditionDamage* getDamageCondition(ConditionType_t conditionType,
-		                                    int32_t maxDamage, int32_t minDamage, int32_t startDamage, uint32_t tickInterval);
-		bool deserializeMove(const pugi::xml_node& node, moveBlock_t& sb, const std::string& description = "");
 
 		PokemonType* loadPokemon(const std::string& file, const std::string& pokemonName, bool reloading = false);
 

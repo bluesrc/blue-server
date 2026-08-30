@@ -17,8 +17,8 @@ enum ConditionAttr_t {
 	CONDITIONATTR_TICKS,
 	CONDITIONATTR_HEALTHTICKS,
 	CONDITIONATTR_HEALTHGAIN,
-	CONDITIONATTR_MANATICKS,
-	CONDITIONATTR_MANAGAIN,
+	CONDITIONATTR_RESERVED_6,
+	CONDITIONATTR_RESERVED_7,
 	CONDITIONATTR_DELAYED,
 	CONDITIONATTR_OWNER,
 	CONDITIONATTR_INTERVALDATA,
@@ -31,8 +31,8 @@ enum ConditionAttr_t {
 	CONDITIONATTR_LIGHTLEVEL,
 	CONDITIONATTR_LIGHTTICKS,
 	CONDITIONATTR_LIGHTINTERVAL,
-	CONDITIONATTR_SOULTICKS,
-	CONDITIONATTR_SOULGAIN,
+	CONDITIONATTR_RESERVED_20,
+	CONDITIONATTR_RESERVED_21,
 	CONDITIONATTR_SKILLS,
 	CONDITIONATTR_STATS,
 	CONDITIONATTR_OUTFIT,
@@ -41,7 +41,7 @@ enum ConditionAttr_t {
 	CONDITIONATTR_SUBID,
 	CONDITIONATTR_ISAGGRESSIVE,
 	CONDITIONATTR_DISABLEDEFENSE,
-	CONDITIONATTR_SPECIALSKILLS,
+	CONDITIONATTR_RESERVED_29,
 
 	//reserved for serialization
 	CONDITIONATTR_END = 254,
@@ -159,12 +159,8 @@ class ConditionAttributes final : public ConditionGeneric
 	private:
 		int32_t skills[SKILL_LAST + 1] = {};
 		int32_t skillsPercent[SKILL_LAST + 1] = {};
-		int32_t specialSkills[SPECIALSKILL_LAST + 1] = {};
 		int32_t stats[STAT_LAST + 1] = {};
 		int32_t statsPercent[STAT_LAST + 1] = {};
-		int32_t currentSkill = 0;
-		int32_t currentSpecialSkill = 0;
-		int32_t currentStat = 0;
 
 		bool disableDefense = false;
 
@@ -196,38 +192,8 @@ class ConditionRegeneration final : public ConditionGeneric
 
 	private:
 		uint32_t internalHealthTicks = 0;
-		uint32_t internalManaTicks = 0;
-
 		uint32_t healthTicks = 1000;
-		uint32_t manaTicks = 1000;
 		uint32_t healthGain = 0;
-		uint32_t manaGain = 0;
-};
-
-class ConditionSoul final : public ConditionGeneric
-{
-	public:
-		ConditionSoul(ConditionId_t id, ConditionType_t type, int32_t ticks, bool buff = false, uint32_t subId = 0, bool aggressive = false) :
-			ConditionGeneric(id, type, ticks, buff, subId, aggressive) {}
-
-		void addCondition(Creature* creature, const Condition* condition) override;
-		bool executeCondition(Creature* creature, int32_t interval) override;
-
-		bool setParam(ConditionParam_t param, int32_t value) override;
-		int32_t getParam(ConditionParam_t param) override;
-
-		ConditionSoul* clone() const override {
-			return new ConditionSoul(*this);
-		}
-
-		//serialization
-		void serialize(PropWriteStream& propWriteStream) override;
-		bool unserializeProp(ConditionAttr_t attr, PropStream& propStream) override;
-
-	private:
-		uint32_t internalSoulTicks = 0;
-		uint32_t soulTicks = 0;
-		uint32_t soulGain = 0;
 };
 
 class ConditionInvisible final : public ConditionGeneric
@@ -390,34 +356,6 @@ class ConditionLight final : public Condition
 		LightInfo lightInfo;
 		uint32_t internalLightTicks = 0;
 		uint32_t lightChangeInterval = 0;
-};
-
-class ConditionMoveCooldown final : public ConditionGeneric
-{
-	public:
-		ConditionMoveCooldown(ConditionId_t id, ConditionType_t type, int32_t ticks, bool buff = false, uint32_t subId = 0, bool aggressive = false) :
-			ConditionGeneric(id, type, ticks, buff, subId, aggressive) {}
-
-		bool startCondition(Creature* creature) override;
-		void addCondition(Creature* creature, const Condition* condition) override;
-
-		ConditionMoveCooldown* clone() const override {
-			return new ConditionMoveCooldown(*this);
-		}
-};
-
-class ConditionMoveGroupCooldown final : public ConditionGeneric
-{
-	public:
-		ConditionMoveGroupCooldown(ConditionId_t id, ConditionType_t type, int32_t ticks, bool buff = false, uint32_t subId = 0, bool aggressive = false) :
-			ConditionGeneric(id, type, ticks, buff, subId, aggressive) {}
-
-		bool startCondition(Creature* creature) override;
-		void addCondition(Creature* creature, const Condition* condition) override;
-
-		ConditionMoveGroupCooldown* clone() const override {
-			return new ConditionMoveGroupCooldown(*this);
-		}
 };
 
 class ConditionDrunk final : public Condition

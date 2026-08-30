@@ -37,7 +37,6 @@ if Modules == nil then
 	-- These callback function must be called with parameters.npcHandler = npcHandler in the parameters table or they will not work correctly.
 	-- Notice: The members of StdModule have not yet been tested. If you find any bugs, please report them to me.
 	-- Usage:
-		-- keywordHandler:addKeyword({"offer"}, StdModule.say, {npcHandler = npcHandler, text = "I sell many powerful melee weapons."})
 	function StdModule.say(cid, message, keywords, parameters, node)
 		local npcHandler = parameters.npcHandler
 		if npcHandler == nil then
@@ -63,73 +62,12 @@ if Modules == nil then
 		-- local node1 = keywordHandler:addKeyword({"promot"}, StdModule.say, {npcHandler = npcHandler, text = "I can promote you for 20000 gold coins. Do you want me to promote you?"})
 		-- node1:addChildKeyword({"yes"}, StdModule.promotePlayer, {npcHandler = npcHandler, cost = 20000, level = 20}, text = "Congratulations! You are now promoted.")
 		-- node1:addChildKeyword({"no"}, StdModule.say, {npcHandler = npcHandler, text = "Allright then. Come back when you are ready."}, reset = true)
-	function StdModule.promotePlayer(cid, message, keywords, parameters, node)
-		local npcHandler = parameters.npcHandler
-		if npcHandler == nil then
-			error("StdModule.promotePlayer called without any npcHandler instance.")
-		end
-
-		if not npcHandler:isFocused(cid) then
-			return false
-		end
-
-		local player = Player(cid)
-		if player:isPremium() or not parameters.premium then
-			local promotion = player:getVocation():getPromotion()
-			if player:getStorageValue(PlayerStorageKeys.promotion) == 1 then
-				npcHandler:say("You are already promoted!", cid)
-			elseif player:getLevel() < parameters.level then
-				npcHandler:say("I am sorry, but I can only promote you once you have reached level " .. parameters.level .. ".", cid)
-			elseif not player:removeTotalMoney(parameters.cost) then
-				npcHandler:say("You do not have enough money!", cid)
-			else
-				npcHandler:say(parameters.text, cid)
-				player:setVocation(promotion)
-				player:setStorageValue(PlayerStorageKeys.promotion, 1)
-			end
-		else
-			npcHandler:say("You need a premium account in order to get promoted.", cid)
-		end
-		npcHandler:resetNpc(cid)
-		return true
-	end
-
-	function StdModule.learnMove(cid, message, keywords, parameters, node)
-		local npcHandler = parameters.npcHandler
-		if npcHandler == nil then
-			error("StdModule.learnMove called without any npcHandler instance.")
-		end
-
-		if not npcHandler:isFocused(cid) then
-			return false
-		end
-
-		local player = Player(cid)
-		if player:isPremium() or not parameters.premium then
-			if player:hasLearnedMove(parameters.moveName) then
-				npcHandler:say("You already know this move.", cid)
-			elseif not player:canLearnMove(parameters.moveName) then
-				npcHandler:say("You cannot learn this move.", cid)
-			elseif not player:removeTotalMoney(parameters.price) then
-				npcHandler:say("You do not have enough money, this move costs " .. parameters.price .. " gold.", cid)
-			else
-				npcHandler:say("You have learned " .. parameters.moveName .. ".", cid)
-				player:learnMove(parameters.moveName)
-			end
-		else
-			npcHandler:say("You need a premium account in order to buy " .. parameters.moveName .. ".", cid)
-		end
-		npcHandler:resetNpc(cid)
-		return true
-	end
-
-	function StdModule.bless(cid, message, keywords, parameters, node)
 		local npcHandler = parameters.npcHandler
 		if npcHandler == nil then
 			error("StdModule.bless called without any npcHandler instance.")
 		end
 
-		if not npcHandler:isFocused(cid) or Game.getWorldType() == WORLD_TYPE_PVP_ENFORCED then
+		if not npcHandler:isFocused(cid) then
 			return false
 		end
 
@@ -805,7 +743,7 @@ if Modules == nil then
 	--	names = A table containing one or more strings of alternative names to this item. Used only for old buy/sell system.
 	--	itemid = The itemid of the buyable item
 	--	cost = The price of one single item
-	--	subType - The subType of each rune or fluidcontainer item. Can be left out if it is not a rune/fluidcontainer. Default value is 1.
+	--	subType - The subtype of each stackable or fluid-container item. Defaults to 1.
 	--	realName - The real, full name for the item. Will be used as ITEMNAME in MESSAGE_ONBUY and MESSAGE_ONSELL if defined. Default value is nil (ItemType(itemId):getName() will be used)
 	function ShopModule:addBuyableItem(names, itemid, cost, itemSubType, realName)
 		if SHOPMODULE_MODE ~= SHOPMODULE_MODE_TALK then
@@ -877,7 +815,7 @@ if Modules == nil then
 	--	container = Backpack, bag or any other itemid of container where bought items will be stored
 	--	itemid = The itemid of the buyable item
 	--	cost = The price of one single item
-	--	subType - The subType of each rune or fluidcontainer item. Can be left out if it is not a rune/fluidcontainer. Default value is 1.
+	--	subType - The subtype of each stackable or fluid-container item. Defaults to 1.
 	--	realName - The real, full name for the item. Will be used as ITEMNAME in MESSAGE_ONBUY and MESSAGE_ONSELL if defined. Default value is nil (ItemType(itemId):getName() will be used)
 	function ShopModule:addBuyableItemContainer(names, container, itemid, cost, subType, realName)
 		if names then
@@ -954,7 +892,7 @@ if Modules == nil then
 	end
 
 	-- Callback onBuy() function. If you wish, you can change certain Npc to use your onBuy().
-	function ShopModule:callbackOnBuy(cid, itemid, subType, amount, ignoreCap, inBackpacks)
+	function ShopModule:callbackOnBuy(cid, itemid, subType, amount, canDropOnMap, inBackpacks)
 		local shopItem = self:getShopItem(itemid, subType)
 		if shopItem == nil then
 			error("[ShopModule.onBuy] shopItem == nil")
@@ -987,7 +925,7 @@ if Modules == nil then
 		end
 
 		local subType = shopItem.subType or 1
-		local a, b = doNpcSellItem(cid, itemid, amount, subType, ignoreCap, inBackpacks, ITEM_SHOPPING_BAG)
+		local a, b = doNpcSellItem(cid, itemid, amount, subType, canDropOnMap, inBackpacks, ITEM_SHOPPING_BAG)
 		if a < amount then
 			local msgId = MESSAGE_NEEDMORESPACE
 			if a == 0 then
@@ -1087,8 +1025,8 @@ if Modules == nil then
 		local parseInfo = {[TAG_PLAYERNAME] = Player(cid):getName()}
 		local msg = module.npcHandler:parseMessage(module.npcHandler:getMessage(MESSAGE_SENDTRADE), parseInfo)
 		openShopWindow(cid, itemWindow,
-			function(cid, itemid, subType, amount, ignoreCap, inBackpacks) module.npcHandler:onBuy(cid, itemid, subType, amount, ignoreCap, inBackpacks) end,
-			function(cid, itemid, subType, amount, ignoreCap, inBackpacks) module.npcHandler:onSell(cid, itemid, subType, amount, ignoreCap, inBackpacks) end)
+			function(cid, itemid, subType, amount, canDropOnMap, inBackpacks) module.npcHandler:onBuy(cid, itemid, subType, amount, canDropOnMap, inBackpacks) end,
+			function(cid, itemid, subType, amount, ignoreEquipped, inBackpacks) module.npcHandler:onSell(cid, itemid, subType, amount, ignoreEquipped, inBackpacks) end)
 		module.npcHandler:say(msg, cid)
 		return true
 	end

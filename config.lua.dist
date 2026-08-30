@@ -1,20 +1,9 @@
 -- Combat settings
--- NOTE: valid values for worldType are: "pvp", "no-pvp" and "pvp-enforced"
-worldType = "no-pvp"
 hotkeyAimbotEnabled = true
 protectionLevel = 1
-killsToRedSkull = 3
-killsToBlackSkull = 6
 pzLocked = 60000
-removeChargesFromRunes = true
 removeChargesFromPotions = true
-removeWeaponAmmunition = true
-removeWeaponCharges = true
-timeToDecreaseFrags = 24 * 60 * 60
-whiteSkullTime = 15 * 60
 stairJumpExhaustion = 2000
-experienceByKillingPlayers = false
-expFromPlayersLevelRange = 75
 
 -- Connection Config
 -- NOTE: maxPlayers set to 0 means no limit
@@ -84,7 +73,6 @@ freePremium = false
 kickIdlePlayerAfterMinutes = 15
 maxMessageBuffer = 4
 emoteMoves = false
-classicEquipmentSlots = false
 classicAttackSpeed = false
 showScriptsLogInConsole = false
 showOnlineStatusInCharlist = false
@@ -134,7 +122,6 @@ experienceStages = {
 rateExp = 5
 rateSkill = 3
 rateLoot = 2
-rateMagic = 3
 rateSpawn = 1
 
 -- Pokemon Despawn Config

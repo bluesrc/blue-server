@@ -32,9 +32,6 @@ ec.onLook = function(self, thing, position, distance, description)
 			end
 		elseif thing:isCreature() then
 			local str = "%s\nHealth: %d / %d"
-			if thing:isPlayer() and thing:getMaxMana() > 0 then
-				str = string.format("%s, Mana: %d / %d", str, thing:getMana(), thing:getMaxMana())
-			end
 			description = string.format(str, description, thing:getHealth(), thing:getMaxHealth()) .. "."
 		end
 

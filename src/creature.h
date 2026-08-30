@@ -26,7 +26,7 @@ enum slots_t : uint8_t {
 	CONST_SLOT_LEGS = 7,
 	CONST_SLOT_FEET = 8,
 	CONST_SLOT_RING = 9,
-	CONST_SLOT_AMMO = 10,
+	CONST_SLOT_UTILITY = 10,
 	CONST_SLOT_POKEBALL1 = 11,
 	CONST_SLOT_POKEBALL2 = 12,
 	CONST_SLOT_POKEBALL3 = 13,
@@ -142,13 +142,6 @@ class Creature : virtual public Thing
 		virtual RaceType_t getRace() const {
 			return RACE_NONE;
 		}
-		virtual Skulls_t getSkull() const {
-			return skull;
-		}
-		virtual Skulls_t getSkullClient(const Creature* creature) const {
-			return creature->getSkull();
-		}
-		void setSkull(Skulls_t newSkull);
 		Direction getDirection() const {
 			return direction;
 		}
@@ -361,7 +354,7 @@ class Creature : virtual public Thing
 		virtual void onAttacked();
 		virtual void onAttackedCreatureDrainHealth(Creature* target, int32_t points);
 		virtual void onTargetCreatureGainHealth(Creature*, int32_t) {}
-		virtual bool onKilledCreature(Creature* target, bool lastHit = true);
+		virtual void onKilledCreature(Creature* target);
 		virtual void onGainExperience(uint64_t gainExp, Creature* target);
 		virtual void onAttackedCreatureBlockHit(BlockType_t) {}
 		virtual void onBlockHit() {}
@@ -524,7 +517,6 @@ class Creature : virtual public Thing
 		LightInfo internalLight;
 
 		Direction direction = DIRECTION_SOUTH;
-		Skulls_t skull = SKULL_NONE;
 
 		bool localMapCache[mapWalkHeight][mapWalkWidth] = {{ false }};
 		bool isInternalRemoved = false;
@@ -565,7 +557,7 @@ class Creature : virtual public Thing
 		}
 		virtual void getPathSearchParams(const Creature* creature, FindPathParams& fpp) const;
 		virtual void death(Creature*) {}
-		virtual bool dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature, bool lastHitUnjustified, bool mostDamageUnjustified);
+		virtual bool dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature);
 		virtual Item* getCorpse(Creature* lastHitCreature, Creature* mostDamageCreature);
 
 		friend class Game;

@@ -18,11 +18,6 @@ ec.onMoveItem = function(self, item, count, fromPosition, toPosition, fromCylind
 		local itemType, moveItem = ItemType(item:getId())
 		if bit.band(itemType:getSlotPosition(), SLOTP_TWO_HAND) ~= 0 and toPosition.y == CONST_SLOT_LEFT then
 			moveItem = self:getSlotItem(CONST_SLOT_RIGHT)
-		elseif itemType:getWeaponType() == WEAPON_SHIELD and toPosition.y == CONST_SLOT_RIGHT then
-			moveItem = self:getSlotItem(CONST_SLOT_LEFT)
-			if moveItem and bit.band(ItemType(moveItem:getId()):getSlotPosition(), SLOTP_TWO_HAND) == 0 then
-				return RETURNVALUE_NOERROR
-			end
 		end
 
 		if moveItem then

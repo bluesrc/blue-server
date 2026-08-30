@@ -97,10 +97,6 @@ function Player:onTradeCompleted(target, item, targetItem, isSuccess)
 	end
 end
 
-local soulCondition = Condition(CONDITION_SOUL, CONDITIONID_DEFAULT)
-soulCondition:setTicks(4 * 60 * 1000)
-soulCondition:setParameter(CONDITION_PARAM_SOULGAIN, 1)
-
 local function useStamina(player)
 	local staminaMinutes = player:getStamina()
 	if staminaMinutes == 0 then
@@ -137,13 +133,6 @@ function Player:onGainExperience(source, exp, rawExp)
 		return exp
 	end
 
-	-- Soul regeneration
-	local vocation = self:getVocation()
-	if self:getSoul() < vocation:getMaxSoul() and exp >= self:getLevel() then
-		soulCondition:setParameter(CONDITION_PARAM_SOULTICKS, vocation:getSoulGainTicks() * 1000)
-		self:addCondition(soulCondition)
-	end
-
 	-- Apply experience stage multiplier
 	exp = exp * Game.getExperienceStage(self:getLevel())
 
@@ -171,10 +160,6 @@ function Player:onGainSkillTries(skill, tries)
 		return hasEventCallback(EVENT_CALLBACK_ONGAINSKILLTRIES) and EventCallback(EVENT_CALLBACK_ONGAINSKILLTRIES, self, skill, tries) or tries
 	end
 
-	if skill == SKILL_MAGLEVEL then
-		tries = tries * configManager.getNumber(configKeys.RATE_MAGIC)
-		return hasEventCallback(EVENT_CALLBACK_ONGAINSKILLTRIES) and EventCallback(EVENT_CALLBACK_ONGAINSKILLTRIES, self, skill, tries) or tries
-	end
 	tries = tries * configManager.getNumber(configKeys.RATE_SKILL)
 	return hasEventCallback(EVENT_CALLBACK_ONGAINSKILLTRIES) and EventCallback(EVENT_CALLBACK_ONGAINSKILLTRIES, self, skill, tries) or tries
 end

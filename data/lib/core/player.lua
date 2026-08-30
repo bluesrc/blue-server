@@ -5,16 +5,9 @@ function Player.feed(self, food)
 	if condition then
 		condition:setTicks(condition:getTicks() + (food * 1000))
 	else
-		local vocation = self:getVocation()
-		if not vocation then
-			return nil
-		end
-
 		foodCondition:setTicks(food * 1000)
-		foodCondition:setParameter(CONDITION_PARAM_HEALTHGAIN, vocation:getHealthGainAmount())
-		foodCondition:setParameter(CONDITION_PARAM_HEALTHTICKS, vocation:getHealthGainTicks() * 1000)
-		foodCondition:setParameter(CONDITION_PARAM_MANAGAIN, vocation:getManaGainAmount())
-		foodCondition:setParameter(CONDITION_PARAM_MANATICKS, vocation:getManaGainTicks() * 1000)
+		foodCondition:setParameter(CONDITION_PARAM_HEALTHGAIN, 1)
+		foodCondition:setParameter(CONDITION_PARAM_HEALTHTICKS, 6000)
 
 		self:addCondition(foodCondition)
 	end
@@ -129,14 +122,6 @@ function Player.addSkillTries(...)
 	return ret
 end
 
-local addManaSpentFunc = Player.addManaSpent
-function Player.addManaSpent(...)
-	APPLY_SKILL_MULTIPLIER = false
-	local ret = addManaSpentFunc(...)
-	APPLY_SKILL_MULTIPLIER = true
-	return ret
-end
-
 -- Always pass the number through the isValidMoney function first before using the transferMoneyTo
 function Player.transferMoneyTo(self, target, amount)
 	if not target then
@@ -167,50 +152,35 @@ function Player.canCarryMoney(self, amount)
 		return true
 	end
 
-	-- The 3 below loops will populate these local variables
-	local totalWeight = 0
 	local inventorySlots = 0
 
-	-- Add crystal coins to totalWeight and inventorySlots
-	local type_crystal = ItemType(ITEM_CRYSTAL_COIN)
+	-- Count the slots needed for each coin stack.
 	local crystalCoins = math.floor(amount / 10000)
 	if crystalCoins > 0 then
 		amount = amount - (crystalCoins * 10000)
 		while crystalCoins > 0 do
 			local count = math.min(100, crystalCoins)
-			totalWeight = totalWeight + type_crystal:getWeight(count)
 			crystalCoins = crystalCoins - count
 			inventorySlots = inventorySlots + 1
 		end
 	end
 
-	-- Add platinum coins to totalWeight and inventorySlots
-	local type_platinum = ItemType(ITEM_PLATINUM_COIN)
 	local platinumCoins = math.floor(amount / 100)
 	if platinumCoins > 0 then
 		amount = amount - (platinumCoins * 100)
 		while platinumCoins > 0 do
 			local count = math.min(100, platinumCoins)
-			totalWeight = totalWeight + type_platinum:getWeight(count)
 			platinumCoins = platinumCoins - count
 			inventorySlots = inventorySlots + 1
 		end
 	end
 
-	-- Add gold coins to totalWeight and inventorySlots
-	local type_gold = ItemType(ITEM_GOLD_COIN)
 	if amount > 0 then
 		while amount > 0 do
 			local count = math.min(100, amount)
-			totalWeight = totalWeight + type_gold:getWeight(count)
 			amount = amount - count
 			inventorySlots = inventorySlots + 1
 		end
-	end
-
-	-- If player don't have enough capacity to carry this money
-	if self:getFreeCapacity() < totalWeight then
-		return false
 	end
 
 	-- If player don't have enough available inventory slots to carry this money
@@ -272,35 +242,13 @@ function Player.addLevel(self, amount, round)
 	end
 end
 
-function Player.addMagicLevel(self, value)
-	local currentMagLevel = self:getBaseMagicLevel()
-	local sum = 0
-
-	if value > 0 then
-		while value > 0 do
-			sum = sum + self:getVocation():getRequiredManaSpent(currentMagLevel + value)
-			value = value - 1
-		end
-
-		return self:addManaSpent(sum - self:getManaSpent())
-	else
-		value = math.min(currentMagLevel, math.abs(value))
-		while value > 0 do
-			sum = sum + self:getVocation():getRequiredManaSpent(currentMagLevel - value + 1)
-			value = value - 1
-		end
-
-		return self:removeManaSpent(sum + self:getManaSpent())
-	end
-end
-
 function Player.addSkillLevel(self, skillId, value)
 	local currentSkillLevel = self:getSkillLevel(skillId)
 	local sum = 0
 
 	if value > 0 then
 		while value > 0 do
-			sum = sum + self:getVocation():getRequiredSkillTries(skillId, currentSkillLevel + value)
+			sum = sum + self:getRequiredSkillTries(skillId, currentSkillLevel + value)
 			value = value - 1
 		end
 
@@ -308,7 +256,7 @@ function Player.addSkillLevel(self, skillId, value)
 	else
 		value = math.min(currentSkillLevel, math.abs(value))
 		while value > 0 do
-			sum = sum + self:getVocation():getRequiredSkillTries(skillId, currentSkillLevel - value + 1)
+			sum = sum + self:getRequiredSkillTries(skillId, currentSkillLevel - value + 1)
 			value = value - 1
 		end
 
@@ -319,18 +267,8 @@ end
 function Player.addSkill(self, skillId, value, round)
 	if skillId == SKILL_LEVEL then
 		return self:addLevel(value, round or false)
-	elseif skillId == SKILL_MAGLEVEL then
-		return self:addMagicLevel(value)
 	end
 	return self:addSkillLevel(skillId, value)
-end
-
-function Player.getWeaponType(self)
-	local weapon = self:getSlotItem(CONST_SLOT_LEFT)
-	if weapon then
-		return weapon:getType():getWeaponType()
-	end
-	return WEAPON_NONE
 end
 
 function Player.getTotalMoney(self)

@@ -5,11 +5,9 @@
 #define FS_MOVEMENT_H_5E0D2626D4634ACA83AC6509518E5F49
 
 #include "baseevents.h"
+#include "creature.h"
 #include "item.h"
 #include "luascript.h"
-#include "vocation.h"
-
-extern Vocations g_vocations;
 
 enum MoveEvent_t {
 	MOVE_EVENT_STEP_IN,
@@ -32,8 +30,6 @@ struct MoveEventList {
 	std::list<MoveEvent> moveEvent[MOVE_EVENT_LAST];
 	uint16_t zoneId;
 };
-
-using VocEquipMap = std::map<uint16_t, bool>;
 
 class MoveEvents final : public BaseEvents
 {
@@ -117,29 +113,11 @@ class MoveEvent final : public Event
 		uint32_t getReqLevel() const {
 			return reqLevel;
 		}
-		uint32_t getReqMagLv() const {
-			return reqMagLevel;
-		}
 		bool isPremium() const {
 			return premium;
 		}
-		const std::string& getVocationString() const {
-			return vocationString;
-		}
-		void setVocationString(const std::string& str) {
-			vocationString = str;
-		}
 		uint32_t getWieldInfo() const {
 			return wieldInfo;
-		}
-		const VocEquipMap& getVocEquipMap() const {
-			return vocEquipMap;
-		}
-		void addVocEquipMap(std::string vocName) {
-			int32_t vocationId = g_vocations.getVocationId(vocName);
-			if (vocationId != -1) {
-				vocEquipMap[vocationId] = true;
-			}
 		}
 		bool getTileItem() const {
 			return tileItem;
@@ -201,12 +179,6 @@ class MoveEvent final : public Event
 		void setRequiredLevel(uint32_t level) {
 			reqLevel = level;
 		}
-		uint32_t getRequiredMagLevel() {
-			return reqMagLevel;
-		}
-		void setRequiredMagLevel(uint32_t level) {
-			reqMagLevel = level;
-		}
 		bool needPremium() {
 			return premium;
 		}
@@ -241,11 +213,8 @@ class MoveEvent final : public Event
 
 		//onEquip information
 		uint32_t reqLevel = 0;
-		uint32_t reqMagLevel = 0;
 		bool premium = false;
-		std::string vocationString;
 		uint32_t wieldInfo = 0;
-		VocEquipMap vocEquipMap;
 		bool tileItem = false;
 
 		std::vector<uint32_t> itemIdRange;

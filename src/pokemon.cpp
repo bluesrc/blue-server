@@ -184,7 +184,6 @@ Pokemon::Pokemon(PokemonType* mType) :
 {
 	defaultOutfit = mType->info.outfit;
 	currentOutfit = mType->info.outfit;
-	skull = mType->info.skull;
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
@@ -239,7 +238,6 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 {
 	defaultOutfit = mType->info.outfit;
 	currentOutfit = mType->info.outfit;
-	skull = mType->info.skull;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
 	level = std::clamp<uint8_t>(pInfo.level, 1, 100);
@@ -677,7 +675,6 @@ bool Pokemon::evolve(EvolveTypes_t trigger, uint32_t requirement)
 	mType = evolvedType;
 	nameDescription = evolvedType->nameDescription;
 	defaultOutfit = evolvedType->info.outfit;
-	skull = evolvedType->info.skull;
 	internalLight = evolvedType->info.light;
 	hiddenHealth = evolvedType->info.hiddenHealth;
 	abilityState.clear();
@@ -2574,7 +2571,7 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 	}
 
 	const PokemonMoveType* move = g_pokemons.getMoveById(stateIt->moveId);
-	Move* effect = move && !move->effect.empty() ? g_moves->getMoveByName(move->effect) : nullptr;
+	PokemonMoveEffect* effect = move && !move->effect.empty() ? g_moves->getMoveByName(move->effect) : nullptr;
 	if (!move || !effect) {
 		return false;
 	}
@@ -2655,33 +2652,6 @@ bool Pokemon::useMove(uint8_t slot, Creature* target)
 	return result;
 }
 
-bool Pokemon::canUseMove(const Position& pos, const Position& targetPos,
-                          const moveBlock_t& sb, uint32_t interval, bool& inRange, bool& resetTicks)
-{
-	inRange = true;
-
-	if (sb.isMelee) {
-		if (isFleeing() || (OTSYS_TIME() - lastMeleeAttack) < sb.speed) {
-			return false;
-		}
-	} else {
-		if (sb.speed > attackTicks) {
-			resetTicks = false;
-			return false;
-		}
-
-		if (attackTicks % sb.speed >= interval) {
-			//already used this move for this round
-			return false;
-		}
-	}
-
-	if (sb.range != 0 && std::max<uint32_t>(Position::getDistanceX(pos, targetPos), Position::getDistanceY(pos, targetPos)) > sb.range) {
-		inRange = false;
-		return false;
-	}
-	return true;
-}
 
 void Pokemon::onThinkTarget(uint32_t interval)
 {
@@ -2736,24 +2706,6 @@ void Pokemon::onThinkDefense(uint32_t interval)
 {
 	bool resetTicks = true;
 	defenseTicks += interval;
-
-	for (const moveBlock_t& moveBlock : mType->info.defenseMoves) {
-		if (moveBlock.speed > defenseTicks) {
-			resetTicks = false;
-			continue;
-		}
-
-		if (defenseTicks % moveBlock.speed >= interval) {
-			//already used this move for this round
-			continue;
-		}
-
-		if ((moveBlock.chance >= static_cast<uint32_t>(uniform_random(1, 100)))) {
-			minCombatValue = moveBlock.minCombatValue;
-			maxCombatValue = moveBlock.maxCombatValue;
-			moveBlock.move->castMove(this, this);
-		}
-	}
 
 	if (!isSummon() && summons.size() < mType->info.maxSummons && hasFollowPath) {
 		for (const summonBlock_t& summonBlock : mType->info.summons) {

@@ -298,8 +298,7 @@ Action* Actions::getAction(const Item* item)
 		return &it->second;
 	}
 
-	//rune items
-	return g_moves->getRuneMove(item->getID());
+	return nullptr;
 }
 
 ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_t index, Item* item, bool isHotkey)
@@ -339,7 +338,7 @@ ReturnValue Actions::internalUseItem(Player* player, const Position& pos, uint8_
 
 		if (bed->trySleep(player)) {
 			player->setBedItem(bed);
-			g_game.sendOfflineTrainingDialog(player);
+			bed->sleep(player);
 		}
 
 		return RETURNVALUE_NOERROR;

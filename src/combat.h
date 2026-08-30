@@ -18,17 +18,6 @@ class Item;
 
 struct Position;
 
-//for luascript callback
-class ValueCallback final : public CallBack
-{
-	public:
-		explicit ValueCallback(formulaType_t type): type(type) {}
-		void getMinMaxValues(Player* player, CombatDamage& damage) const;
-
-	private:
-		formulaType_t type;
-};
-
 class TileCallback final : public CallBack
 {
 	public:
@@ -44,7 +33,6 @@ class TargetCallback final : public CallBack
 struct CombatParams {
 	std::forward_list<std::unique_ptr<const Condition>> conditionList;
 
-	std::unique_ptr<ValueCallback> valueCallback;
 	std::unique_ptr<TileCallback> tileCallback;
 	std::unique_ptr<TargetCallback> targetCallback;
 
@@ -124,9 +112,9 @@ class Combat
 		Combat(const Combat&) = delete;
 		Combat& operator=(const Combat&) = delete;
 
-		static bool isInPvpZone(const Creature* attacker, const Creature* target);
-		static bool isProtected(const Player* attacker, const Player* target);
-		static bool isPlayerCombat(const Creature* target);
+		static bool isInControlledBattleZone(const Creature* attacker, const Creature* target);
+		static bool canEngagePlayerControlledTarget(const Creature* attacker, const Creature* target);
+		static bool isPlayerControlledCreature(const Creature* target);
 		static CombatType_t ConditionToDamageType(ConditionType_t type);
 		static ConditionType_t DamageToConditionType(CombatType_t type);
 		static ReturnValue canTargetCreature(Player* attacker, Creature* target);
@@ -160,7 +148,6 @@ class Combat
 		void clearConditions() {
 			params.conditionList.clear();
 		}
-		void setPlayerCombatValues(formulaType_t formulaType, double mina, double minb, double maxa, double maxb);
 		void postCombatEffects(Creature* caster, const Position& pos) const {
 			postCombatEffects(caster, pos, params);
 		}
@@ -175,13 +162,6 @@ class Combat
 
 		//configurable
 		CombatParams params;
-
-		//formula variables
-		formulaType_t formulaType = COMBAT_FORMULA_UNDEFINED;
-		double mina = 0.0;
-		double minb = 0.0;
-		double maxa = 0.0;
-		double maxb = 0.0;
 
 		std::unique_ptr<AreaCombat> area;
 };

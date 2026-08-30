@@ -51,12 +51,8 @@ void trimString(std::string& str);
 uint16_t getDepotBoxId(uint16_t index);
 MagicEffectClasses getMagicEffect(const std::string& strValue);
 ShootType_t getShootType(const std::string& strValue);
-Ammo_t getAmmoType(const std::string& strValue);
-WeaponAction_t getWeaponAction(const std::string& strValue);
-Skulls_t getSkullType(const std::string& strValue);
 std::string getCombatName(CombatType_t combatType);
 
-std::string getSpecialSkillName(uint8_t skillid);
 std::string getSkillName(uint8_t skillid);
 
 uint32_t adlerChecksum(const uint8_t* data, size_t length);
@@ -65,7 +61,6 @@ std::string ucfirst(std::string str);
 std::string ucwords(std::string str);
 bool booleanString(const std::string& str);
 
-std::string getWeaponName(WeaponType_t weaponType);
 
 size_t combatTypeToIndex(CombatType_t combatType);
 CombatType_t indexToCombatType(size_t v);
@@ -79,7 +74,6 @@ const char* getReturnMessage(ReturnValue value);
 
 int64_t OTSYS_TIME();
 
-MoveGroup_t stringToMoveGroup(const std::string& value);
 
 template <typename E>
 auto format_as(E e)

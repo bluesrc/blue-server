@@ -31,12 +31,6 @@ enum stackPosType_t {
 	STACKPOS_USETARGET,
 };
 
-enum WorldType_t {
-	WORLD_TYPE_NO_PVP = 1,
-	WORLD_TYPE_PVP = 2,
-	WORLD_TYPE_PVP_ENFORCED = 3,
-};
-
 enum GameState_t {
 	GAME_STATE_STARTUP,
 	GAME_STATE_INIT,
@@ -86,11 +80,6 @@ class Game
 		void getMapDimensions(uint32_t& width, uint32_t& height) const {
 			width = map.width;
 			height = map.height;
-		}
-
-		void setWorldType(WorldType_t type);
-		WorldType_t getWorldType() const {
-			return worldType;
 		}
 
 		Cylinder* internalGetCylinder(Player* player, const Position& pos) const;
@@ -363,7 +352,7 @@ class Game
 		void playerAcceptTrade(uint32_t playerId);
 		void playerLookInTrade(uint32_t playerId, bool lookAtCounterOffer, uint8_t index);
 		void playerPurchaseItem(uint32_t playerId, uint16_t spriteId, uint8_t count, uint8_t amount,
-		                        bool ignoreCap = false, bool inBackpacks = false);
+		                        bool inBackpacks = false);
 		void playerSellItem(uint32_t playerId, uint16_t spriteId, uint8_t count,
 		                    uint8_t amount, bool ignoreEquipped = false);
 		void playerCloseShop(uint32_t playerId);
@@ -372,7 +361,7 @@ class Game
 		void playerSetAttackedCreature(uint32_t playerId, uint32_t creatureId);
 		void playerFollowCreature(uint32_t playerId, uint32_t creatureId);
 		void playerCancelAttackAndFollow(uint32_t playerId);
-		void playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool chaseMode, bool secureMode);
+		void playerSetFightModes(uint32_t playerId, fightMode_t fightMode, bool chaseMode);
 		void playerLookAt(uint32_t playerId, const Position& pos, uint8_t stackPos);
 		void playerLookInBattleList(uint32_t playerId, uint32_t creatureId);
 		void playerRequestAddVip(uint32_t playerId, const std::string& name);
@@ -417,7 +406,6 @@ class Game
 		void internalCreatureChangeOutfit(Creature* creature, const Outfit_t& outfit);
 		void internalCreatureChangeVisible(Creature* creature, bool visible);
 		void changeLight(const Creature* creature);
-		void updateCreatureSkull(const Creature* creature);
 		void updatePlayerShield(Player* player);
 		void updatePlayerHelpers(const Player& player);
 		void updateCreatureType(Creature* creature);
@@ -439,7 +427,6 @@ class Game
 		void combatGetTypeInfo(CombatType_t combatType, Creature* target, TextColor_t& color, uint8_t& effect);
 
 		bool combatChangeHealth(Creature* attacker, Creature* target, CombatDamage& damage);
-		bool combatChangeMana(Creature* attacker, Creature* target, CombatDamage& damage);
 
 		//animation help functions
 		void addCreatureHealth(const Creature* target);
@@ -464,8 +451,6 @@ class Game
 		const std::string& getMotdHash() const { return motdHash; }
 		uint32_t getMotdNum() const { return motdNum; }
 		void incrementMotdNum() { motdNum++; }
-
-		void sendOfflineTrainingDialog(Player* player);
 
 		const std::unordered_map<uint32_t, Player*>& getPlayers() const { return players; }
 		const std::map<uint32_t, Npc*>& getNpcs() const { return npcs; }
@@ -593,7 +578,6 @@ class Game
 
 		std::unordered_set<Tile*> tilesToClean;
 
-		ModalWindow offlineTrainingWindow { std::numeric_limits<uint32_t>::max(), "Choose a Skill", "Please choose a skill:" };
 
 		static constexpr uint8_t LIGHT_DAY = 250;
 		static constexpr uint8_t LIGHT_NIGHT = 40;
@@ -612,8 +596,6 @@ class Game
 		int16_t worldTime = 0;
 
 		GameState_t gameState = GAME_STATE_NORMAL;
-		WorldType_t worldType = WORLD_TYPE_PVP;
-
 		ServiceManager* serviceManager = nullptr;
 
 		void updatePlayersRecord() const;

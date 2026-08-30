@@ -196,11 +196,6 @@ registerPokemonType.experience = function(mtype, mask)
 		mtype:experience(mask.experience)
 	end
 end
-registerPokemonType.skull = function(mtype, mask)
-	if mask.skull then
-		mtype:skull(mask.skull)
-	end
-end
 registerPokemonType.outfit = function(mtype, mask)
 	if mask.outfit then
 		mtype:outfit(mask.outfit)
@@ -231,11 +226,6 @@ end
 registerPokemonType.race = function(mtype, mask)
 	if mask.race then
 		mtype:race(mask.race)
-	end
-end
-registerPokemonType.manaCost = function(mtype, mask)
-	if mask.manaCost then
-		mtype:manaCost(mask.manaCost)
 	end
 end
 registerPokemonType.speed = function(mtype, mask)
@@ -424,133 +414,6 @@ registerPokemonType.immunities = function(mtype, mask)
 			end
 			if immunity.type and immunity.condition then
 				mtype:conditionImmunities(immunity.type)
-			end
-		end
-	end
-end
-registerPokemonType.defenses = function(mtype, mask)
-	if type(mask.defenses) == "table" then
-		if mask.defenses.defense then
-			mtype:defense(mask.defenses.defense)
-		end
-		if mask.defenses.armor then
-			mtype:armor(mask.defenses.armor)
-		end
-		for _, defense in pairs(mask.defenses) do
-			if type(defense) == "table" then
-				local move = PokemonMove()
-				if defense.name then
-					if defense.name == "melee" then
-						move:setType("melee")
-						if defense.attack and defense.skill then
-							move:setAttackValue(defense.attack, defense.skill)
-						end
-						if defense.minDamage and defense.maxDamage then
-							move:setCombatValue(defense.minDamage, defense.maxDamage)
-						end
-						if defense.interval then
-							move:setInterval(defense.interval)
-						end
-						if defense.effect then
-							move:setCombatEffect(defense.effect)
-						end
-						if defense.condition then
-							if defense.condition.type then
-								move:setConditionType(defense.condition.type)
-							end
-							local startDamage = 0
-							if defense.condition.startDamage then
-								startDamage = defense.condition.startDamage
-							end
-							if defense.condition.minDamage and defense.condition.maxDamage then
-								move:setConditionDamage(defense.condition.minDamage, defense.condition.maxDamage, startDamage)
-							end
-							if defense.condition.duration then
-								move:setConditionDuration(defense.condition.duration)
-							end
-							if defense.condition.interval then
-								move:setConditionTickInterval(defense.condition.interval)
-							end
-						end
-					else
-						move:setType(defense.name)
-						if defense.type then
-							if defense.name == "combat" then
-								move:setCombatType(defense.type)
-							else
-								move:setConditionType(defense.type)
-							end
-						end
-						if defense.interval then
-							move:setInterval(defense.interval)
-						end
-						if defense.chance then
-							move:setChance(defense.chance)
-						end
-						if defense.range then
-							move:setRange(defense.range)
-						end
-						if defense.duration then
-							move:setConditionDuration(defense.duration)
-						end
-						if defense.speed then
-							if type(defense.speed) ~= "table" then
-								move:setConditionSpeedChange(defense.speed)
-							elseif type(defense.speed) == "table" then
-								if defense.speed.min and defense.speed.max then
-									move:setConditionSpeedChange(defense.speed.min, defense.speed.max)
-								end
-							end
-						end
-						if defense.target then
-							move:setNeedTarget(defense.target)
-						end
-						if defense.length then
-							move:setCombatLength(defense.length)
-						end
-						if defense.spread then
-							move:setCombatSpread(defense.spread)
-						end
-						if defense.radius then
-							move:setCombatRadius(defense.radius)
-						end
-						if defense.minDamage and defense.maxDamage then
-							if defense.name == "combat" then
-								move:setCombatValue(defense.minDamage, defense.maxDamage)
-							else
-								local startDamage = 0
-								if defense.startDamage then
-									startDamage = defense.startDamage
-								end
-								move:setConditionDamage(defense.minDamage, defense.maxDamage, startDamage)
-							end
-						end
-						if defense.effect then
-							move:setCombatEffect(defense.effect)
-						end
-						if defense.shootEffect then
-							move:setCombatShootEffect(defense.shootEffect)
-						end
-					end
-				elseif defense.script then
-					move:setScriptName(defense.script)
-					if defense.interval then
-						move:setInterval(defense.interval)
-					end
-					if defense.chance then
-						move:setChance(defense.chance)
-					end
-					if defense.minDamage and defense.maxDamage then
-						move:setCombatValue(defense.minDamage, defense.maxDamage)
-					end
-					if defense.target then
-						move:setNeedTarget(defense.target)
-					end
-					if defense.direction then
-						move:setNeedDirection(defense.direction)
-					end
-				end
-				mtype:addDefense(move)
 			end
 		end
 	end
