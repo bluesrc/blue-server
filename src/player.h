@@ -199,9 +199,6 @@ class Player final : public Creature, public Cylinder
 			guildNick = nick;
 		}
 
-		bool isInWar(const Player* player) const;
-		bool isInWarList(uint32_t guildId) const;
-
 		void setLastWalkthroughAttempt(int64_t walkthroughAttempt) {
 			lastWalkthroughAttempt = walkthroughAttempt;
 		}
@@ -226,10 +223,6 @@ class Player final : public Creature, public Cylinder
 		}
 
 		uint16_t getClientIcons() const;
-
-		const GuildWarVector& getGuildWarVector() const {
-			return guildWarVector;
-		}
 
 		OperatingSystem_t getOperatingSystem() const {
 			return operatingSystem;
@@ -524,8 +517,6 @@ class Player final : public Creature, public Cylinder
 		bool isImmune(CombatType_t type) const override;
 		bool isImmune(ConditionType_t type) const override;
 		bool isAttackable() const override;
-		static bool lastHitIsPlayer(Creature* lastHitCreature);
-
 		void changeHealth(int32_t healthChange, bool sendHealthChange = true) override;
 
 		bool isPzLocked() const {
@@ -558,7 +549,7 @@ class Player final : public Creature, public Cylinder
 
 		void addInFightTicks(bool pzlock = false);
 
-		uint64_t getGainedExperience(Creature* attacker) const override;
+		uint64_t getGainedExperience(Creature*) const override { return 0; }
 
 		//combat event functions
 		void onAddCondition(ConditionType_t type) override;
@@ -1157,8 +1148,6 @@ class Player final : public Creature, public Cylinder
 		std::map<uint32_t, int32_t> storageMap;
 
 		std::vector<OutfitEntry> outfits;
-		GuildWarVector guildWarVector;
-
 		std::list<ShopInfo> shopItemList;
 
 		std::forward_list<Party*> invitePartyList;

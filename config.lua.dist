@@ -1,13 +1,9 @@
 -- Combat settings
--- NOTE: valid values for worldType are: "pvp", "no-pvp" and "pvp-enforced"
-worldType = "no-pvp"
 hotkeyAimbotEnabled = true
 protectionLevel = 1
 pzLocked = 60000
 removeChargesFromPotions = true
 stairJumpExhaustion = 2000
-experienceByKillingPlayers = false
-expFromPlayersLevelRange = 75
 
 -- Connection Config
 -- NOTE: maxPlayers set to 0 means no limit

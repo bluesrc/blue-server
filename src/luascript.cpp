@@ -1227,9 +1227,6 @@ void LuaScriptInterface::registerFunctions()
 	//debugPrint(text)
 	lua_register(luaState, "debugPrint", LuaScriptInterface::luaDebugPrint);
 
-	//isInWar(cid, target)
-	lua_register(luaState, "isInWar", LuaScriptInterface::luaIsInWar);
-
 	//getWaypointPosition(name)
 	lua_register(luaState, "getWaypointPositionByName", LuaScriptInterface::luaGetWaypointPositionByName);
 
@@ -1677,19 +1674,19 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(ITEM_AMULETOFLOSS)
 	registerEnum(ITEM_PARCEL)
 	registerEnum(ITEM_LABEL)
-	registerEnum(ITEM_FIREFIELD_PVP_FULL)
-	registerEnum(ITEM_FIREFIELD_PVP_MEDIUM)
-	registerEnum(ITEM_FIREFIELD_PVP_SMALL)
+	registerEnum(ITEM_FIREFIELD_ACTIVE_FULL)
+	registerEnum(ITEM_FIREFIELD_ACTIVE_MEDIUM)
+	registerEnum(ITEM_FIREFIELD_ACTIVE_SMALL)
 	registerEnum(ITEM_FIREFIELD_PERSISTENT_FULL)
 	registerEnum(ITEM_FIREFIELD_PERSISTENT_MEDIUM)
 	registerEnum(ITEM_FIREFIELD_PERSISTENT_SMALL)
-	registerEnum(ITEM_FIREFIELD_NOPVP)
-	registerEnum(ITEM_POISONFIELD_PVP)
+	registerEnum(ITEM_FIREFIELD_SAFE)
+	registerEnum(ITEM_POISONFIELD_ACTIVE)
 	registerEnum(ITEM_POISONFIELD_PERSISTENT)
-	registerEnum(ITEM_POISONFIELD_NOPVP)
-	registerEnum(ITEM_ENERGYFIELD_PVP)
+	registerEnum(ITEM_POISONFIELD_SAFE)
+	registerEnum(ITEM_ENERGYFIELD_ACTIVE)
 	registerEnum(ITEM_ENERGYFIELD_PERSISTENT)
-	registerEnum(ITEM_ENERGYFIELD_NOPVP)
+	registerEnum(ITEM_ENERGYFIELD_SAFE)
 	registerEnum(ITEM_MAGICWALL)
 	registerEnum(ITEM_MAGICWALL_PERSISTENT)
 	registerEnum(ITEM_MAGICWALL_SAFE)
@@ -1702,7 +1699,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(WIELDINFO_PREMIUM)
 
 	registerEnum(PlayerFlag_CannotUseCombat)
-	registerEnum(PlayerFlag_CannotAttackPlayer)
 	registerEnum(PlayerFlag_CannotAttackPokemon)
 	registerEnum(PlayerFlag_CannotBeAttacked)
 	registerEnum(PlayerFlag_CanConvinceAll)
@@ -1802,9 +1798,8 @@ void LuaScriptInterface::registerFunctions()
 
 	registerEnum(TILESTATE_NONE)
 	registerEnum(TILESTATE_PROTECTIONZONE)
-	registerEnum(TILESTATE_NOPVPZONE)
 	registerEnum(TILESTATE_NOLOGOUT)
-	registerEnum(TILESTATE_PVPZONE)
+	registerEnum(TILESTATE_ARENAZONE)
 	registerEnum(TILESTATE_FLOORCHANGE)
 	registerEnum(TILESTATE_FLOORCHANGE_DOWN)
 	registerEnum(TILESTATE_FLOORCHANGE_NORTH)
@@ -1826,10 +1821,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(TILESTATE_FLOORCHANGE_SOUTH_ALT)
 	registerEnum(TILESTATE_FLOORCHANGE_EAST_ALT)
 	registerEnum(TILESTATE_SUPPORTS_HANGABLE)
-
-	registerEnum(WORLD_TYPE_NO_PVP)
-	registerEnum(WORLD_TYPE_PVP)
-	registerEnum(WORLD_TYPE_PVP_ENFORCED)
 
 	// Use with container:addItem, container:addItemEx and possibly other functions.
 	registerEnum(FLAG_NOLIMIT)
@@ -1939,9 +1930,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RETURNVALUE_YOUCANONLYUSEITONCREATURES)
 	registerEnum(RETURNVALUE_CREATUREISNOTREACHABLE)
 	registerEnum(RETURNVALUE_YOUNEEDPREMIUMACCOUNT)
-	registerEnum(RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE)
-	registerEnum(RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE)
-	registerEnum(RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE)
 	registerEnum(RETURNVALUE_YOUCANNOTLOGOUTHERE)
 	registerEnum(RETURNVALUE_NAMEISTOOAMBIGUOUS)
 	registerEnum(RETURNVALUE_NOPARTYMEMBERSINRANGE)
@@ -1980,8 +1968,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(RELOAD_TYPE_TALKACTIONS)
 
 	registerEnum(ZONE_PROTECTION)
-	registerEnum(ZONE_NOPVP)
-	registerEnum(ZONE_PVP)
+	registerEnum(ZONE_ARENA)
 	registerEnum(ZONE_NOLOGOUT)
 	registerEnum(ZONE_NORMAL)
 
@@ -2125,7 +2112,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::ONE_PLAYER_ON_ACCOUNT)
 	registerEnumIn("configKeys", ConfigManager::AIMBOT_HOTKEY_ENABLED)
 	registerEnumIn("configKeys", ConfigManager::REMOVE_POTION_CHARGES)
-	registerEnumIn("configKeys", ConfigManager::EXPERIENCE_FROM_PLAYERS)
 	registerEnumIn("configKeys", ConfigManager::FREE_PREMIUM)
 	registerEnumIn("configKeys", ConfigManager::REPLACE_KICK_ON_LOGIN)
 	registerEnumIn("configKeys", ConfigManager::ALLOW_CLONES)
@@ -2154,7 +2140,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::LOCATION)
 	registerEnumIn("configKeys", ConfigManager::IP)
 	registerEnumIn("configKeys", ConfigManager::MOTD)
-	registerEnumIn("configKeys", ConfigManager::WORLD_TYPE)
 	registerEnumIn("configKeys", ConfigManager::MYSQL_HOST)
 	registerEnumIn("configKeys", ConfigManager::MYSQL_USER)
 	registerEnumIn("configKeys", ConfigManager::MYSQL_PASS)
@@ -2189,7 +2174,6 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::MARKET_OFFER_DURATION)
 	registerEnumIn("configKeys", ConfigManager::CHECK_EXPIRED_MARKET_OFFERS_EACH_MINUTES)
 	registerEnumIn("configKeys", ConfigManager::MAX_MARKET_OFFERS_AT_A_TIME_PER_PLAYER)
-	registerEnumIn("configKeys", ConfigManager::EXP_FROM_PLAYERS_LEVEL_RANGE)
 	registerEnumIn("configKeys", ConfigManager::MAX_PACKETS_PER_SECOND)
 	registerEnumIn("configKeys", ConfigManager::PLAYER_CONSOLE_LOGS)
 
@@ -2219,9 +2203,6 @@ void LuaScriptInterface::registerFunctions()
 
 	registerMethod("Game", "getGameState", LuaScriptInterface::luaGameGetGameState);
 	registerMethod("Game", "setGameState", LuaScriptInterface::luaGameSetGameState);
-
-	registerMethod("Game", "getWorldType", LuaScriptInterface::luaGameGetWorldType);
-	registerMethod("Game", "setWorldType", LuaScriptInterface::luaGameSetWorldType);
 
 	registerMethod("Game", "getItemAttributeByName", LuaScriptInterface::luaGameGetItemAttributeByName);
 	registerMethod("Game", "getReturnMessage", LuaScriptInterface::luaGameGetReturnMessage);
@@ -3834,27 +3815,6 @@ int LuaScriptInterface::luaCleanMap(lua_State* L)
 	return 1;
 }
 
-int LuaScriptInterface::luaIsInWar(lua_State* L)
-{
-	//isInWar(cid, target)
-	Player* player = getPlayer(L, 1);
-	if (!player) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
-		pushBoolean(L, false);
-		return 1;
-	}
-
-	Player* targetPlayer = getPlayer(L, 2);
-	if (!targetPlayer) {
-		reportErrorFunc(L, getErrorDesc(LUA_ERROR_PLAYER_NOT_FOUND));
-		pushBoolean(L, false);
-		return 1;
-	}
-
-	pushBoolean(L, player->isInWar(targetPlayer));
-	return 1;
-}
-
 int LuaScriptInterface::luaGetWaypointPositionByName(lua_State* L)
 {
 	//getWaypointPositionByName(name)
@@ -4413,22 +4373,6 @@ int LuaScriptInterface::luaGameSetGameState(lua_State* L)
 	// Game.setGameState(state)
 	GameState_t state = getNumber<GameState_t>(L, 1);
 	g_game.setGameState(state);
-	pushBoolean(L, true);
-	return 1;
-}
-
-int LuaScriptInterface::luaGameGetWorldType(lua_State* L)
-{
-	// Game.getWorldType()
-	lua_pushnumber(L, g_game.getWorldType());
-	return 1;
-}
-
-int LuaScriptInterface::luaGameSetWorldType(lua_State* L)
-{
-	// Game.setWorldType(type)
-	WorldType_t type = getNumber<WorldType_t>(L, 1);
-	g_game.setWorldType(type);
 	pushBoolean(L, true);
 	return 1;
 }

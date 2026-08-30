@@ -254,20 +254,7 @@ void mainLoader(int, char*[], ServiceManager* services)
 		return;
 	}
 
-	std::cout << ">> Checking world type... " << std::flush;
-	std::string worldType = asLowerCaseString(g_config.getString(ConfigManager::WORLD_TYPE));
-	if (worldType == "pvp") {
-		g_game.setWorldType(WORLD_TYPE_PVP);
-	} else if (worldType == "no-pvp") {
-		g_game.setWorldType(WORLD_TYPE_NO_PVP);
-	} else if (worldType == "pvp-enforced") {
-		g_game.setWorldType(WORLD_TYPE_PVP_ENFORCED);
-	} else {
-		std::cout << std::endl;
-		startupErrorMessage(fmt::format("Unknown world type: {:s}, valid world types are: pvp, no-pvp and pvp-enforced.", g_config.getString(ConfigManager::WORLD_TYPE)));
-		return;
-	}
-	std::cout << asUpperCaseString(worldType) << std::endl;
+	std::cout << ">> Battle policy: trainer combat disabled; Pokemon battles restricted to arena zones" << std::endl;
 
 	std::cout << ">> Loading map" << std::endl;
 	if (!g_game.loadMainMap(g_config.getString(ConfigManager::MAP_NAME))) {

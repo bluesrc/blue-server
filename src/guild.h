@@ -65,7 +65,6 @@ class Guild
 		uint32_t memberCount = 0;
 };
 
-using GuildWarVector = std::vector<uint32_t>;
 
 namespace IOGuild
 {

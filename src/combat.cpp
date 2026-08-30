@@ -183,7 +183,7 @@ ConditionType_t Combat::DamageToConditionType(CombatType_t type)
 	}
 }
 
-bool Combat::isPlayerCombat(const Creature* target)
+bool Combat::isPlayerControlledCreature(const Creature* target)
 {
 	if (target->getPlayer()) {
 		return true;
@@ -194,6 +194,20 @@ bool Combat::isPlayerCombat(const Creature* target)
 	}
 
 	return false;
+}
+
+static const Player* getPlayerController(const Creature* creature)
+{
+	if (!creature) {
+		return nullptr;
+	}
+
+	if (const Player* player = creature->getPlayer()) {
+		return player;
+	}
+
+	const Creature* master = creature->getMaster();
+	return master ? master->getPlayer() : nullptr;
 }
 
 ReturnValue Combat::canTargetCreature(Player* attacker, Creature* target)
@@ -212,16 +226,6 @@ ReturnValue Combat::canTargetCreature(Player* attacker, Creature* target)
 			return RETURNVALUE_ACTIONNOTPERMITTEDINPROTECTIONZONE;
 		}
 
-		//nopvp-zone
-		if (isPlayerCombat(target)) {
-			if (attacker->getZone() == ZONE_NOPVP) {
-				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-			}
-
-			if (target->getZone() == ZONE_NOPVP) {
-				return RETURNVALUE_YOUMAYNOTATTACKAPERSONINPROTECTIONZONE;
-			}
-		}
 	}
 
 	if (attacker->hasFlag(PlayerFlag_CannotUseCombat) || !target->isAttackable()) {
@@ -232,11 +236,18 @@ ReturnValue Combat::canTargetCreature(Player* attacker, Creature* target)
 		}
 	}
 
-	if (target->getPlayer()) {
-		if (isProtected(attacker, target->getPlayer())) {
-			return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
+	if (const Player* targetController = getPlayerController(target)) {
+		// Selecting an opposing Pokemon is how the trainer commands the active
+		// Pokemon. The trainer still cannot deal damage directly.
+		if (target->getPlayer() || targetController == attacker ||
+				!isInControlledBattleZone(attacker, target)) {
+			return target->getPlayer() ? RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER : RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
 		}
 
+		if (attacker->hasFlag(PlayerFlag_CannotAttackPokemon)) {
+			return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
+		}
+		return g_events->eventCreatureOnTargetCombat(attacker, target);
 	}
 
 	return Combat::canDoCombat(attacker, target);
@@ -280,19 +291,23 @@ ReturnValue Combat::canDoCombat(Creature* caster, Tile* tile, bool aggressive)
 	return g_events->eventCreatureOnAreaCombat(caster, tile, aggressive);
 }
 
-bool Combat::isInPvpZone(const Creature* attacker, const Creature* target)
+bool Combat::isInControlledBattleZone(const Creature* attacker, const Creature* target)
 {
-	return attacker->getZone() == ZONE_PVP && target->getZone() == ZONE_PVP;
+	return attacker->getZone() == ZONE_ARENA && target->getZone() == ZONE_ARENA;
 }
 
-bool Combat::isProtected(const Player* attacker, const Player* target)
+bool Combat::canEngagePlayerControlledTarget(const Creature* attacker, const Creature* target)
 {
-	uint32_t protectionLevel = g_config.getNumber(ConfigManager::PROTECTION_LEVEL);
-	if (target->getLevel() < protectionLevel || attacker->getLevel() < protectionLevel) {
+	const Player* attackerController = getPlayerController(attacker);
+	const Player* targetController = getPlayerController(target);
+	if (!attackerController || !targetController) {
 		return true;
 	}
 
-	return false;
+	// Trainers are never combat targets. Controlled Pokemon may only fight a
+	// different trainer's Pokemon while both are inside an arena zone.
+	return attacker->getPokemon() && target->getPokemon() &&
+		attackerController != targetController && isInControlledBattleZone(attacker, target);
 }
 
 ReturnValue Combat::canDoCombat(Creature* attacker, Creature* target)
@@ -301,52 +316,19 @@ ReturnValue Combat::canDoCombat(Creature* attacker, Creature* target)
 		return g_events->eventCreatureOnTargetCombat(attacker, target);
 	}
 
+	if (!canEngagePlayerControlledTarget(attacker, target)) {
+		return target->getPlayer() ? RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER : RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
+	}
+
 	if (const Player* targetPlayer = target->getPlayer()) {
 		if (targetPlayer->hasFlag(PlayerFlag_CannotBeAttacked)) {
 			return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 		}
 
-		if (const Player* attackerPlayer = attacker->getPlayer()) {
-			if (attackerPlayer->hasFlag(PlayerFlag_CannotAttackPlayer)) {
-				return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
-			}
-
-			if (isProtected(attackerPlayer, targetPlayer)) {
-				return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
-			}
-
-			//nopvp-zone
-			const Tile* targetPlayerTile = targetPlayer->getTile();
-			if (targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE)) {
-				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-			} else if (attackerPlayer->getTile()->hasFlag(TILESTATE_NOPVPZONE) && !targetPlayerTile->hasFlag(TILESTATE_NOPVPZONE | TILESTATE_PROTECTIONZONE)) {
-				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-			}
-		}
-
-		if (attacker->isSummon()) {
-			if (const Player* masterAttackerPlayer = attacker->getMaster()->getPlayer()) {
-				if (masterAttackerPlayer->hasFlag(PlayerFlag_CannotAttackPlayer)) {
-					return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
-				}
-
-				if (targetPlayer->getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
-					return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
-				}
-
-				if (isProtected(masterAttackerPlayer, targetPlayer)) {
-					return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
-				}
-			}
-		}
 	} else if (target->getPokemon()) {
 		if (const Player* attackerPlayer = attacker->getPlayer()) {
 			if (attackerPlayer->hasFlag(PlayerFlag_CannotAttackPokemon)) {
 				return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
-			}
-
-			if (target->isSummon() && target->getMaster()->getPlayer() && target->getZone() == ZONE_NOPVP) {
-				return RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE;
 			}
 		} else if (attacker->getPokemon()) {
 			const Creature* targetMaster = target->getMaster();
@@ -361,21 +343,6 @@ ReturnValue Combat::canDoCombat(Creature* attacker, Creature* target)
 		}
 	}
 
-	if (g_game.getWorldType() == WORLD_TYPE_NO_PVP) {
-		if (attacker->getPlayer() || (attacker->isSummon() && attacker->getMaster()->getPlayer())) {
-			if (target->getPlayer()) {
-				if (!isInPvpZone(attacker, target)) {
-					return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
-				}
-			}
-
-			if (target->isSummon() && target->getMaster()->getPlayer()) {
-				if (!isInPvpZone(attacker, target)) {
-					return RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
-				}
-			}
-		}
-	}
 	return g_events->eventCreatureOnTargetCombat(attacker, target);
 }
 
@@ -509,23 +476,23 @@ void Combat::combatTileEffects(const SpectatorVec& spectators, Creature* caster,
 		uint16_t itemId = params.itemId;
 		switch (itemId) {
 			case ITEM_FIREFIELD_PERSISTENT_FULL:
-				itemId = ITEM_FIREFIELD_PVP_FULL;
+				itemId = ITEM_FIREFIELD_ACTIVE_FULL;
 				break;
 
 			case ITEM_FIREFIELD_PERSISTENT_MEDIUM:
-				itemId = ITEM_FIREFIELD_PVP_MEDIUM;
+				itemId = ITEM_FIREFIELD_ACTIVE_MEDIUM;
 				break;
 
 			case ITEM_FIREFIELD_PERSISTENT_SMALL:
-				itemId = ITEM_FIREFIELD_PVP_SMALL;
+				itemId = ITEM_FIREFIELD_ACTIVE_SMALL;
 				break;
 
 			case ITEM_ENERGYFIELD_PERSISTENT:
-				itemId = ITEM_ENERGYFIELD_PVP;
+				itemId = ITEM_ENERGYFIELD_ACTIVE;
 				break;
 
 			case ITEM_POISONFIELD_PERSISTENT:
-				itemId = ITEM_POISONFIELD_PVP;
+				itemId = ITEM_POISONFIELD_ACTIVE;
 				break;
 
 			case ITEM_MAGICWALL_PERSISTENT:
@@ -549,20 +516,18 @@ void Combat::combatTileEffects(const SpectatorVec& spectators, Creature* caster,
 			}
 
 			if (casterPlayer) {
-				if (g_game.getWorldType() == WORLD_TYPE_NO_PVP || tile->hasFlag(TILESTATE_NOPVPZONE)) {
-					if (itemId == ITEM_FIREFIELD_PVP_FULL) {
-						itemId = ITEM_FIREFIELD_NOPVP;
-					} else if (itemId == ITEM_POISONFIELD_PVP) {
-						itemId = ITEM_POISONFIELD_NOPVP;
-					} else if (itemId == ITEM_ENERGYFIELD_PVP) {
-						itemId = ITEM_ENERGYFIELD_NOPVP;
+				if (!tile->hasFlag(TILESTATE_ARENAZONE)) {
+					if (itemId == ITEM_FIREFIELD_ACTIVE_FULL) {
+						itemId = ITEM_FIREFIELD_SAFE;
+					} else if (itemId == ITEM_POISONFIELD_ACTIVE) {
+						itemId = ITEM_POISONFIELD_SAFE;
+					} else if (itemId == ITEM_ENERGYFIELD_ACTIVE) {
+						itemId = ITEM_ENERGYFIELD_SAFE;
 					} else if (itemId == ITEM_MAGICWALL) {
-						itemId = ITEM_MAGICWALL_NOPVP;
+						itemId = ITEM_MAGICWALL_TRANSIENT;
 					} else if (itemId == ITEM_WILDGROWTH) {
-						itemId = ITEM_WILDGROWTH_NOPVP;
+						itemId = ITEM_WILDGROWTH_TRANSIENT;
 					}
-				} else if (itemId == ITEM_FIREFIELD_PVP_FULL || itemId == ITEM_POISONFIELD_PVP || itemId == ITEM_ENERGYFIELD_PVP) {
-					casterPlayer->addInFightTicks();
 				}
 			}
 		}
@@ -771,8 +736,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 		addDistanceEffect(caster, caster->getPosition(), target->getPosition(), params.distanceEffect);
 	}
 
-	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
-
 	const Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 	const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 	if (g_game.combatBlockHit(damage, caster, target,
@@ -780,14 +743,6 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 			pokemonFormulaDamage ? false : params.blockedByArmor,
 			params.itemId != 0, pokemonFormulaDamage || params.ignoreResistances)) {
 		return;
-	}
-
-	if (casterPlayer) {
-		Player* targetPlayer = target ? target->getPlayer() : nullptr;
-		if (targetPlayer && casterPlayer != targetPlayer && damage.primary.type != COMBAT_HEALING) {
-			damage.primary.value /= 2;
-			damage.secondary.value /= 2;
-		}
 	}
 
 	bool success = g_game.combatChangeHealth(caster, target, damage);
@@ -826,7 +781,6 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 {
 	auto tiles = caster ? getCombatArea(caster->getPosition(), position, area) : getCombatArea(position, position, area);
 
-	Player* casterPlayer = caster ? caster->getPlayer() : nullptr;
 	Pokemon* pokemonCaster = caster ? caster->getPokemon() : nullptr;
 	const bool pokemonFormulaDamage = pokemonCaster && pokemonCaster->isExecutingPokemonMove();
 	uint32_t maxX = 0;
@@ -901,16 +855,6 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 		if (pokemonFormulaDamage) {
 			damageCopy.primary.value = -pokemonCaster->getExecutingMoveDamage(creature);
 		}
-		bool playerCombatReduced = false;
-		if ((damageCopy.primary.value < 0 || damageCopy.secondary.value < 0) && caster) {
-			Player* targetPlayer = creature->getPlayer();
-			if (casterPlayer && targetPlayer && casterPlayer != targetPlayer) {
-				damageCopy.primary.value /= 2;
-				damageCopy.secondary.value /= 2;
-				playerCombatReduced = true;
-			}
-		}
-
 		if (g_game.combatBlockHit(damageCopy, caster, creature,
 				pokemonFormulaDamage ? false : params.blockedByShield,
 				pokemonFormulaDamage ? false : params.blockedByArmor,
@@ -1221,11 +1165,9 @@ void MagicField::onStepInField(Creature* creature)
 		return;
 	}
 
-	//remove magic walls/wild growth (only nopvp tiles/world)
-	if (id == ITEM_MAGICWALL_NOPVP || id == ITEM_WILDGROWTH_NOPVP) {
-		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP || getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
-			g_game.internalRemoveItem(this, 1);
-		}
+	// Legacy safe field variants are always consumed on contact.
+	if (id == ITEM_MAGICWALL_TRANSIENT || id == ITEM_WILDGROWTH_TRANSIENT) {
+		g_game.internalRemoveItem(this, 1);
 		return;
 	}
 
@@ -1236,23 +1178,9 @@ void MagicField::onStepInField(Creature* creature)
 		if (ownerId) {
 			bool harmfulField = true;
 
-			if (g_game.getWorldType() == WORLD_TYPE_NO_PVP || getTile()->hasFlag(TILESTATE_NOPVPZONE)) {
-				Creature* owner = g_game.getCreatureByID(ownerId);
-				if (owner) {
-					if (owner->getPlayer() || (owner->isSummon() && owner->getMaster()->getPlayer())) {
-						harmfulField = false;
-					}
-				}
-			}
-
-			Player* targetPlayer = creature->getPlayer();
-			if (targetPlayer) {
-				Player* attackerPlayer = g_game.getPlayerByID(ownerId);
-				if (attackerPlayer) {
-					if (Combat::isProtected(attackerPlayer, targetPlayer)) {
-						harmfulField = false;
-					}
-				}
+			Creature* owner = g_game.getCreatureByID(ownerId);
+			if (owner && !Combat::canEngagePlayerControlledTarget(owner, creature)) {
+				harmfulField = false;
 			}
 
 			if (!harmfulField || (OTSYS_TIME() - createTime <= 5000) || creature->hasBeenAttacked(ownerId)) {

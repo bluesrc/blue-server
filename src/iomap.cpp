@@ -270,10 +270,8 @@ bool IOMap::parseTileArea(OTB::Loader& loader, const OTB::Node& tileAreaNode, Ma
 
 					if ((flags & OTBM_TILEFLAG_PROTECTIONZONE) != 0) {
 						tileflags |= TILESTATE_PROTECTIONZONE;
-					} else if ((flags & OTBM_TILEFLAG_NOPVPZONE) != 0) {
-						tileflags |= TILESTATE_NOPVPZONE;
-					} else if ((flags & OTBM_TILEFLAG_PVPZONE) != 0) {
-						tileflags |= TILESTATE_PVPZONE;
+					} else if ((flags & OTBM_TILEFLAG_ARENAZONE) != 0) {
+						tileflags |= TILESTATE_ARENAZONE;
 					}
 
 					if ((flags & OTBM_TILEFLAG_NOLOGOUT) != 0) {

@@ -1031,15 +1031,6 @@ const char* getReturnMessage(ReturnValue value)
 		case RETURNVALUE_YOUNEEDPREMIUMACCOUNT:
 			return "You need a premium account.";
 
-		case RETURNVALUE_PLAYERISPZLOCKEDLEAVEPVPZONE:
-			return "You can not leave a pvp zone after attacking another player.";
-
-		case RETURNVALUE_PLAYERISPZLOCKEDENTERPVPZONE:
-			return "You can not enter a pvp zone after attacking another player.";
-
-		case RETURNVALUE_ACTIONNOTPERMITTEDINANOPVPZONE:
-			return "This action is not permitted in a non pvp zone.";
-
 		case RETURNVALUE_YOUCANNOTLOGOUTHERE:
 			return "You can not logout here.";
 

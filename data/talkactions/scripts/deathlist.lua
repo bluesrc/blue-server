@@ -1,7 +1,3 @@
-local function getArticle(str)
-	return str:find("[AaEeIiOoUuYy]") == 1 and "an" or "a"
-end
-
 local function getMonthDayEnding(day)
 	if day == "01" or day == "21" or day == "31" then
 		return "st"
@@ -27,7 +23,7 @@ function onSay(player, words, param)
 		local str = ""
 		local breakline = ""
 
-		local resultId = db.storeQuery("SELECT `time`, `level`, `killed_by`, `is_player` FROM `player_deaths` WHERE `player_id` = " .. targetGUID .. " ORDER BY `time` DESC")
+		local resultId = db.storeQuery("SELECT `time`, `level`, `killed_by` FROM `player_deaths` WHERE `player_id` = " .. targetGUID .. " ORDER BY `time` DESC")
 		if resultId ~= false then
 			repeat
 				if str ~= "" then
@@ -35,18 +31,13 @@ function onSay(player, words, param)
 				end
 				local date = os.date("*t", result.getNumber(resultId, "time"))
 
-				local article = ""
 				local killed_by = result.getString(resultId, "killed_by")
-				if result.getNumber(resultId, "is_player") == 0 then
-					article = getArticle(killed_by) .. " "
-					killed_by = string.lower(killed_by)
-				end
 
 				if date.day < 10 then date.day = "0" .. date.day end
 				if date.hour < 10 then date.hour = "0" .. date.hour end
 				if date.min < 10 then date.min = "0" .. date.min end
 				if date.sec < 10 then date.sec = "0" .. date.sec end
-				str = str .. breakline .. " " .. date.day .. getMonthDayEnding(date.day) .. " " .. getMonthString(date.month) .. " " .. date.year .. " " .. date.hour .. ":" .. date.min .. ":" .. date.sec .. "   Died at Level " .. result.getNumber(resultId, "level") .. " by " .. article .. killed_by .. "."
+				str = str .. breakline .. " " .. date.day .. getMonthDayEnding(date.day) .. " " .. getMonthString(date.month) .. " " .. date.year .. " " .. date.hour .. ":" .. date.min .. ":" .. date.sec .. "   Died at Level " .. result.getNumber(resultId, "level") .. " by " .. killed_by .. "."
 			until not result.next(resultId)
 			result.free(resultId)
 		end

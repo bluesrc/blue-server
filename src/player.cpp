@@ -1115,21 +1115,9 @@ void Player::onAttackedCreatureChangeZone(ZoneType_t zone)
 			setAttackedCreature(nullptr);
 			onAttackedCreatureDisappear(false);
 		}
-	} else if (zone == ZONE_NOPVP) {
-		if (attackedCreature->getPlayer()) {
-			if (!hasFlag(PlayerFlag_IgnoreProtectionZone)) {
-				setAttackedCreature(nullptr);
-				onAttackedCreatureDisappear(false);
-			}
-		}
-	} else if (zone == ZONE_NORMAL) {
-		//attackedCreature can leave a pvp zone if not pzlocked
-		if (g_game.getWorldType() == WORLD_TYPE_NO_PVP) {
-			if (attackedCreature->getPlayer()) {
-				setAttackedCreature(nullptr);
-				onAttackedCreatureDisappear(false);
-			}
-		}
+	} else if (Combat::isPlayerControlledCreature(attackedCreature) && zone != ZONE_ARENA) {
+		setAttackedCreature(nullptr);
+		onAttackedCreatureDisappear(false);
 	}
 }
 
@@ -1796,29 +1784,7 @@ void Player::death(Creature* lastHitCreature)
 	loginPosition = town->getTemplePosition();
 
 	if (skillLoss) {
-		uint8_t unfairFightReduction = 100;
-		bool lastHitPlayer = Player::lastHitIsPlayer(lastHitCreature);
-
-		if (lastHitPlayer) {
-			uint32_t sumLevels = 0;
-			uint32_t inFightTicks = g_config.getNumber(ConfigManager::PZ_LOCKED);
-			for (const auto& it : damageMap) {
-				CountBlock_t cb = it.second;
-				if ((OTSYS_TIME() - cb.ticks) <= inFightTicks) {
-					Player* damageDealer = g_game.getPlayerByID(it.first);
-					if (damageDealer) {
-						sumLevels += damageDealer->getLevel();
-					}
-				}
-			}
-
-			if (sumLevels > level) {
-				double reduce = level / static_cast<double>(sumLevels);
-				unfairFightReduction = std::max<uint8_t>(20, std::floor((reduce * 100) + 0.5));
-			}
-		}
-
-		double deathLossPercent = getLostPercent() * (unfairFightReduction / 100.);
+		double deathLossPercent = getLostPercent();
 
 		// Generic skill loss. Fishing is currently the only registered skill.
 		for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; ++i) { //for each skill
@@ -1859,20 +1825,11 @@ void Player::death(Creature* lastHitCreature)
 			}
 		}
 
-		if (blessings.test(5)) {
-			if (lastHitPlayer) {
-				blessings.reset(5);
-			} else {
-				blessings.reset();
-				blessings.set(5);
-			}
-		} else {
-			blessings.reset();
-		}
+		blessings.reset();
 
 		sendStats();
 		sendSkills();
-		sendReLoginWindow(unfairFightReduction);
+		sendReLoginWindow(100);
 
 		health = healthMax;
 
@@ -1917,12 +1874,7 @@ void Player::death(Creature* lastHitCreature)
 
 bool Player::dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature)
 {
-	if (getZone() != ZONE_PVP || !Player::lastHitIsPlayer(lastHitCreature)) {
-		return Creature::dropCorpse(lastHitCreature, mostDamageCreature);
-	}
-
-	setDropLoot(true);
-	return false;
+	return Creature::dropCorpse(lastHitCreature, mostDamageCreature);
 }
 
 Item* Player::getCorpse(Creature* lastHitCreature, Creature* mostDamageCreature)
@@ -3008,17 +2960,6 @@ void Player::doAttacking(uint32_t)
 	// Player auto-attacks are disabled; summoned Pokemon own the battle loop.
 }
 
-uint64_t Player::getGainedExperience(Creature* attacker) const
-{
-	if (g_config.getBoolean(ConfigManager::EXPERIENCE_FROM_PLAYERS)) {
-		Player* attackerPlayer = attacker->getPlayer();
-		if (attackerPlayer && attackerPlayer != this && skillLoss && std::abs(static_cast<int32_t>(attackerPlayer->getLevel() - level)) <= g_config.getNumber(ConfigManager::EXP_FROM_PLAYERS_LEVEL_RANGE)) {
-			return std::max<uint64_t>(0, std::floor(getLostExperience() * getDamageRatio(attacker) * 0.75));
-		}
-	}
-	return 0;
-}
-
 void Player::onFollowCreature(const Creature* creature)
 {
 	if (!creature) {
@@ -3163,30 +3104,20 @@ void Player::onEndCondition(ConditionType_t type)
 
 void Player::onCombatRemoveCondition(Condition* condition)
 {
-	//Creature::onCombatRemoveCondition(condition);
 	if (condition->getId() > 0) {
-		//Means the condition is from an item, id == slot
-		if (g_game.getWorldType() == WORLD_TYPE_PVP_ENFORCED) {
-			Item* item = getInventoryItem(static_cast<slots_t>(condition->getId()));
-			if (item) {
-				//25% chance to destroy the item
-				if (25 >= uniform_random(1, 100)) {
-					g_game.internalRemoveItem(item);
-				}
-			}
+		return;
+	}
+
+	if (!canDoAction()) {
+		const uint32_t delay = getNextActionTime();
+		const int32_t ticks = delay - (delay % EVENT_CREATURE_THINK_INTERVAL);
+		if (ticks < 0) {
+			removeCondition(condition);
+		} else {
+			condition->setTicks(ticks);
 		}
 	} else {
-		if (!canDoAction()) {
-			const uint32_t delay = getNextActionTime();
-			const int32_t ticks = delay - (delay % EVENT_CREATURE_THINK_INTERVAL);
-			if (ticks < 0) {
-				removeCondition(condition);
-			} else {
-				condition->setTicks(ticks);
-			}
-		} else {
-			removeCondition(condition);
-		}
+		removeCondition(condition);
 	}
 }
 
@@ -3194,7 +3125,7 @@ void Player::onAttackedCreature(Creature* target, bool addFightTicks /* = true *
 {
 	Creature::onAttackedCreature(target);
 
-	if (target->getZone() == ZONE_PVP) {
+	if (target->getZone() == ZONE_ARENA) {
 		return;
 	}
 
@@ -3207,21 +3138,6 @@ void Player::onAttackedCreature(Creature* target, bool addFightTicks /* = true *
 
 	if (hasFlag(PlayerFlag_NotGainInFight)) {
 		return;
-	}
-
-	Player* targetPlayer = target->getPlayer();
-	if (targetPlayer && !isPartner(targetPlayer) && !isGuildMate(targetPlayer)) {
-		if (!pzLocked && g_game.getWorldType() == WORLD_TYPE_PVP_ENFORCED) {
-			pzLocked = true;
-			sendIcons();
-		}
-
-		targetPlayer->addInFightTicks();
-
-		if (!pzLocked) {
-			pzLocked = true;
-			sendIcons();
-		}
 	}
 
 	if (addFightTicks) {
@@ -3258,7 +3174,7 @@ void Player::onAttackedCreatureDrainHealth(Creature* target, int32_t points)
 	Creature::onAttackedCreatureDrainHealth(target, points);
 
 	if (target) {
-		if (party && !Combat::isPlayerCombat(target)) {
+		if (party && !Combat::isPlayerControlledCreature(target)) {
 			Pokemon* tmpPokemon = target->getPokemon();
 			if (tmpPokemon && tmpPokemon->isHostile()) {
 				//We have fulfilled a requirement for shared experience
@@ -3294,16 +3210,6 @@ void Player::onKilledCreature(Creature* target)
 	}
 
 	Creature::onKilledCreature(target);
-
-	Player* targetPlayer = target->getPlayer();
-	if (!targetPlayer) {
-		return;
-	}
-
-	if (targetPlayer->getZone() == ZONE_PVP) {
-		targetPlayer->setDropLoot(false);
-		targetPlayer->setSkillLoss(false);
-	}
 }
 
 void Player::gainExperience(uint64_t gainExp, Creature* source)
@@ -3355,20 +3261,6 @@ bool Player::isImmune(ConditionType_t type) const
 bool Player::isAttackable() const
 {
 	return !hasFlag(PlayerFlag_CannotBeAttacked);
-}
-
-bool Player::lastHitIsPlayer(Creature* lastHitCreature)
-{
-	if (!lastHitCreature) {
-		return false;
-	}
-
-	if (lastHitCreature->getPlayer()) {
-		return true;
-	}
-
-	Creature* lastHitMaster = lastHitCreature->getMaster();
-	return lastHitMaster && lastHitMaster->getPlayer();
 }
 
 void Player::changeHealth(int32_t healthChange, bool sendHealthChange/* = true*/)
@@ -3526,25 +3418,6 @@ double Player::getLostPercent() const
 	return lossPercent * (1 - (percentReduction / 100.)) / 100.;
 }
 
-bool Player::isInWar(const Player* player) const
-{
-	if (!player || !guild) {
-		return false;
-	}
-
-	const Guild* playerGuild = player->getGuild();
-	if (!playerGuild) {
-		return false;
-	}
-
-	return isInWarList(playerGuild->getId()) && player->isInWarList(guild->getId());
-}
-
-bool Player::isInWarList(uint32_t guildId) const
-{
-	return std::find(guildWarVector.begin(), guildWarVector.end(), guildId) != guildWarVector.end();
-}
-
 bool Player::isPremium() const
 {
 	if (g_config.getBoolean(ConfigManager::FREE_PREMIUM) || hasFlag(PlayerFlag_IsAlwaysPremium)) {
@@ -3679,19 +3552,7 @@ GuildEmblems_t Player::getGuildEmblem(const Player* player) const
 		return GUILDEMBLEM_NONE;
 	}
 
-	if (player->getGuildWarVector().empty()) {
-		if (guild == playerGuild) {
-			return GUILDEMBLEM_MEMBER;
-		} else {
-			return GUILDEMBLEM_OTHER;
-		}
-	} else if (guild == playerGuild) {
-		return GUILDEMBLEM_ALLY;
-	} else if (isInWar(player)) {
-		return GUILDEMBLEM_ENEMY;
-	}
-
-	return GUILDEMBLEM_NEUTRAL;
+	return guild == playerGuild ? GUILDEMBLEM_MEMBER : GUILDEMBLEM_OTHER;
 }
 
 uint8_t Player::getCurrentMount() const

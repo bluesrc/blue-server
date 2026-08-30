@@ -279,7 +279,7 @@
 	<movevent event="StepIn" itemid="7359" function="onStepInField" />
 	<movevent event="AddItem" itemid="7360" function="onAddField" />
 
-	<!-- Magic Wall NoPvp / Wild Growth NoPvp -->
+	<!-- Transient Magic Wall / Wild Growth -->
 	<movevent event="StepIn" itemid="20669" function="onStepInField" />
 	<movevent event="StepIn" itemid="20670" function="onStepInField" />
 

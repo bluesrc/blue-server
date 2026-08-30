@@ -1156,12 +1156,6 @@ function setGlobalStorageValue(key, value)
 	return true
 end
 doSetStorage = setGlobalStorageValue
-getWorldType = Game.getWorldType
-
-function setWorldType(type)
-	return Game.setWorldType(type)
-end
-
 function getGameState()
 	return Game.getGameState()
 end

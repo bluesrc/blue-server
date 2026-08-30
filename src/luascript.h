@@ -494,7 +494,6 @@ class LuaScriptInterface
 		static int luaSaveServer(lua_State* L);
 		static int luaCleanMap(lua_State* L);
 
-		static int luaIsInWar(lua_State* L);
 
 		static int luaGetWaypointPositionByName(lua_State* L);
 
@@ -563,8 +562,6 @@ class LuaScriptInterface
 		static int luaGameGetGameState(lua_State* L);
 		static int luaGameSetGameState(lua_State* L);
 
-		static int luaGameGetWorldType(lua_State* L);
-		static int luaGameSetWorldType(lua_State* L);
 
 		static int luaGameGetItemAttributeByName(lua_State* L);
 		static int luaGameGetReturnMessage(lua_State* L);

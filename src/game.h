@@ -31,12 +31,6 @@ enum stackPosType_t {
 	STACKPOS_USETARGET,
 };
 
-enum WorldType_t {
-	WORLD_TYPE_NO_PVP = 1,
-	WORLD_TYPE_PVP = 2,
-	WORLD_TYPE_PVP_ENFORCED = 3,
-};
-
 enum GameState_t {
 	GAME_STATE_STARTUP,
 	GAME_STATE_INIT,
@@ -86,11 +80,6 @@ class Game
 		void getMapDimensions(uint32_t& width, uint32_t& height) const {
 			width = map.width;
 			height = map.height;
-		}
-
-		void setWorldType(WorldType_t type);
-		WorldType_t getWorldType() const {
-			return worldType;
 		}
 
 		Cylinder* internalGetCylinder(Player* player, const Position& pos) const;
@@ -607,8 +596,6 @@ class Game
 		int16_t worldTime = 0;
 
 		GameState_t gameState = GAME_STATE_NORMAL;
-		WorldType_t worldType = WORLD_TYPE_PVP;
-
 		ServiceManager* serviceManager = nullptr;
 
 		void updatePlayersRecord() const;
