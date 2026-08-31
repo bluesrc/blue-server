@@ -495,7 +495,10 @@ bool IOLoginData::loadPlayer(Player* player, DBResult_ptr result)
 		player->loginPosition = player->getTemplePosition();
 	}
 
-	player->staminaMinutes = result->getNumber<uint16_t>("stamina");
+	const uint16_t maximumStamina = g_config.getStaminaMaxMinutes();
+	player->staminaMinutes = player->lastLoginSaved == 0
+		? maximumStamina
+		: std::min(maximumStamina, result->getNumber<uint16_t>("stamina"));
 
 	static constexpr std::array<const char*, SKILL_LAST + 1> skillNames {"skill_fishing"};
 	static constexpr std::array<const char*, SKILL_LAST + 1> skillNameTries {"skill_fishing_tries"};

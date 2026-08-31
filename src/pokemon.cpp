@@ -3793,7 +3793,13 @@ void Pokemon::dropLoot(Container* corpse, Creature* lastHitCreature)
 		}
 
 		std::string lootDescription = joinLootDescriptions(lootedDescriptions);
-		if (lootedDescriptions.empty() && player->getStaminaMinutes() <= 840) {
+		const int32_t maximumStaminaHours = g_config.getStaminaMaxMinutes() / 60;
+		const uint32_t lowStaminaMinutes = static_cast<uint32_t>(std::clamp<int32_t>(
+			g_config.getNumber(ConfigManager::STAMINA_LOW_HOURS), 0, maximumStaminaHours)) * 60;
+		const bool staminaStoppedLoot = g_config.getBoolean(ConfigManager::STAMINA_SYSTEM) &&
+			g_config.getBoolean(ConfigManager::STAMINA_LOW_STOPS_LOOT) &&
+			player->getStaminaMinutes() <= lowStaminaMinutes;
+		if (lootedDescriptions.empty() && staminaStoppedLoot) {
 			lootDescription = "nothing (due to low stamina)";
 		}
 

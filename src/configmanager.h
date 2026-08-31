@@ -30,6 +30,8 @@ class ConfigManager
 			MARKET_PREMIUM,
 			EMOTE_MOVES,
 			STAMINA_SYSTEM,
+			STAMINA_BONUS_PREMIUM_ONLY,
+			STAMINA_LOW_STOPS_LOOT,
 			WARN_UNSAFE_SCRIPTS,
 			CONVERT_UNSAFE_SCRIPTS,
 			CLASSIC_ATTACK_SPEED,
@@ -89,6 +91,11 @@ class ConfigManager
 			PLAYER_HEALTH_GAIN_PER_LEVEL,
 			PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT,
 			POKEMON_LEVEL_ABOVE_PLAYER_LIMIT,
+			STAMINA_MAX_HOURS,
+			STAMINA_BONUS_HOURS,
+			STAMINA_BONUS_EXPERIENCE_PERCENT,
+			STAMINA_LOW_HOURS,
+			STAMINA_LOW_EXPERIENCE_PERCENT,
 			RATE_SKILL,
 			RATE_LOOT,
 			RATE_SPAWN,
@@ -128,6 +135,7 @@ class ConfigManager
 		bool getBoolean(boolean_config_t what) const;
 		float getExperienceStage(uint32_t level) const;
 		uint8_t getBlessingExperienceLossReduction(uint8_t blessing) const;
+		uint16_t getStaminaMaxMinutes() const;
 
 		bool setString(string_config_t what, const std::string& value);
 		bool setNumber(integer_config_t what, int32_t value);

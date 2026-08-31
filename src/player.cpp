@@ -57,6 +57,7 @@ Player::Player(ProtocolGame_ptr p) :
 	backpack(new Container(ITEM_BACKPACK, BACKPACK_CAPACITY)), lootBag(new Container(ITEM_LOOT_BAG, LOOT_BAG_CAPACITY)),
 	storeInbox(new StoreInbox(ITEM_STORE_INBOX)), client(std::move(p))
 {
+	staminaMinutes = g_config.getStaminaMaxMinutes();
 	inbox->incrementReferenceCounter();
 
 	backpack->setParent(this);
@@ -3215,7 +3216,8 @@ void Player::onKilledCreature(Creature* target)
 
 void Player::gainExperience(uint64_t gainExp, Creature* source)
 {
-	if (hasFlag(PlayerFlag_NotGainExperience) || gainExp == 0 || staminaMinutes == 0) {
+	if (hasFlag(PlayerFlag_NotGainExperience) || gainExp == 0 ||
+			(g_config.getBoolean(ConfigManager::STAMINA_SYSTEM) && staminaMinutes == 0)) {
 		return;
 	}
 

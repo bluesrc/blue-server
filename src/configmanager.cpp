@@ -230,6 +230,8 @@ bool ConfigManager::load()
 	boolean[MARKET_PREMIUM] = getGlobalBoolean(L, "premiumToCreateMarketOffer", true);
 	boolean[EMOTE_MOVES] = getGlobalBoolean(L, "emoteMoves", false);
 	boolean[STAMINA_SYSTEM] = getGlobalBoolean(L, "staminaSystem", true);
+	boolean[STAMINA_BONUS_PREMIUM_ONLY] = getGlobalBoolean(L, "staminaBonusPremiumOnly", true);
+	boolean[STAMINA_LOW_STOPS_LOOT] = getGlobalBoolean(L, "staminaLowStopsLoot", true);
 	boolean[WARN_UNSAFE_SCRIPTS] = getGlobalBoolean(L, "warnUnsafeScripts", true);
 	boolean[CONVERT_UNSAFE_SCRIPTS] = getGlobalBoolean(L, "convertUnsafeScripts", true);
 	boolean[CLASSIC_ATTACK_SPEED] = getGlobalBoolean(L, "classicAttackSpeed", false);
@@ -270,6 +272,12 @@ bool ConfigManager::load()
 	integer[PLAYER_HEALTH_GAIN_PER_LEVEL] = getGlobalNumber(L, "playerHealthGainPerLevel", 5);
 	integer[PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT] = getGlobalNumber(L, "playerExperienceFromPokemonPercent", 50);
 	integer[POKEMON_LEVEL_ABOVE_PLAYER_LIMIT] = getGlobalNumber(L, "pokemonLevelAbovePlayerLimit", 10);
+	const int32_t maxSupportedStaminaHours = std::numeric_limits<uint16_t>::max() / 60;
+	integer[STAMINA_MAX_HOURS] = std::clamp<int32_t>(getGlobalNumber(L, "staminaMaxHours", 42), 0, maxSupportedStaminaHours);
+	integer[STAMINA_BONUS_HOURS] = std::clamp<int32_t>(getGlobalNumber(L, "staminaBonusHours", 2), 0, integer[STAMINA_MAX_HOURS]);
+	integer[STAMINA_BONUS_EXPERIENCE_PERCENT] = std::max<int32_t>(0, getGlobalNumber(L, "staminaBonusExperiencePercent", 150));
+	integer[STAMINA_LOW_HOURS] = std::clamp<int32_t>(getGlobalNumber(L, "staminaLowHours", 14), 0, integer[STAMINA_MAX_HOURS]);
+	integer[STAMINA_LOW_EXPERIENCE_PERCENT] = std::max<int32_t>(0, getGlobalNumber(L, "staminaLowExperiencePercent", 50));
 	integer[RATE_SKILL] = getGlobalNumber(L, "rateSkill", 3);
 	integer[RATE_LOOT] = getGlobalNumber(L, "rateLoot", 2);
 	integer[RATE_SPAWN] = getGlobalNumber(L, "rateSpawn", 1);
@@ -366,6 +374,11 @@ uint8_t ConfigManager::getBlessingExperienceLossReduction(uint8_t blessing) cons
 		return 0;
 	}
 	return blessingExperienceLossReductions[blessing];
+}
+
+uint16_t ConfigManager::getStaminaMaxMinutes() const
+{
+	return static_cast<uint16_t>(getNumber(STAMINA_MAX_HOURS) * 60);
 }
 
 bool ConfigManager::setString(string_config_t what, const std::string& value)

@@ -1232,7 +1232,7 @@ class Player final : public Creature, public Cylinder
 		int32_t idleTime = 0;
 
 		uint16_t lastStatsTrainingTime = 0;
-		uint16_t staminaMinutes = 2520;
+		uint16_t staminaMinutes = 0;
 		uint16_t maxWriteLen = 0;
 
 		std::bitset<6> blessings;

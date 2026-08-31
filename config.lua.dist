@@ -158,7 +158,16 @@ removeOnDespawn = true
 walkToSpawnRadius = 15
 
 -- Stamina
+-- Set staminaSystem to false to disable consumption, regeneration, XP modifiers,
+-- the zero-stamina XP block and the low-stamina loot restriction.
 staminaSystem = true
+staminaMaxHours = 42
+staminaBonusHours = 2
+staminaBonusExperiencePercent = 150
+staminaBonusPremiumOnly = true
+staminaLowHours = 14
+staminaLowExperiencePercent = 50
+staminaLowStopsLoot = true
 
 -- Scripts
 warnUnsafeScripts = true

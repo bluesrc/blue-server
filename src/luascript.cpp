@@ -2121,6 +2121,8 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::MARKET_PREMIUM)
 	registerEnumIn("configKeys", ConfigManager::EMOTE_MOVES)
 	registerEnumIn("configKeys", ConfigManager::STAMINA_SYSTEM)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_BONUS_PREMIUM_ONLY)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_LOW_STOPS_LOOT)
 	registerEnumIn("configKeys", ConfigManager::WARN_UNSAFE_SCRIPTS)
 	registerEnumIn("configKeys", ConfigManager::CONVERT_UNSAFE_SCRIPTS)
 	registerEnumIn("configKeys", ConfigManager::CLASSIC_ATTACK_SPEED)
@@ -2161,6 +2163,11 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::PLAYER_HEALTH_GAIN_PER_LEVEL)
 	registerEnumIn("configKeys", ConfigManager::PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT)
 	registerEnumIn("configKeys", ConfigManager::POKEMON_LEVEL_ABOVE_PLAYER_LIMIT)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_MAX_HOURS)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_BONUS_HOURS)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_BONUS_EXPERIENCE_PERCENT)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_LOW_HOURS)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_LOW_EXPERIENCE_PERCENT)
 	registerEnumIn("configKeys", ConfigManager::RATE_SKILL)
 	registerEnumIn("configKeys", ConfigManager::RATE_LOOT)
 	registerEnumIn("configKeys", ConfigManager::RATE_SPAWN)
@@ -8923,7 +8930,7 @@ int LuaScriptInterface::luaPlayerSetStamina(lua_State* L)
 	uint16_t stamina = getNumber<uint16_t>(L, 2);
 	Player* player = getUserdata<Player>(L, 1);
 	if (player) {
-		player->staminaMinutes = std::min<uint16_t>(2520, stamina);
+		player->staminaMinutes = std::min(g_config.getStaminaMaxMinutes(), stamina);
 		player->sendStats();
 		pushBoolean(L, true);
 	} else {
