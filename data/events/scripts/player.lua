@@ -6,6 +6,18 @@ function Player:onBrowseField(position)
 end
 
 function Player:onLook(thing, position, distance)
+	-- Regular players can inspect inventory/container items and pickupable
+	-- items on the map. Other world things remain exclusive to staff.
+	if not self:getGroup():getAccess() then
+		local canInspect = position.x == 65535
+		if not canInspect and thing:isItem() then
+			canInspect = ItemType(thing:getId()):isPickupable()
+		end
+		if not canInspect then
+			return
+		end
+	end
+
 	local description = ""
 	if hasEventCallback(EVENT_CALLBACK_ONLOOK) then
 		description = EventCallback(EVENT_CALLBACK_ONLOOK, self, thing, position, distance, description)
@@ -14,6 +26,10 @@ function Player:onLook(thing, position, distance)
 end
 
 function Player:onLookInBattleList(creature, distance)
+	if not self:getGroup():getAccess() then
+		return
+	end
+
 	local description = ""
 	if hasEventCallback(EVENT_CALLBACK_ONLOOKINBATTLELIST) then
 		description = EventCallback(EVENT_CALLBACK_ONLOOKINBATTLELIST, self, creature, distance, description)
