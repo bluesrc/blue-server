@@ -226,6 +226,8 @@ bool ConfigManager::load()
 	boolean[ONLY_INVITED_CAN_MOVE_HOUSE_ITEMS] = getGlobalBoolean(L, "onlyInvitedCanMoveHouseItems", true);
 	boolean[REMOVE_ON_DESPAWN] = getGlobalBoolean(L, "removeOnDespawn", true);
 	boolean[PLAYER_CONSOLE_LOGS] = getGlobalBoolean(L, "showPlayerLogInConsole", true);
+	boolean[ENABLE_CLIENT_ACCOUNT_CREATION] = getGlobalBoolean(L, "enableClientAccountCreation", true);
+	boolean[ENABLE_CLIENT_CHARACTER_CREATION] = getGlobalBoolean(L, "enableClientCharacterCreation", true);
 
 	string[DEFAULT_PRIORITY] = getGlobalString(L, "defaultPriority", "high");
 	string[SERVER_NAME] = getGlobalString(L, "serverName", "");
@@ -262,6 +264,8 @@ bool ConfigManager::load()
 	integer[VIP_PREMIUM_LIMIT] = getGlobalNumber(L, "vipPremiumLimit", 100);
 	integer[DEPOT_FREE_LIMIT] = getGlobalNumber(L, "depotFreeLimit", 2000);
 	integer[DEPOT_PREMIUM_LIMIT] = getGlobalNumber(L, "depotPremiumLimit", 10000);
+	integer[ACCOUNT_CREATION_COOLDOWN] = getGlobalNumber(L, "accountCreationCooldown", 60);
+	integer[MAX_CHARACTERS_PER_ACCOUNT] = getGlobalNumber(L, "maxCharactersPerAccount", 7);
 
 	expStages = loadXMLStages();
 	if (expStages.empty()) {

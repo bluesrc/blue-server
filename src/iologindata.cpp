@@ -9,10 +9,46 @@
 #include "pokeball.h"
 
 #include <fmt/format.h>
+#include <cctype>
 
 extern ConfigManager g_config;
 extern Game g_game;
 extern Pokemons g_pokemons;
+
+namespace {
+	bool isValidAccountName(const std::string& name)
+	{
+		if (name.length() < 4 || name.length() > 32) {
+			return false;
+		}
+		return std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0; });
+	}
+
+	bool formatNewCharacterName(std::string& name)
+	{
+		if (name.length() < 3 || name.length() > 20 || name.front() == ' ' || name.back() == ' ') {
+			return false;
+		}
+
+		bool wordStart = true;
+		for (char& rawCharacter : name) {
+			const auto ch = static_cast<unsigned char>(rawCharacter);
+			if (ch == ' ') {
+				if (wordStart) {
+					return false;
+				}
+				wordStart = true;
+				continue;
+			}
+			if (!std::isalpha(ch)) {
+				return false;
+			}
+			rawCharacter = static_cast<char>(wordStart ? std::toupper(ch) : std::tolower(ch));
+			wordStart = false;
+		}
+		return !wordStart;
+	}
+}
 
 Account IOLoginData::loadAccount(uint32_t accno)
 {
@@ -59,7 +95,7 @@ std::string decodeSecret(const std::string& secret)
 	return key;
 }
 
-bool IOLoginData::loginserverAuthentication(const std::string& name, const std::string& password, Account& account)
+bool IOLoginData::loginserverAuthentication(const std::string& name, const std::string& password, Account& account, bool loadCharacterDetails)
 {
 	Database& db = Database::getInstance();
 
@@ -78,12 +114,168 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 	account.accountType = static_cast<AccountType_t>(result->getNumber<int32_t>("type"));
 	account.premiumEndsAt = result->getNumber<time_t>("premium_ends_at");
 
-	result = db.storeQuery(fmt::format("SELECT `name` FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0 ORDER BY `name` ASC", account.id));
+	result = db.storeQuery(fmt::format(
+		"SELECT `id`, `name`, `level`, `looktype`, `lookhead`, `lookbody`, `looklegs`, `lookfeet`, `lookaddons` "
+		"FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0 ORDER BY `name` ASC", account.id));
 	if (result) {
 		do {
-			account.characters.push_back(result->getString("name"));
+			AccountCharacter character;
+			character.id = result->getNumber<uint32_t>("id");
+			character.name = result->getString("name");
+			character.level = result->getNumber<uint32_t>("level");
+			character.lookType = result->getNumber<uint16_t>("looktype");
+			character.lookHead = static_cast<uint8_t>(result->getNumber<uint16_t>("lookhead"));
+			character.lookBody = static_cast<uint8_t>(result->getNumber<uint16_t>("lookbody"));
+			character.lookLegs = static_cast<uint8_t>(result->getNumber<uint16_t>("looklegs"));
+			character.lookFeet = static_cast<uint8_t>(result->getNumber<uint16_t>("lookfeet"));
+			character.lookAddons = static_cast<uint8_t>(result->getNumber<uint16_t>("lookaddons"));
+			account.characters.push_back(std::move(character));
 		} while (result->next());
 	}
+
+	if (!loadCharacterDetails || account.characters.empty()) {
+		return true;
+	}
+
+	std::ostringstream playerIds;
+	std::unordered_map<uint32_t, size_t> characterIndexes;
+	for (size_t index = 0; index < account.characters.size(); ++index) {
+		if (index != 0) {
+			playerIds << ',';
+		}
+		playerIds << account.characters[index].id;
+		characterIndexes.emplace(account.characters[index].id, index);
+	}
+
+	struct TeamPokemon {
+		size_t characterIndex;
+		uint8_t slot;
+		uint32_t uid;
+	};
+	std::vector<TeamPokemon> team;
+	std::ostringstream pokemonIds;
+	result = db.storeQuery(fmt::format(
+		"SELECT `player_id`, `pid`, `itemtype`, `count`, `attributes` FROM `player_items` "
+		"WHERE `player_id` IN ({:s}) AND `pid` BETWEEN {:d} AND {:d}",
+		playerIds.str(), CONST_SLOT_POKEBALL1, CONST_SLOT_POKEBALL6));
+	if (result) {
+		do {
+			auto characterIt = characterIndexes.find(result->getNumber<uint32_t>("player_id"));
+			const uint16_t pid = result->getNumber<uint16_t>("pid");
+			if (characterIt == characterIndexes.end() || pid < CONST_SLOT_POKEBALL1 || pid > CONST_SLOT_POKEBALL6) {
+				continue;
+			}
+
+			Item* item = Item::CreateItem(result->getNumber<uint16_t>("itemtype"), result->getNumber<uint16_t>("count"));
+			if (!item) {
+				continue;
+			}
+			unsigned long attributesSize;
+			const char* attributes = result->getStream("attributes", attributesSize);
+			PropStream propStream;
+			propStream.init(attributes, attributesSize);
+			if (item->unserializeAttr(propStream) && item->getPokeball()) {
+				const ItemAttributes::CustomAttribute* attribute = item->getCustomAttribute("p_uid");
+				const int64_t* uid = attribute ? boost::get<int64_t>(&attribute->value) : nullptr;
+				if (uid && *uid > 0) {
+					if (!team.empty()) {
+						pokemonIds << ',';
+					}
+					pokemonIds << *uid;
+					team.push_back({characterIt->second, static_cast<uint8_t>(pid - CONST_SLOT_POKEBALL1), static_cast<uint32_t>(*uid)});
+				}
+			}
+			item->decrementReferenceCounter();
+		} while (result->next());
+	}
+
+	if (!team.empty()) {
+		std::unordered_map<uint32_t, uint16_t> pokemonNumbers;
+		result = db.storeQuery(fmt::format("SELECT `uid`, `name` FROM `pokemons` WHERE `uid` IN ({:s})", pokemonIds.str()));
+		if (result) {
+			do {
+				const PokemonType* pokemonType = g_pokemons.getPokemonType(result->getString("name"));
+				if (pokemonType) {
+					pokemonNumbers.emplace(result->getNumber<uint32_t>("uid"), pokemonType->info.number);
+				}
+			} while (result->next());
+		}
+		for (const TeamPokemon& pokemon : team) {
+			auto numberIt = pokemonNumbers.find(pokemon.uid);
+			if (numberIt != pokemonNumbers.end()) {
+				account.characters[pokemon.characterIndex].pokemonNumbers[pokemon.slot] = numberIt->second;
+			}
+		}
+	}
+	return true;
+}
+
+bool IOLoginData::createAccount(const std::string& name, const std::string& password, std::string& error)
+{
+	if (!isValidAccountName(name)) {
+		error = "Account name must contain 4 to 32 letters or numbers.";
+		return false;
+	}
+	if (password.length() < 6 || password.length() > 29) {
+		error = "Password must contain 6 to 29 characters.";
+		return false;
+	}
+
+	Database& db = Database::getInstance();
+	if (db.storeQuery(fmt::format("SELECT `id` FROM `accounts` WHERE `name` = {:s}", db.escapeString(name)))) {
+		error = "This account name is already in use.";
+		return false;
+	}
+
+	if (!db.executeQuery(fmt::format(
+		"INSERT INTO `accounts` (`name`, `password`, `email`, `creation`) VALUES ({:s}, {:s}, '', {:d})",
+		db.escapeString(name), db.escapeString(transformToSHA1(password)), time(nullptr)))) {
+		error = "Could not create the account. Please try another name.";
+		return false;
+	}
+
+	error = "Account created successfully.";
+	return true;
+}
+
+bool IOLoginData::createCharacter(uint32_t accountId, std::string name, PlayerSex_t sex, uint32_t maxCharacters, std::string& error)
+{
+	if (!formatNewCharacterName(name)) {
+		error = "Character name must contain 3 to 20 letters and single spaces.";
+		return false;
+	}
+	if (sex > PLAYERSEX_LAST) {
+		error = "Invalid character sex.";
+		return false;
+	}
+
+	Database& db = Database::getInstance();
+	DBResult_ptr result = db.storeQuery(fmt::format(
+		"SELECT COUNT(*) AS `count` FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0", accountId));
+	if (!result || result->getNumber<uint32_t>("count") >= maxCharacters) {
+		error = "This account has reached its character limit.";
+		return false;
+	}
+	if (db.storeQuery(fmt::format("SELECT `id` FROM `players` WHERE `name` = {:s}", db.escapeString(name)))) {
+		error = "This character name is already in use.";
+		return false;
+	}
+
+	const TownMap& towns = g_game.map.towns.getTowns();
+	if (towns.empty()) {
+		error = "No starting town is configured.";
+		return false;
+	}
+	const uint32_t townId = towns.begin()->first;
+	const uint16_t lookType = sex == PLAYERSEX_MALE ? 128 : 136;
+	if (!db.executeQuery(fmt::format(
+		"INSERT INTO `players` (`name`, `account_id`, `sex`, `looktype`, `town_id`) VALUES ({:s}, {:d}, {:d}, {:d}, {:d})",
+		db.escapeString(name), accountId, static_cast<uint8_t>(sex), lookType, townId))) {
+		error = "Could not create the character. Please try another name.";
+		return false;
+	}
+
+	error = "Character created successfully.";
 	return true;
 }
 
