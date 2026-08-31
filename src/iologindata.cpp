@@ -95,7 +95,7 @@ std::string decodeSecret(const std::string& secret)
 	return key;
 }
 
-bool IOLoginData::loginserverAuthentication(const std::string& name, const std::string& password, Account& account)
+bool IOLoginData::loginserverAuthentication(const std::string& name, const std::string& password, Account& account, bool loadCharacterDetails)
 {
 	Database& db = Database::getInstance();
 
@@ -114,11 +114,98 @@ bool IOLoginData::loginserverAuthentication(const std::string& name, const std::
 	account.accountType = static_cast<AccountType_t>(result->getNumber<int32_t>("type"));
 	account.premiumEndsAt = result->getNumber<time_t>("premium_ends_at");
 
-	result = db.storeQuery(fmt::format("SELECT `name` FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0 ORDER BY `name` ASC", account.id));
+	result = db.storeQuery(fmt::format(
+		"SELECT `id`, `name`, `level`, `looktype`, `lookhead`, `lookbody`, `looklegs`, `lookfeet`, `lookaddons` "
+		"FROM `players` WHERE `account_id` = {:d} AND `deletion` = 0 ORDER BY `name` ASC", account.id));
 	if (result) {
 		do {
-			account.characters.push_back(result->getString("name"));
+			AccountCharacter character;
+			character.id = result->getNumber<uint32_t>("id");
+			character.name = result->getString("name");
+			character.level = result->getNumber<uint32_t>("level");
+			character.lookType = result->getNumber<uint16_t>("looktype");
+			character.lookHead = static_cast<uint8_t>(result->getNumber<uint16_t>("lookhead"));
+			character.lookBody = static_cast<uint8_t>(result->getNumber<uint16_t>("lookbody"));
+			character.lookLegs = static_cast<uint8_t>(result->getNumber<uint16_t>("looklegs"));
+			character.lookFeet = static_cast<uint8_t>(result->getNumber<uint16_t>("lookfeet"));
+			character.lookAddons = static_cast<uint8_t>(result->getNumber<uint16_t>("lookaddons"));
+			account.characters.push_back(std::move(character));
 		} while (result->next());
+	}
+
+	if (!loadCharacterDetails || account.characters.empty()) {
+		return true;
+	}
+
+	std::ostringstream playerIds;
+	std::unordered_map<uint32_t, size_t> characterIndexes;
+	for (size_t index = 0; index < account.characters.size(); ++index) {
+		if (index != 0) {
+			playerIds << ',';
+		}
+		playerIds << account.characters[index].id;
+		characterIndexes.emplace(account.characters[index].id, index);
+	}
+
+	struct TeamPokemon {
+		size_t characterIndex;
+		uint8_t slot;
+		uint32_t uid;
+	};
+	std::vector<TeamPokemon> team;
+	std::ostringstream pokemonIds;
+	result = db.storeQuery(fmt::format(
+		"SELECT `player_id`, `pid`, `itemtype`, `count`, `attributes` FROM `player_items` "
+		"WHERE `player_id` IN ({:s}) AND `pid` BETWEEN {:d} AND {:d}",
+		playerIds.str(), CONST_SLOT_POKEBALL1, CONST_SLOT_POKEBALL6));
+	if (result) {
+		do {
+			auto characterIt = characterIndexes.find(result->getNumber<uint32_t>("player_id"));
+			const uint16_t pid = result->getNumber<uint16_t>("pid");
+			if (characterIt == characterIndexes.end() || pid < CONST_SLOT_POKEBALL1 || pid > CONST_SLOT_POKEBALL6) {
+				continue;
+			}
+
+			Item* item = Item::CreateItem(result->getNumber<uint16_t>("itemtype"), result->getNumber<uint16_t>("count"));
+			if (!item) {
+				continue;
+			}
+			unsigned long attributesSize;
+			const char* attributes = result->getStream("attributes", attributesSize);
+			PropStream propStream;
+			propStream.init(attributes, attributesSize);
+			if (item->unserializeAttr(propStream) && item->getPokeball()) {
+				const ItemAttributes::CustomAttribute* attribute = item->getCustomAttribute("p_uid");
+				const int64_t* uid = attribute ? boost::get<int64_t>(&attribute->value) : nullptr;
+				if (uid && *uid > 0) {
+					if (!team.empty()) {
+						pokemonIds << ',';
+					}
+					pokemonIds << *uid;
+					team.push_back({characterIt->second, static_cast<uint8_t>(pid - CONST_SLOT_POKEBALL1), static_cast<uint32_t>(*uid)});
+				}
+			}
+			item->decrementReferenceCounter();
+		} while (result->next());
+	}
+
+	if (!team.empty()) {
+		std::unordered_map<uint32_t, uint16_t> pokemonNumbers;
+		result = db.storeQuery(fmt::format("SELECT `uid`, `name` FROM `pokemons` WHERE `uid` IN ({:s})", pokemonIds.str()));
+		if (result) {
+			do {
+				const PokemonType* pokemonType = g_pokemons.getPokemonType(result->getString("name"));
+				if (pokemonType) {
+					pokemonNumbers.emplace(result->getNumber<uint32_t>("uid"), pokemonType->info.number);
+				}
+			} while (result->next());
+		}
+		for (const TeamPokemon& pokemon : team) {
+			auto numberIt = pokemonNumbers.find(pokemon.uid);
+			if (numberIt != pokemonNumbers.end()) {
+				account.characters[pokemon.characterIndex].pokemonNumbers[pokemon.slot] = numberIt->second;
+			}
+		}
 	}
 	return true;
 }

@@ -6,8 +6,23 @@
 
 #include "enums.h"
 
+#include <array>
+
+struct AccountCharacter {
+	std::string name;
+	uint32_t id = 0;
+	uint32_t level = 1;
+	uint16_t lookType = 0;
+	uint8_t lookHead = 0;
+	uint8_t lookBody = 0;
+	uint8_t lookLegs = 0;
+	uint8_t lookFeet = 0;
+	uint8_t lookAddons = 0;
+	std::array<uint16_t, 6> pokemonNumbers = {};
+};
+
 struct Account {
-	std::vector<std::string> characters;
+	std::vector<AccountCharacter> characters;
 	std::string name;
 	std::string key;
 	uint32_t id = 0;

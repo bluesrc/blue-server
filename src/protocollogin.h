@@ -29,9 +29,10 @@ class ProtocolLogin : public Protocol
 		void sendCreationResult(uint8_t action, bool success, const std::string& message);
 		void createAccount(const std::string& accountName, const std::string& password, uint32_t clientIp);
 		void createCharacter(const std::string& accountName, const std::string& password, const std::string& token,
-			std::string characterName, uint8_t sex);
+			std::string characterName, uint8_t sex, const std::string& worldName);
 
-		void getCharacterList(const std::string& accountName, const std::string& password, const std::string& token, uint16_t version);
+		void getCharacterList(const std::string& accountName, const std::string& password, const std::string& token,
+			uint16_t version, bool richCharacterList);
 };
 
 #endif

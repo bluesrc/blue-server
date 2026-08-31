@@ -22,7 +22,9 @@ namespace {
 	constexpr uint32_t LOGIN_CUSTOM_ACTION_MAGIC = 0x42524347;
 	constexpr uint8_t LOGIN_ACTION_CREATE_ACCOUNT = 1;
 	constexpr uint8_t LOGIN_ACTION_CREATE_CHARACTER = 2;
+	constexpr uint8_t LOGIN_ACTION_CREATE_CHARACTER_WITH_WORLD = 3;
 	constexpr uint8_t LOGIN_SERVER_CREATION_RESULT = 0x66;
+	constexpr uint8_t LOGIN_SERVER_RICH_CHARACTER_LIST = 0x67;
 	std::unordered_map<uint32_t, time_t> accountCreationAttempts;
 }
 
@@ -80,10 +82,14 @@ void ProtocolLogin::createAccount(const std::string& accountName, const std::str
 }
 
 void ProtocolLogin::createCharacter(const std::string& accountName, const std::string& password,
-	const std::string& token, std::string characterName, uint8_t sex)
+	const std::string& token, std::string characterName, uint8_t sex, const std::string& worldName)
 {
 	if (!g_config.getBoolean(ConfigManager::ENABLE_CLIENT_CHARACTER_CREATION)) {
 		sendCreationResult(LOGIN_ACTION_CREATE_CHARACTER, false, "Character creation is currently disabled.");
+		return;
+	}
+	if (worldName != g_config.getString(ConfigManager::SERVER_NAME)) {
+		sendCreationResult(LOGIN_ACTION_CREATE_CHARACTER, false, "Selected world is not available.");
 		return;
 	}
 
@@ -106,10 +112,11 @@ void ProtocolLogin::createCharacter(const std::string& accountName, const std::s
 	sendCreationResult(LOGIN_ACTION_CREATE_CHARACTER, success, message);
 }
 
-void ProtocolLogin::getCharacterList(const std::string& accountName, const std::string& password, const std::string& token, uint16_t version)
+void ProtocolLogin::getCharacterList(const std::string& accountName, const std::string& password, const std::string& token,
+	uint16_t version, bool richCharacterList)
 {
 	Account account;
-	if (!IOLoginData::loginserverAuthentication(accountName, password, account)) {
+	if (!IOLoginData::loginserverAuthentication(accountName, password, account, richCharacterList)) {
 		disconnectClient("Account name or password is not correct.", version);
 		return;
 	}
@@ -141,7 +148,7 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 	output->addString(accountName + "\n" + password + "\n" + token + "\n" + std::to_string(ticks));
 
 	//Add char list
-	output->addByte(0x64);
+	output->addByte(richCharacterList ? LOGIN_SERVER_RICH_CHARACTER_LIST : 0x64);
 
 	uint8_t size = std::min<size_t>(std::numeric_limits<uint8_t>::max(), account.characters.size());
 
@@ -166,13 +173,25 @@ void ProtocolLogin::getCharacterList(const std::string& accountName, const std::
 
 	output->addByte(size);
 	for (uint8_t i = 0; i < size; i++) {
-		const std::string& character = account.characters[i];
+		const AccountCharacter& character = account.characters[i];
 		if (g_config.getBoolean(ConfigManager::ONLINE_OFFLINE_CHARLIST)) {
-			output->addByte(g_game.getPlayerByName(character) ? 1 : 0);
+			output->addByte(g_game.getPlayerByName(character.name) ? 1 : 0);
 		} else {
 			output->addByte(0);
 		}
-		output->addString(character);
+		output->addString(character.name);
+		if (richCharacterList) {
+			output->add<uint32_t>(character.level);
+			output->add<uint16_t>(character.lookType);
+			output->addByte(character.lookHead);
+			output->addByte(character.lookBody);
+			output->addByte(character.lookLegs);
+			output->addByte(character.lookFeet);
+			output->addByte(character.lookAddons);
+			for (uint16_t pokemonNumber : character.pokemonNumbers) {
+				output->add<uint16_t>(pokemonNumber);
+			}
+		}
 	}
 
 	//Add premium days
@@ -273,13 +292,19 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 	}
 
 	uint8_t loginAction = 0;
+	bool richCharacterList = false;
 	std::string characterName;
 	uint8_t characterSex = PLAYERSEX_FEMALE;
+	std::string characterWorld = g_config.getString(ConfigManager::SERVER_NAME);
 	if (msg.get<uint32_t>() == LOGIN_CUSTOM_ACTION_MAGIC) {
+		richCharacterList = true;
 		loginAction = msg.getByte();
-		if (loginAction == LOGIN_ACTION_CREATE_CHARACTER) {
+		if (loginAction == LOGIN_ACTION_CREATE_CHARACTER || loginAction == LOGIN_ACTION_CREATE_CHARACTER_WITH_WORLD) {
 			characterName = msg.getString();
 			characterSex = msg.getByte();
+			if (loginAction == LOGIN_ACTION_CREATE_CHARACTER_WITH_WORLD) {
+				characterWorld = msg.getString();
+			}
 		}
 	}
 
@@ -297,13 +322,13 @@ void ProtocolLogin::onRecvFirstMessage(NetworkMessage& msg)
 		g_dispatcher.addTask(createTask(std::bind(&ProtocolLogin::createAccount, thisPtr, accountName, password, connection->getIP())));
 		return;
 	}
-	if (loginAction == LOGIN_ACTION_CREATE_CHARACTER) {
+	if (loginAction == LOGIN_ACTION_CREATE_CHARACTER || loginAction == LOGIN_ACTION_CREATE_CHARACTER_WITH_WORLD) {
 		auto thisPtr = std::static_pointer_cast<ProtocolLogin>(shared_from_this());
 		g_dispatcher.addTask(createTask(std::bind(&ProtocolLogin::createCharacter, thisPtr, accountName, password,
-			authToken, std::move(characterName), characterSex)));
+			authToken, std::move(characterName), characterSex, std::move(characterWorld))));
 		return;
 	}
 
 	auto thisPtr = std::static_pointer_cast<ProtocolLogin>(shared_from_this());
-	g_dispatcher.addTask(createTask(std::bind(&ProtocolLogin::getCharacterList, thisPtr, accountName, password, authToken, version)));
+	g_dispatcher.addTask(createTask(std::bind(&ProtocolLogin::getCharacterList, thisPtr, accountName, password, authToken, version, richCharacterList)));
 }
