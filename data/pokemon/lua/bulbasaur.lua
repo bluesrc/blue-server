@@ -30,16 +30,16 @@ pokemon.base_stats = {
 }
 
 pokemon.learnset = {
-	{move = "tackle", level = 1},
-	{move = "growl", level = 3},
-	{move = "vine_whip", level = 7},
-	{move = "growth", level = 10},
-	{move = "poison_powder", level = 13},
-	{move = "sleep_powder", level = 15},
+	{move = "vine_whip", level = 1},
+	{move = "growth", level = 5},
+	{move = "sleep_powder", level = 8},
+	{move = "razor_leaf", level = 12},
+	{move = "poison_powder", level = 15},
 }
 
 pokemon.tms = {
 	"sludge_bomb",
+	"energy_ball",
 }
 
 pokemon.abilities = {

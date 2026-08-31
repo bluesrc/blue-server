@@ -2345,6 +2345,22 @@
 		<attribute key="description" value="It teaches Dragon Claw to a compatible Pokemon." />
 		<attribute key="tmMove" value="dragon_claw" />
 	</item>
+	<item id="2270" article="a" name="tm thunderbolt">
+		<attribute key="description" value="It teaches Thunderbolt to a compatible Pokemon." />
+		<attribute key="tmMove" value="thunderbolt" />
+	</item>
+	<item id="2272" article="a" name="tm rock tomb">
+		<attribute key="description" value="It teaches Rock Tomb to a compatible Pokemon." />
+		<attribute key="tmMove" value="rock_tomb" />
+	</item>
+	<item id="2275" article="a" name="tm energy ball">
+		<attribute key="description" value="It teaches Energy Ball to a compatible Pokemon." />
+		<attribute key="tmMove" value="energy_ball" />
+	</item>
+	<item id="2276" article="a" name="tm brick break">
+		<attribute key="description" value="It teaches Brick Break to a compatible Pokemon." />
+		<attribute key="tmMove" value="brick_break" />
+	</item>
 	<item id="2317" name="your own dead body" />
 	<item id="2318" article="a" name="family brooch">
 		<attribute key="description" value="You see the familyname Windtrouser engraved on this brooch." />
@@ -3221,7 +3237,8 @@
 	<item id="2660" article="a" name="ranger's cloak">
 		<attribute key="slotType" value="body" />
 	</item>
-	<item id="2661" article="a" name="scarf">
+	<item id="2661" article="a" name="choice scarf">
+		<attribute key="description" value="Raises Speed by 50% but locks the first selected move during combat." />
 		<attribute key="slotType" value="necklace" />
 	</item>
 	<item id="2662" article="a" name="magician hat">
@@ -3239,7 +3256,8 @@
 		<attribute key="description" value="This hat is the insignia of all post officers." />
 		<attribute key="slotType" value="head" />
 	</item>
-	<item id="2666" name="meat">
+	<item id="2666" name="leftovers">
+		<attribute key="description" value="Restores 1/16 max HP every 3 seconds during combat." />
 		<attribute key="showcount" value="0" />
 	</item>
 	<item id="2667" article="a" name="fish" plural="fish">
@@ -3261,7 +3279,8 @@
 	</item>
 	<item id="2673" article="a" name="pear">
 	</item>
-	<item id="2674" article="a" name="red apple">
+	<item id="2674" article="a" name="sitrus berry" plural="sitrus berries">
+		<attribute key="description" value="Restores 25% HP at half health or below." />
 	</item>
 	<item id="2675" article="an" name="orange">
 	</item>
@@ -7559,17 +7578,22 @@
 	<item id="5908" article="an" name="obsidian knife">
 		<attribute key="description" value="Sharp and light, this is a useful tool for tanners, doctors and assassins." />
 	</item>
-	<item id="5909" article="a" name="white piece of cloth" plural="white pieces of cloth">
+	<item id="5909" article="a" name="focus sash" plural="focus sashes">
+		<attribute key="description" value="At full HP, survives direct lethal move damage with 1 HP." />
 	</item>
 	<item id="5910" article="a" name="green piece of cloth" plural="green pieces of cloth">
 	</item>
-	<item id="5911" article="a" name="red piece of cloth" plural="red pieces of cloth">
+	<item id="5911" name="charcoal">
+		<attribute key="description" value="Increases Fire-type move damage by 20%." />
 	</item>
-	<item id="5912" article="a" name="blue piece of cloth" plural="blue pieces of cloth">
+	<item id="5912" article="a" name="mystic water">
+		<attribute key="description" value="Increases Water-type move damage by 20%." />
 	</item>
-	<item id="5913" article="a" name="brown piece of cloth" plural="brown pieces of cloth">
+	<item id="5913" name="soft sand">
+		<attribute key="description" value="Increases Ground-type move damage by 20%." />
 	</item>
-	<item id="5914" article="a" name="yellow piece of cloth" plural="yellow pieces of cloth">
+	<item id="5914" article="a" name="light ball">
+		<attribute key="description" value="Doubles Pikachu's Attack and Special Attack." />
 	</item>
 	<item fromid="5915" toid="5916" article="a" name="large throne" />
 	<item id="5917" article="a" name="bandana">
@@ -11071,8 +11095,8 @@
 	</item>
 	<item id="7731" article="an" name="elvenhair rope">
 	</item>
-	<item id="7732" name="seeds">
-		<attribute key="description" value="They might be worth keeping, who knows what will happen to them." />
+	<item id="7732" article="a" name="miracle seed">
+		<attribute key="description" value="Increases Grass-type move damage by 20%." />
 		<attribute key="showcount" value="0" />
 	</item>
 	<item id="7733" article="a" name="flower bouquet">

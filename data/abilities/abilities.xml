@@ -4,4 +4,7 @@
 	<ability id="2" key="blaze" name="Blaze" description="Powers up Fire-type moves when the Pokemon is in trouble." script="blaze.lua" />
 	<ability id="3" key="torrent" name="Torrent" description="Powers up Water-type moves when the Pokemon is in trouble." script="torrent.lua" />
 	<ability id="4" key="arena_trap" name="Arena Trap" description="Prevents opposing Pokemon from escaping combat." script="arena_trap.lua" />
+	<ability id="5" key="static" name="Static" description="Contact moves have a 30% chance to paralyze the attacker." script="static.lua" />
+	<ability id="6" key="lightning_rod" name="Lightning Rod" description="Negates Electric-type effects and raises Special Attack when hit by one." script="lightning_rod.lua" />
+	<ability id="7" key="sand_veil" name="Sand Veil" description="Has a 10% chance to evade a damaging move." script="sand_veil.lua" />
 </abilities>

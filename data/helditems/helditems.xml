@@ -15,4 +15,16 @@
 	<heldItem itemid="2666" key="leftovers"
 		description="Restores 1/16 max HP every 3 seconds during combat."
 		script="leftovers.lua" consumable="false" />
+	<heldItem itemid="5911" key="charcoal"
+		description="Increases Fire-type move damage by 20%."
+		script="charcoal.lua" consumable="false" />
+	<heldItem itemid="5912" key="mystic_water"
+		description="Increases Water-type move damage by 20%."
+		script="mystic_water.lua" consumable="false" />
+	<heldItem itemid="5913" key="soft_sand"
+		description="Increases Ground-type move damage by 20%."
+		script="soft_sand.lua" consumable="false" />
+	<heldItem itemid="5914" key="light_ball"
+		description="Doubles Pikachu's Attack and Special Attack."
+		script="light_ball.lua" consumable="false" />
 </heldItems>
