@@ -1223,11 +1223,16 @@ void Pokemon::processCombatFriendship(uint32_t interval)
 
 uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 {
-	if (amount == 0 || level >= 100) {
+	uint8_t maxLevel = 100;
+	if (Player* player = master ? master->getPlayer() : nullptr) {
+		maxLevel = player->getPokemonLevelLimit();
+	}
+
+	if (amount == 0 || level >= maxLevel) {
 		return 0;
 	}
 
-	const uint64_t maxExperience = getExperienceForLevel(mType->info.level_rate, 100);
+	const uint64_t maxExperience = getExperienceForLevel(mType->info.level_rate, maxLevel);
 	const uint64_t oldExperience = experience;
 	experience = amount > maxExperience - experience ? maxExperience : experience + amount;
 	const uint64_t gainedExperience = experience - oldExperience;
@@ -1236,7 +1241,7 @@ uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 	}
 
 	const uint8_t previousLevel = level;
-	while (level < 100 && experience >= getExperienceForLevel(mType->info.level_rate, level + 1)) {
+	while (level < maxLevel && experience >= getExperienceForLevel(mType->info.level_rate, level + 1)) {
 		++level;
 	}
 
@@ -1276,7 +1281,11 @@ uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 
 bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
 {
-	newLevel = std::clamp<uint8_t>(newLevel, 1, 100);
+	uint8_t maxLevel = 100;
+	if (Player* player = master ? master->getPlayer() : nullptr) {
+		maxLevel = player->getPokemonLevelLimit();
+	}
+	newLevel = std::clamp<uint8_t>(newLevel, 1, maxLevel);
 	if (level == newLevel) {
 		if (fullHealth) {
 			health = healthMax;
@@ -1313,7 +1322,11 @@ bool Pokemon::setLevel(uint8_t newLevel, bool fullHealth)
 
 bool Pokemon::addLevel(bool sendText)
 {
-	if (level >= 100) {
+	uint8_t maxLevel = 100;
+	if (Player* player = master ? master->getPlayer() : nullptr) {
+		maxLevel = player->getPokemonLevelLimit();
+	}
+	if (level >= maxLevel) {
 		return false;
 	}
 
@@ -1345,7 +1358,13 @@ void Pokemon::onGainExperience(uint64_t gainExp, Creature* target)
 		gainEVs(g_pokemons.executeHeldItemEVGain(this, defeatedPokemon->getPokemonTypeData()->info.ev_yield));
 	}
 	addExperience(modifiedExperience, true);
-	master->onGainExperience(gainExp / 2, target);
+	const int32_t configuredPercent = g_config.getNumber(ConfigManager::PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT);
+	const uint32_t percent = static_cast<uint32_t>(std::max<int32_t>(0, configuredPercent));
+	const long double scaledExperience = static_cast<long double>(gainExp) * percent / 100.0L;
+	const uint64_t playerExperience = scaledExperience >= std::numeric_limits<uint64_t>::max()
+		? std::numeric_limits<uint64_t>::max()
+		: static_cast<uint64_t>(scaledExperience);
+	master->onGainExperience(playerExperience, target);
 }
 
 void Pokemon::gainEVs(const PokemonStats_t& gainedEVs)

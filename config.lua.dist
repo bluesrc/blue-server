@@ -109,6 +109,13 @@ serverSaveClose = false
 serverSaveShutdown = true
 
 -- Experience stages
+-- playerMaxLevel: set to 0 to disable the player level cap
+-- playerExperienceFromPokemonPercent: percentage of battle XP also awarded to the player
+-- pokemonLevelAbovePlayerLimit: maximum levels a Pokemon may have above its owner; set to -1 to disable
+playerMaxLevel = 100
+playerExperienceFromPokemonPercent = 50
+pokemonLevelAbovePlayerLimit = 10
+
 -- NOTE: to use a flat experience multiplier, set experienceStages to nil
 -- minlevel and multiplier are MANDATORY
 -- maxlevel is OPTIONAL, but is considered infinite by default

@@ -39,7 +39,7 @@
 			<flag cantalkredprivate="1" />
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
-			<flag notgainexperience="1" />
+			<flag notgainexperience="0" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -50,6 +50,7 @@
 			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
+			<flag ignorepokemonlevellimit="1" />
 		</flags>
 	</group>
 	<group id="5" name="community manager" access="1" maxdepotitems="0" maxvipentries="200">
@@ -76,7 +77,7 @@
 			<flag cantalkredprivate="1" />
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
-			<flag notgainexperience="1" />
+			<flag notgainexperience="0" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -87,6 +88,7 @@
 			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
+			<flag ignorepokemonlevellimit="1" />
 		</flags>
 	</group>
 	<group id="6" name="god" access="1" maxdepotitems="0" maxvipentries="200">
@@ -113,7 +115,7 @@
 			<flag cantalkredprivate="1" />
 			<flag cantalkredchannel="1" />
 			<flag talkorangehelpchannel="1" />
-			<flag notgainexperience="1" />
+			<flag notgainexperience="0" />
 			<flag notgainhealth="1" />
 			<flag notgainskill="1" />
 			<flag setmaxspeed="1" />
@@ -124,6 +126,7 @@
 			<flag ignoreequipmentcheck="1" />
 			<flag cannotbemuted="1" />
 			<flag isalwayspremium="1" />
+			<flag ignorepokemonlevellimit="1" />
 		</flags>
 	</group>
 </groups>

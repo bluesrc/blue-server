@@ -335,6 +335,8 @@ class Player final : public Creature, public Cylinder
 		uint32_t getLevel() const {
 			return level;
 		}
+		uint8_t getPokemonLevelLimit() const;
+		bool canUsePokemonLevel(uint8_t pokemonLevel) const;
 		uint8_t getLevelPercent() const {
 			return levelPercent;
 		}

@@ -243,6 +243,9 @@ bool ConfigManager::load()
 	integer[DEFAULT_DESPAWNRADIUS] = Pokemon::despawnRadius = getGlobalNumber(L, "deSpawnRadius", 50);
 	integer[DEFAULT_WALKTOSPAWNRADIUS] = getGlobalNumber(L, "walkToSpawnRadius", 15);
 	integer[RATE_EXPERIENCE] = getGlobalNumber(L, "rateExp", 5);
+	integer[PLAYER_MAX_LEVEL] = getGlobalNumber(L, "playerMaxLevel", 100);
+	integer[PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT] = getGlobalNumber(L, "playerExperienceFromPokemonPercent", 50);
+	integer[POKEMON_LEVEL_ABOVE_PLAYER_LIMIT] = getGlobalNumber(L, "pokemonLevelAbovePlayerLimit", 10);
 	integer[RATE_SKILL] = getGlobalNumber(L, "rateSkill", 3);
 	integer[RATE_LOOT] = getGlobalNumber(L, "rateLoot", 2);
 	integer[RATE_SPAWN] = getGlobalNumber(L, "rateSpawn", 1);

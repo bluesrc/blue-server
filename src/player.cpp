@@ -1529,10 +1529,13 @@ void Player::drainHealth(Creature* attacker, int32_t damage)
 
 void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = false*/)
 {
+	const int32_t configuredMaxLevel = g_config.getNumber(ConfigManager::PLAYER_MAX_LEVEL);
+	const bool hasConfiguredMaxLevel = configuredMaxLevel > 0;
+	const uint32_t maxLevel = hasConfiguredMaxLevel ? static_cast<uint32_t>(std::max<int32_t>(1, configuredMaxLevel)) : 0;
 	uint64_t currLevelExp = Player::getExpForLevel(level);
 	uint64_t nextLevelExp = Player::getExpForLevel(level + 1);
 	uint64_t rawExp = exp;
-	if (currLevelExp >= nextLevelExp) {
+	if ((hasConfiguredMaxLevel && level >= maxLevel) || currLevelExp >= nextLevelExp) {
 		//player has reached max level
 		levelPercent = 0;
 		sendStats();
@@ -1540,6 +1543,19 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 	}
 
 	g_events->eventPlayerOnGainExperience(this, source, exp, rawExp);
+	if (exp == 0) {
+		return;
+	}
+
+	if (hasConfiguredMaxLevel) {
+		const uint64_t maxLevelExperience = Player::getExpForLevel(maxLevel);
+		if (experience >= maxLevelExperience) {
+			levelPercent = 0;
+			sendStats();
+			return;
+		}
+		exp = std::min(exp, maxLevelExperience - experience);
+	}
 	if (exp == 0) {
 		return;
 	}
@@ -1574,7 +1590,7 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 		health += PLAYER_HEALTH_GAIN_PER_LEVEL;
 		currLevelExp = nextLevelExp;
 		nextLevelExp = Player::getExpForLevel(level + 1);
-		if (currLevelExp >= nextLevelExp) {
+		if ((hasConfiguredMaxLevel && level >= maxLevel) || currLevelExp >= nextLevelExp) {
 			//player has reached max level
 			break;
 		}
@@ -1603,12 +1619,31 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 		sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("You advanced from Level {:d} to Level {:d}.", prevLevel, level));
 	}
 
-	if (nextLevelExp > currLevelExp) {
+	if ((!hasConfiguredMaxLevel || level < maxLevel) && nextLevelExp > currLevelExp) {
 		levelPercent = Player::getPercentLevel(experience - currLevelExp, nextLevelExp - currLevelExp);
 	} else {
 		levelPercent = 0;
 	}
 	sendStats();
+}
+
+uint8_t Player::getPokemonLevelLimit() const
+{
+	const int32_t configuredLimit = g_config.getNumber(ConfigManager::POKEMON_LEVEL_ABOVE_PLAYER_LIMIT);
+	if (configuredLimit < 0 || hasFlag(PlayerFlag_IgnorePokemonLevelLimit)) {
+		return 100;
+	}
+
+	const uint32_t levelDifference = static_cast<uint32_t>(configuredLimit);
+	if (level >= 100 || levelDifference >= 100 - level) {
+		return 100;
+	}
+	return static_cast<uint8_t>(level + levelDifference);
+}
+
+bool Player::canUsePokemonLevel(uint8_t pokemonLevel) const
+{
+	return pokemonLevel <= getPokemonLevelLimit();
 }
 
 void Player::removeExperience(uint64_t exp, bool sendText/* = false*/)
@@ -4110,6 +4145,13 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 	if (!canDoGoback() && !forcedRecall)
 	{
 		sendCancelMessage(RETURNVALUE_CANNOTGOBACK);
+		return;
+	}
+
+	const uint8_t pokemonLevel = pokeball->getPokemonInfo().level;
+	if (!forcedRecall && activePokemon != pokeball && !canUsePokemonLevel(pokemonLevel))
+	{
+		sendCancelMessage(fmt::format("You can only use Pokemon up to level {:d}.", getPokemonLevelLimit()));
 		return;
 	}
 
