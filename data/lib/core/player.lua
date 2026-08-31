@@ -30,22 +30,41 @@ function Player.hasFlag(self, flag)
 end
 
 function Player.getLossPercent(self)
-	local blessings = 0
-	local lossPercent = {
-		[0] = 100,
-		[1] = 70,
-		[2] = 45,
-		[3] = 25,
-		[4] = 10,
-		[5] = 0
-	}
+	return 100 - self:getBlessingExperienceLossReduction()
+end
 
-	for i = 1, 5 do
-		if self:hasBlessing(i) then
-			blessings = blessings + 1
+function Player.getActiveBlessing(self)
+	for blessingId = 1, 6 do
+		if self:hasBlessing(blessingId) then
+			return blessingId
 		end
 	end
-	return lossPercent[blessings]
+	return 0
+end
+
+function Player.purchaseBlessing(self, blessingId, price)
+	blessingId = tonumber(blessingId)
+	price = tonumber(price)
+	if not blessingId or blessingId % 1 ~= 0 or blessingId < 1 or blessingId > 6 then
+		return false, "invalid_blessing"
+	end
+	if not price or price % 1 ~= 0 or price < 0 then
+		return false, "invalid_price"
+	end
+
+	local currentBlessing = self:getActiveBlessing()
+	if currentBlessing == blessingId then
+		return false, "already_owned"
+	end
+	if not self:removeTotalMoney(price) then
+		return false, "not_enough_money"
+	end
+	if not self:addBlessing(blessingId) then
+		self:addMoney(price)
+		return false, "grant_failed"
+	end
+
+	return true, currentBlessing == 0 and "purchased" or "replaced"
 end
 
 function Player.getPremiumTime(self)

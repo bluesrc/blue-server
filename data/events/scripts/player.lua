@@ -141,10 +141,19 @@ function Player:onGainExperience(source, exp, rawExp)
 		useStamina(self)
 
 		local staminaMinutes = self:getStamina()
-		if staminaMinutes > 2400 and self:isPremium() then
-			exp = exp * 1.5
-		elseif staminaMinutes <= 840 then
-			exp = exp * 0.5
+		local maximumHours = math.max(0, configManager.getNumber(configKeys.STAMINA_MAX_HOURS))
+		local bonusHours = math.min(maximumHours, math.max(0, configManager.getNumber(configKeys.STAMINA_BONUS_HOURS)))
+		local lowHours = math.min(maximumHours, math.max(0, configManager.getNumber(configKeys.STAMINA_LOW_HOURS)))
+		local bonusThreshold = (maximumHours - bonusHours) * 60
+		local lowThreshold = lowHours * 60
+		local bonusAllowed = not configManager.getBoolean(configKeys.STAMINA_BONUS_PREMIUM_ONLY) or self:isPremium()
+
+		if bonusHours > 0 and staminaMinutes > bonusThreshold and bonusAllowed then
+			local bonusPercent = math.max(0, configManager.getNumber(configKeys.STAMINA_BONUS_EXPERIENCE_PERCENT))
+			exp = exp * bonusPercent / 100
+		elseif staminaMinutes <= lowThreshold then
+			local lowPercent = math.max(0, configManager.getNumber(configKeys.STAMINA_LOW_EXPERIENCE_PERCENT))
+			exp = exp * lowPercent / 100
 		end
 	end
 

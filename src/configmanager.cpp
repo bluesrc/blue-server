@@ -104,6 +104,29 @@ ExperienceStages loadLuaStages(lua_State* L)
 	return stages;
 }
 
+BlessingExperienceLossReductions loadBlessingExperienceLossReductions(lua_State* L)
+{
+	BlessingExperienceLossReductions reductions {25, 50, 75, 100, 0, 0};
+
+	lua_getglobal(L, "blessingExperienceLossReductions");
+	if (!lua_istable(L, -1)) {
+		lua_pop(L, 1);
+		return reductions;
+	}
+
+	for (size_t index = 0; index < reductions.size(); ++index) {
+		lua_rawgeti(L, -1, static_cast<int>(index + 1));
+		if (lua_isnumber(L, -1)) {
+			const int32_t reduction = static_cast<int32_t>(lua_tonumber(L, -1));
+			reductions[index] = static_cast<uint8_t>(std::clamp<int32_t>(reduction, 0, 100));
+		}
+		lua_pop(L, 1);
+	}
+
+	lua_pop(L, 1);
+	return reductions;
+}
+
 ExperienceStages loadXMLStages()
 {
 	pugi::xml_document doc;
@@ -207,6 +230,8 @@ bool ConfigManager::load()
 	boolean[MARKET_PREMIUM] = getGlobalBoolean(L, "premiumToCreateMarketOffer", true);
 	boolean[EMOTE_MOVES] = getGlobalBoolean(L, "emoteMoves", false);
 	boolean[STAMINA_SYSTEM] = getGlobalBoolean(L, "staminaSystem", true);
+	boolean[STAMINA_BONUS_PREMIUM_ONLY] = getGlobalBoolean(L, "staminaBonusPremiumOnly", true);
+	boolean[STAMINA_LOW_STOPS_LOOT] = getGlobalBoolean(L, "staminaLowStopsLoot", true);
 	boolean[WARN_UNSAFE_SCRIPTS] = getGlobalBoolean(L, "warnUnsafeScripts", true);
 	boolean[CONVERT_UNSAFE_SCRIPTS] = getGlobalBoolean(L, "convertUnsafeScripts", true);
 	boolean[CLASSIC_ATTACK_SPEED] = getGlobalBoolean(L, "classicAttackSpeed", false);
@@ -243,6 +268,16 @@ bool ConfigManager::load()
 	integer[DEFAULT_DESPAWNRADIUS] = Pokemon::despawnRadius = getGlobalNumber(L, "deSpawnRadius", 50);
 	integer[DEFAULT_WALKTOSPAWNRADIUS] = getGlobalNumber(L, "walkToSpawnRadius", 15);
 	integer[RATE_EXPERIENCE] = getGlobalNumber(L, "rateExp", 5);
+	integer[PLAYER_MAX_LEVEL] = getGlobalNumber(L, "playerMaxLevel", 100);
+	integer[PLAYER_HEALTH_GAIN_PER_LEVEL] = getGlobalNumber(L, "playerHealthGainPerLevel", 5);
+	integer[PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT] = getGlobalNumber(L, "playerExperienceFromPokemonPercent", 50);
+	integer[POKEMON_LEVEL_ABOVE_PLAYER_LIMIT] = getGlobalNumber(L, "pokemonLevelAbovePlayerLimit", 10);
+	const int32_t maxSupportedStaminaHours = std::numeric_limits<uint16_t>::max() / 60;
+	integer[STAMINA_MAX_HOURS] = std::clamp<int32_t>(getGlobalNumber(L, "staminaMaxHours", 42), 0, maxSupportedStaminaHours);
+	integer[STAMINA_BONUS_HOURS] = std::clamp<int32_t>(getGlobalNumber(L, "staminaBonusHours", 2), 0, integer[STAMINA_MAX_HOURS]);
+	integer[STAMINA_BONUS_EXPERIENCE_PERCENT] = std::max<int32_t>(0, getGlobalNumber(L, "staminaBonusExperiencePercent", 150));
+	integer[STAMINA_LOW_HOURS] = std::clamp<int32_t>(getGlobalNumber(L, "staminaLowHours", 14), 0, integer[STAMINA_MAX_HOURS]);
+	integer[STAMINA_LOW_EXPERIENCE_PERCENT] = std::max<int32_t>(0, getGlobalNumber(L, "staminaLowExperiencePercent", 50));
 	integer[RATE_SKILL] = getGlobalNumber(L, "rateSkill", 3);
 	integer[RATE_LOOT] = getGlobalNumber(L, "rateLoot", 2);
 	integer[RATE_SPAWN] = getGlobalNumber(L, "rateSpawn", 1);
@@ -266,6 +301,7 @@ bool ConfigManager::load()
 	integer[DEPOT_PREMIUM_LIMIT] = getGlobalNumber(L, "depotPremiumLimit", 10000);
 	integer[ACCOUNT_CREATION_COOLDOWN] = getGlobalNumber(L, "accountCreationCooldown", 60);
 	integer[MAX_CHARACTERS_PER_ACCOUNT] = getGlobalNumber(L, "maxCharactersPerAccount", 7);
+	blessingExperienceLossReductions = loadBlessingExperienceLossReductions(L);
 
 	expStages = loadXMLStages();
 	if (expStages.empty()) {
@@ -330,6 +366,19 @@ float ConfigManager::getExperienceStage(uint32_t level) const
 	}
 
 	return std::get<2>(*it);
+}
+
+uint8_t ConfigManager::getBlessingExperienceLossReduction(uint8_t blessing) const
+{
+	if (blessing >= blessingExperienceLossReductions.size()) {
+		return 0;
+	}
+	return blessingExperienceLossReductions[blessing];
+}
+
+uint16_t ConfigManager::getStaminaMaxMinutes() const
+{
+	return static_cast<uint16_t>(getNumber(STAMINA_MAX_HOURS) * 60);
 }
 
 bool ConfigManager::setString(string_config_t what, const std::string& value)

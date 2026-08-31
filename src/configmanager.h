@@ -4,10 +4,12 @@
 #ifndef FS_CONFIGMANAGER_H_6BDD23BD0B8344F4B7C40E8BE6AF6F39
 #define FS_CONFIGMANAGER_H_6BDD23BD0B8344F4B7C40E8BE6AF6F39
 
+#include <array>
 #include <utility>
 #include <vector>
 
 using ExperienceStages = std::vector<std::tuple<uint32_t, uint32_t, float>>;
+using BlessingExperienceLossReductions = std::array<uint8_t, 6>;
 
 class ConfigManager
 {
@@ -28,6 +30,8 @@ class ConfigManager
 			MARKET_PREMIUM,
 			EMOTE_MOVES,
 			STAMINA_SYSTEM,
+			STAMINA_BONUS_PREMIUM_ONLY,
+			STAMINA_LOW_STOPS_LOOT,
 			WARN_UNSAFE_SCRIPTS,
 			CONVERT_UNSAFE_SCRIPTS,
 			CLASSIC_ATTACK_SPEED,
@@ -83,6 +87,15 @@ class ConfigManager
 			DEFAULT_DESPAWNRADIUS,
 			DEFAULT_WALKTOSPAWNRADIUS,
 			RATE_EXPERIENCE,
+			PLAYER_MAX_LEVEL,
+			PLAYER_HEALTH_GAIN_PER_LEVEL,
+			PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT,
+			POKEMON_LEVEL_ABOVE_PLAYER_LIMIT,
+			STAMINA_MAX_HOURS,
+			STAMINA_BONUS_HOURS,
+			STAMINA_BONUS_EXPERIENCE_PERCENT,
+			STAMINA_LOW_HOURS,
+			STAMINA_LOW_EXPERIENCE_PERCENT,
 			RATE_SKILL,
 			RATE_LOOT,
 			RATE_SPAWN,
@@ -121,6 +134,8 @@ class ConfigManager
 		int32_t getNumber(integer_config_t what) const;
 		bool getBoolean(boolean_config_t what) const;
 		float getExperienceStage(uint32_t level) const;
+		uint8_t getBlessingExperienceLossReduction(uint8_t blessing) const;
+		uint16_t getStaminaMaxMinutes() const;
 
 		bool setString(string_config_t what, const std::string& value);
 		bool setNumber(integer_config_t what, int32_t value);
@@ -132,6 +147,7 @@ class ConfigManager
 		bool boolean[LAST_BOOLEAN_CONFIG] = {};
 
 		ExperienceStages expStages = {};
+		BlessingExperienceLossReductions blessingExperienceLossReductions = {};
 
 		bool loaded = false;
 };

@@ -267,14 +267,21 @@ class Player final : public Creature, public Cylinder
 		}
 
 		void addBlessing(uint8_t blessing) {
+			if (blessing >= blessings.size()) {
+				return;
+			}
+			blessings.reset();
 			blessings.set(blessing);
 		}
 		void removeBlessing(uint8_t blessing) {
-			blessings.reset(blessing);
+			if (blessing < blessings.size()) {
+				blessings.reset(blessing);
+			}
 		}
 		bool hasBlessing(uint8_t blessing) const {
-			return blessings.test(blessing);
+			return blessing < blessings.size() && blessings.test(blessing);
 		}
+		uint8_t getBlessingExperienceLossReduction() const;
 
 		bool isOffline() const {
 			return (getID() == 0);
@@ -335,6 +342,8 @@ class Player final : public Creature, public Cylinder
 		uint32_t getLevel() const {
 			return level;
 		}
+		uint8_t getPokemonLevelLimit() const;
+		bool canUsePokemonLevel(uint8_t pokemonLevel) const;
 		uint8_t getLevelPercent() const {
 			return levelPercent;
 		}
@@ -1112,7 +1121,6 @@ class Player final : public Creature, public Cylinder
 
 		void death(Creature* lastHitCreature) override;
 		bool dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature) override;
-		Item* getCorpse(Creature* lastHitCreature, Creature* mostDamageCreature) override;
 
 		//cylinder implementations
 		ReturnValue queryAdd(int32_t index, const Thing& thing, uint32_t count,
@@ -1224,7 +1232,7 @@ class Player final : public Creature, public Cylinder
 		int32_t idleTime = 0;
 
 		uint16_t lastStatsTrainingTime = 0;
-		uint16_t staminaMinutes = 2520;
+		uint16_t staminaMinutes = 0;
 		uint16_t maxWriteLen = 0;
 
 		std::bitset<6> blessings;

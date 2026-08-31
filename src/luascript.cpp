@@ -1730,6 +1730,7 @@ void LuaScriptInterface::registerFunctions()
 	registerEnum(PlayerFlag_IgnoreEquipmentCheck)
 	registerEnum(PlayerFlag_CannotBeMuted)
 	registerEnum(PlayerFlag_IsAlwaysPremium)
+	registerEnum(PlayerFlag_IgnorePokemonLevelLimit)
 
 	registerEnum(PLAYERSEX_FEMALE)
 	registerEnum(PLAYERSEX_MALE)
@@ -2120,6 +2121,8 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::MARKET_PREMIUM)
 	registerEnumIn("configKeys", ConfigManager::EMOTE_MOVES)
 	registerEnumIn("configKeys", ConfigManager::STAMINA_SYSTEM)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_BONUS_PREMIUM_ONLY)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_LOW_STOPS_LOOT)
 	registerEnumIn("configKeys", ConfigManager::WARN_UNSAFE_SCRIPTS)
 	registerEnumIn("configKeys", ConfigManager::CONVERT_UNSAFE_SCRIPTS)
 	registerEnumIn("configKeys", ConfigManager::CLASSIC_ATTACK_SPEED)
@@ -2156,6 +2159,15 @@ void LuaScriptInterface::registerFunctions()
 	registerEnumIn("configKeys", ConfigManager::DEFAULT_WALKTOSPAWNRADIUS)
 	registerEnumIn("configKeys", ConfigManager::REMOVE_ON_DESPAWN)
 	registerEnumIn("configKeys", ConfigManager::RATE_EXPERIENCE)
+	registerEnumIn("configKeys", ConfigManager::PLAYER_MAX_LEVEL)
+	registerEnumIn("configKeys", ConfigManager::PLAYER_HEALTH_GAIN_PER_LEVEL)
+	registerEnumIn("configKeys", ConfigManager::PLAYER_EXPERIENCE_FROM_POKEMON_PERCENT)
+	registerEnumIn("configKeys", ConfigManager::POKEMON_LEVEL_ABOVE_PLAYER_LIMIT)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_MAX_HOURS)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_BONUS_HOURS)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_BONUS_EXPERIENCE_PERCENT)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_LOW_HOURS)
+	registerEnumIn("configKeys", ConfigManager::STAMINA_LOW_EXPERIENCE_PERCENT)
 	registerEnumIn("configKeys", ConfigManager::RATE_SKILL)
 	registerEnumIn("configKeys", ConfigManager::RATE_LOOT)
 	registerEnumIn("configKeys", ConfigManager::RATE_SPAWN)
@@ -2629,6 +2641,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("Player", "hasBlessing", LuaScriptInterface::luaPlayerHasBlessing);
 	registerMethod("Player", "addBlessing", LuaScriptInterface::luaPlayerAddBlessing);
 	registerMethod("Player", "removeBlessing", LuaScriptInterface::luaPlayerRemoveBlessing);
+	registerMethod("Player", "getBlessingExperienceLossReduction", LuaScriptInterface::luaPlayerGetBlessingExperienceLossReduction);
 
 	registerMethod("Player", "sendTutorial", LuaScriptInterface::luaPlayerSendTutorial);
 	registerMethod("Player", "addMapMark", LuaScriptInterface::luaPlayerAddMapMark);
@@ -8917,7 +8930,7 @@ int LuaScriptInterface::luaPlayerSetStamina(lua_State* L)
 	uint16_t stamina = getNumber<uint16_t>(L, 2);
 	Player* player = getUserdata<Player>(L, 1);
 	if (player) {
-		player->staminaMinutes = std::min<uint16_t>(2520, stamina);
+		player->staminaMinutes = std::min(g_config.getStaminaMaxMinutes(), stamina);
 		player->sendStats();
 		pushBoolean(L, true);
 	} else {
@@ -9600,12 +9613,14 @@ int LuaScriptInterface::luaPlayerSetPremiumEndsAt(lua_State* L)
 int LuaScriptInterface::luaPlayerHasBlessing(lua_State* L)
 {
 	// player:hasBlessing(blessing)
-	uint8_t blessing = getNumber<uint8_t>(L, 2) - 1;
+	const uint16_t blessingId = getNumber<uint16_t>(L, 2);
 	Player* player = getUserdata<Player>(L, 1);
-	if (player) {
-		pushBoolean(L, player->hasBlessing(blessing));
-	} else {
+	if (!player) {
 		lua_pushnil(L);
+	} else if (blessingId >= 1 && blessingId <= 6) {
+		pushBoolean(L, player->hasBlessing(static_cast<uint8_t>(blessingId - 1)));
+	} else {
+		pushBoolean(L, false);
 	}
 	return 1;
 }
@@ -9619,7 +9634,12 @@ int LuaScriptInterface::luaPlayerAddBlessing(lua_State* L)
 		return 1;
 	}
 
-	uint8_t blessing = getNumber<uint8_t>(L, 2) - 1;
+	const uint16_t blessingId = getNumber<uint16_t>(L, 2);
+	if (blessingId < 1 || blessingId > 6) {
+		pushBoolean(L, false);
+		return 1;
+	}
+	const uint8_t blessing = static_cast<uint8_t>(blessingId - 1);
 	if (player->hasBlessing(blessing)) {
 		pushBoolean(L, false);
 		return 1;
@@ -9639,7 +9659,12 @@ int LuaScriptInterface::luaPlayerRemoveBlessing(lua_State* L)
 		return 1;
 	}
 
-	uint8_t blessing = getNumber<uint8_t>(L, 2) - 1;
+	const uint16_t blessingId = getNumber<uint16_t>(L, 2);
+	if (blessingId < 1 || blessingId > 6) {
+		pushBoolean(L, false);
+		return 1;
+	}
+	const uint8_t blessing = static_cast<uint8_t>(blessingId - 1);
 	if (!player->hasBlessing(blessing)) {
 		pushBoolean(L, false);
 		return 1;
@@ -9647,6 +9672,18 @@ int LuaScriptInterface::luaPlayerRemoveBlessing(lua_State* L)
 
 	player->removeBlessing(blessing);
 	pushBoolean(L, true);
+	return 1;
+}
+
+int LuaScriptInterface::luaPlayerGetBlessingExperienceLossReduction(lua_State* L)
+{
+	// player:getBlessingExperienceLossReduction()
+	Player* player = getUserdata<Player>(L, 1);
+	if (player) {
+		lua_pushnumber(L, player->getBlessingExperienceLossReduction());
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 

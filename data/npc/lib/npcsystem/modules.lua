@@ -73,13 +73,17 @@ if Modules == nil then
 
 		local player = Player(cid)
 		if player:isPremium() or not parameters.premium then
-			if player:hasBlessing(parameters.bless) then
+			local purchased, result = player:purchaseBlessing(parameters.bless, parameters.cost)
+			if result == "already_owned" then
 				npcHandler:say("Gods have already blessed you with this blessing!", cid)
-			elseif not player:removeTotalMoney(parameters.cost) then
+			elseif result == "not_enough_money" then
 				npcHandler:say("You don't have enough money for blessing.", cid)
+			elseif not purchased then
+				npcHandler:say("This blessing could not be purchased.", cid)
+			elseif result == "replaced" then
+				npcHandler:say("Your previous blessing has been replaced by the new one.", cid)
 			else
-				player:addBlessing(parameters.bless)
-				npcHandler:say("You have been blessed by one of the five gods!", cid)
+				npcHandler:say("You have been blessed!", cid)
 			end
 		else
 			npcHandler:say("You need a premium account in order to be blessed.", cid)
