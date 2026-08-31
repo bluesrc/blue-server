@@ -2146,6 +2146,17 @@ void ProtocolGame::sendTradeExtendedMessage(const std::string& buffer)
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::sendDuelExtendedMessage(const std::string& buffer)
+{
+	static constexpr uint8_t PLAYER_DUEL_EXTENDED_OPCODE = 78;
+
+	NetworkMessage msg;
+	msg.addByte(0x32);
+	msg.addByte(PLAYER_DUEL_EXTENDED_OPCODE);
+	msg.addString(buffer);
+	writeToOutputBuffer(msg);
+}
+
 void ProtocolGame::sendCloseTrade()
 {
 	NetworkMessage msg;

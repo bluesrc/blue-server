@@ -646,6 +646,9 @@ void Pokemon::notifyLevelEvolutionAvailable()
 
 bool Pokemon::evolve(EvolveTypes_t trigger, uint32_t requirement)
 {
+	if (duelPokemon) {
+		return false;
+	}
 	const PokemonEvolution* selected = trigger == EVOLVE_LEVEL ? findPendingEvolutionRule() : nullptr;
 	if (!selected) {
 		selected = getEligibleEvolution(trigger, requirement);
@@ -1034,6 +1037,9 @@ void Pokemon::setHeldItemId(uint16_t itemId)
 
 uint8_t Pokemon::changeFriendship(int32_t amount)
 {
+	if (duelPokemon) {
+		return friendship;
+	}
 	const uint8_t previousFriendship = friendship;
 	const int64_t updatedFriendship = static_cast<int64_t>(friendship) + amount;
 	friendship = static_cast<uint8_t>(std::clamp<int64_t>(updatedFriendship, 0, 255));
@@ -1053,6 +1059,9 @@ uint8_t Pokemon::changeFriendship(int32_t amount)
 
 uint8_t Pokemon::addFriendship(int32_t amount)
 {
+	if (duelPokemon) {
+		return friendship;
+	}
 	const uint8_t previousFriendship = friendship;
 	changeFriendship(amount);
 	if (friendship != previousFriendship) {
@@ -1190,6 +1199,9 @@ void Pokemon::completeCombatEscape()
 
 void Pokemon::processCombatFriendship(uint32_t interval)
 {
+	if (duelPokemon) {
+		return;
+	}
 	Player* player = master ? master->getPlayer() : nullptr;
 	if (!isSummon() || !player) {
 		return;
@@ -1223,6 +1235,9 @@ void Pokemon::processCombatFriendship(uint32_t interval)
 
 uint8_t Pokemon::addExperience(uint64_t amount, bool sendText)
 {
+	if (duelPokemon) {
+		return 0;
+	}
 	uint8_t maxLevel = 100;
 	if (Player* player = master ? master->getPlayer() : nullptr) {
 		maxLevel = player->getPokemonLevelLimit();
@@ -1337,7 +1352,7 @@ bool Pokemon::addLevel(bool sendText)
 
 uint64_t Pokemon::getGainedExperience(Creature* attacker) const
 {
-	if (!attacker || mType->info.base_experience == 0) {
+	if (duelPokemon || !attacker || mType->info.base_experience == 0) {
 		return 0;
 	}
 
@@ -1349,7 +1364,7 @@ uint64_t Pokemon::getGainedExperience(Creature* attacker) const
 
 void Pokemon::onGainExperience(uint64_t gainExp, Creature* target)
 {
-	if (gainExp == 0 || !master) {
+	if (duelPokemon || gainExp == 0 || !master) {
 		return;
 	}
 

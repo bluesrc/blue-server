@@ -209,6 +209,7 @@ class ProtocolGame final : public Protocol
 		void sendTradeState(bool ownConfirmed, bool counterConfirmed, bool ownAccepted, bool counterAccepted,
 				uint64_t ownMoney, uint64_t counterMoney, uint64_t bankBalance);
 		void sendTradeExtendedMessage(const std::string& buffer);
+		void sendDuelExtendedMessage(const std::string& buffer);
 		void sendCloseTrade();
 
 		void sendTextWindow(uint32_t windowTextId, Item* item, uint16_t maxlen, bool canWrite);
