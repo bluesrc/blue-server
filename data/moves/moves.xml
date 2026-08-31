@@ -59,4 +59,43 @@
 	<move name="Dragon Claw" words="###pokemon_dragon_claw" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
 		pokemonmoveid="19" key="dragon_claw" type="dragon" category="physical" power="80" pp="15" accuracy="100" range="1" cooldown="3000" flags="contact"
 		script="pokemon_moves/dragon_claw.lua" />
+	<move name="Razor Leaf" words="###pokemon_razor_leaf" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="0" direction="1"
+		pokemonmoveid="20" key="razor_leaf" type="grass" category="physical" power="55" pp="25" accuracy="95" range="3" cooldown="2800" flags="slicing,projectile"
+		script="pokemon_moves/razor_leaf.lua" />
+	<move name="Flame Charge" words="###pokemon_flame_charge" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="21" key="flame_charge" type="fire" category="physical" power="50" pp="20" accuracy="100" range="1" cooldown="3000" flags="contact"
+		script="pokemon_moves/flame_charge.lua" />
+	<move name="Aqua Jet" words="###pokemon_aqua_jet" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="22" key="aqua_jet" type="water" category="physical" power="40" pp="20" accuracy="100" range="2" cooldown="3000" priority="1" flags="contact"
+		script="pokemon_moves/aqua_jet.lua" />
+	<move name="Thunder Shock" words="###pokemon_thunder_shock" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="23" key="thunder_shock" type="electric" category="special" power="40" pp="30" accuracy="100" range="4" cooldown="2500" flags="projectile"
+		script="pokemon_moves/thunder_shock.lua" />
+	<move name="Quick Attack" words="###pokemon_quick_attack" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="24" key="quick_attack" type="normal" category="physical" power="40" pp="30" accuracy="100" range="2" cooldown="2800" priority="1" flags="contact"
+		script="pokemon_moves/quick_attack.lua" />
+	<move name="Electro Ball" words="###pokemon_electro_ball" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="25" key="electro_ball" type="electric" category="special" power="60" pp="10" accuracy="100" range="4" cooldown="3200" flags="projectile"
+		script="pokemon_moves/electro_ball.lua" />
+	<move name="Sand Attack" words="###pokemon_sand_attack" group="support" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="26" key="sand_attack" type="ground" category="status" power="0" pp="15" accuracy="100" range="3" cooldown="5000" flags="reflectable"
+		script="pokemon_moves/sand_attack.lua" />
+	<move name="Defense Curl" words="###pokemon_defense_curl" group="support" enabled="0" aggressive="0" selftarget="1"
+		pokemonmoveid="27" key="defense_curl" type="normal" category="status" power="0" pp="40" accuracy="100" range="0" cooldown="5000"
+		script="pokemon_moves/defense_curl.lua" />
+	<move name="Bulldoze" words="###pokemon_bulldoze" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="28" key="bulldoze" type="ground" category="physical" power="60" pp="20" accuracy="100" range="1" cooldown="3200"
+		script="pokemon_moves/bulldoze.lua" />
+	<move name="Thunderbolt" words="###pokemon_thunderbolt" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="29" key="thunderbolt" type="electric" category="special" power="90" pp="15" accuracy="100" range="4" cooldown="3500" flags="projectile"
+		script="pokemon_moves/thunderbolt.lua" />
+	<move name="Rock Tomb" words="###pokemon_rock_tomb" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="30" key="rock_tomb" type="rock" category="physical" power="60" pp="15" accuracy="95" range="4" cooldown="3500" flags="projectile"
+		script="pokemon_moves/rock_tomb.lua" />
+	<move name="Energy Ball" words="###pokemon_energy_ball" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="31" key="energy_ball" type="grass" category="special" power="90" pp="10" accuracy="100" range="4" cooldown="3500" flags="projectile"
+		script="pokemon_moves/energy_ball.lua" />
+	<move name="Brick Break" words="###pokemon_brick_break" group="attack" enabled="0" aggressive="1" blockwalls="1" needtarget="1"
+		pokemonmoveid="32" key="brick_break" type="fighting" category="physical" power="75" pp="15" accuracy="100" range="1" cooldown="3300" flags="contact"
+		script="pokemon_moves/brick_break.lua" />
 </moves>

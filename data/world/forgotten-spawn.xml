@@ -1,3 +1,9 @@
 <?xml version="1.0"?>
 <spawns>
+	<spawn centerx="95" centery="112" centerz="7" radius="1">
+		<npc name="Joy" x="0" y="0" z="7" spawntime="60" direction="2" />
+	</spawn>
+	<spawn centerx="86" centery="123" centerz="7" radius="1">
+		<npc name="Mark" x="0" y="0" z="7" spawntime="60" direction="2" />
+	</spawn>
 </spawns>

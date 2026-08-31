@@ -30,16 +30,18 @@ pokemon.base_stats = {
 }
 
 pokemon.learnset = {
-	{move = "scratch", level = 1},
-	{move = "growl", level = 3},
-	{move = "ember", level = 7},
-	{move = "smokescreen", level = 10},
-	{move = "will_o_wisp", level = 13},
-	{move = "bite", level = 15},
+	{move = "ember", level = 1},
+	{move = "will_o_wisp", level = 5},
+	{move = "bite", level = 8},
+	{move = "flame_charge", level = 12},
+	{move = "smokescreen", level = 15},
+	{move = "dragon_claw", level = 22},
 }
 
 pokemon.tms = {
 	"dragon_claw",
+	"rock_tomb",
+	"brick_break",
 }
 
 pokemon.abilities = {

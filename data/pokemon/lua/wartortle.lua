@@ -30,14 +30,18 @@ pokemon.base_stats = {
 }
 
 pokemon.learnset = {
-	{move = "tackle", level = 1},
-	{move = "tail_whip", level = 4},
-	{move = "water_gun", level = 7},
-	{move = "withdraw", level = 10},
+	{move = "water_gun", level = 1},
+	{move = "withdraw", level = 5},
+	{move = "bite", level = 8},
+	{move = "aqua_jet", level = 12},
+	{move = "tail_whip", level = 15},
+	{move = "ice_beam", level = 22},
 }
 
 pokemon.tms = {
 	"ice_beam",
+	"rock_tomb",
+	"brick_break",
 }
 
 pokemon.abilities = {
