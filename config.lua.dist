@@ -28,10 +28,22 @@ accountCreationCooldown = 60
 maxCharactersPerAccount = 7
 
 -- Deaths
--- NOTE: Leave deathLosePercent as -1 if you want to use the default
--- death penalty formula. For the old formula, set it to 10. For
--- no skill/experience loss, set it to 0.
+-- Health gained whenever the trainer advances one level
+playerHealthGainPerLevel = 5
+
+-- Trainer experience lost on death, from 0 to 100 percent.
+-- Set to -1 to use the legacy level-based formula.
 deathLosePercent = 0
+
+-- Blessing tiers reduce the XP that would be lost, rather than subtracting
+-- percentage points. The table index is the blessing ID used by Lua/NPCs.
+-- If multiple blessings are present, only the strongest reduction is applied.
+blessingExperienceLossReductions = {
+	[1] = 25, -- Basic
+	[2] = 50, -- Advanced
+	[3] = 75, -- Master
+	[4] = 100 -- Complete protection
+}
 
 -- Houses
 -- NOTE: set housePriceEachSQM to -1 to disable the ingame buy house functionality

@@ -38,7 +38,6 @@ namespace {
 	constexpr int32_t ACTIVE_POKEMON_TELEPORT_RANGE_X = Map::maxClientViewportX - 1;
 	constexpr int32_t ACTIVE_POKEMON_TELEPORT_RANGE_Y = Map::maxClientViewportY - 1;
 	constexpr uint32_t PLAYER_ATTACK_SPEED = 2000;
-	constexpr uint32_t PLAYER_HEALTH_GAIN_PER_LEVEL = 5;
 	constexpr uint32_t PLAYER_HEALTH_REGEN_TICKS = 6000;
 	constexpr uint32_t PLAYER_HEALTH_REGEN_AMOUNT = 1;
 	constexpr uint32_t PLAYER_NO_PONG_KICK_TIME = 60;
@@ -1584,10 +1583,11 @@ void Player::addExperience(Creature* source, uint64_t exp, bool sendText/* = fal
 	}
 
 	uint32_t prevLevel = level;
+	const int32_t healthGainPerLevel = std::max<int32_t>(0, g_config.getNumber(ConfigManager::PLAYER_HEALTH_GAIN_PER_LEVEL));
 	while (experience >= nextLevelExp) {
 		++level;
-		healthMax += PLAYER_HEALTH_GAIN_PER_LEVEL;
-		health += PLAYER_HEALTH_GAIN_PER_LEVEL;
+		healthMax += healthGainPerLevel;
+		health += healthGainPerLevel;
 		currLevelExp = nextLevelExp;
 		nextLevelExp = Player::getExpForLevel(level + 1);
 		if ((hasConfiguredMaxLevel && level >= maxLevel) || currLevelExp >= nextLevelExp) {
@@ -1685,10 +1685,11 @@ void Player::removeExperience(uint64_t exp, bool sendText/* = false*/)
 
 	uint32_t oldLevel = level;
 	uint64_t currLevelExp = Player::getExpForLevel(level);
+	const int32_t healthGainPerLevel = std::max<int32_t>(0, g_config.getNumber(ConfigManager::PLAYER_HEALTH_GAIN_PER_LEVEL));
 
 	while (level > 1 && experience < currLevelExp) {
 		--level;
-		healthMax = std::max<int32_t>(0, healthMax - PLAYER_HEALTH_GAIN_PER_LEVEL);
+		healthMax = std::max<int32_t>(0, healthMax - healthGainPerLevel);
 		currLevelExp = Player::getExpForLevel(level);
 	}
 
@@ -1821,30 +1822,20 @@ void Player::death(Creature* lastHitCreature)
 	if (skillLoss) {
 		double deathLossPercent = getLostPercent();
 
-		// Generic skill loss. Fishing is currently the only registered skill.
-		for (uint8_t i = SKILL_FIRST; i <= SKILL_LAST; ++i) { //for each skill
-			uint64_t sumSkillTries = 0;
-			for (uint16_t c = MINIMUM_SKILL_LEVEL + 1; c <= skills[i].level; ++c) { //sum up all required tries for all skill levels
-				sumSkillTries += getRequiredSkillTries(static_cast<skills_t>(i), c);
-			}
-
-			sumSkillTries += skills[i].tries;
-
-			removeSkillTries(static_cast<skills_t>(i), sumSkillTries * deathLossPercent, false);
-		}
-
-		//Level loss
+		// Experience and resulting level loss
 		uint64_t expLoss = static_cast<uint64_t>(experience * deathLossPercent);
 		g_events->eventPlayerOnLoseExperience(this, expLoss);
+		expLoss = std::min(expLoss, experience);
 
 		if (expLoss != 0) {
 			uint32_t oldLevel = level;
+			const int32_t healthGainPerLevel = std::max<int32_t>(0, g_config.getNumber(ConfigManager::PLAYER_HEALTH_GAIN_PER_LEVEL));
 
 			experience -= expLoss;
 
 			while (level > 1 && experience < Player::getExpForLevel(level)) {
 				--level;
-				healthMax = std::max<int32_t>(0, healthMax - PLAYER_HEALTH_GAIN_PER_LEVEL);
+				healthMax = std::max<int32_t>(0, healthMax - healthGainPerLevel);
 			}
 
 			if (oldLevel != level) {
@@ -1909,37 +1900,12 @@ void Player::death(Creature* lastHitCreature)
 
 bool Player::dropCorpse(Creature* lastHitCreature, Creature* mostDamageCreature)
 {
-	return Creature::dropCorpse(lastHitCreature, mostDamageCreature);
-}
-
-Item* Player::getCorpse(Creature* lastHitCreature, Creature* mostDamageCreature)
-{
-	Item* corpse = Creature::getCorpse(lastHitCreature, mostDamageCreature);
-	if (corpse && corpse->getContainer()) {
-		std::unordered_map<std::string, uint16_t> names;
-		for (const auto& killer : getKillers()) {
-			++names[killer->getName()];
-		}
-
-		if (lastHitCreature) {
-			if (!mostDamageCreature) {
-				corpse->setSpecialDescription(fmt::format("You recognize {:s}. {:s} was killed by {:s}{:s}", getNameDescription(), getSex() == PLAYERSEX_FEMALE ? "She" : "He", lastHitCreature->getNameDescription(), names.size() > 1 ? " and others." : "."));
-			} else if (lastHitCreature != mostDamageCreature && names[lastHitCreature->getName()] == 1) {
-				corpse->setSpecialDescription(fmt::format("You recognize {:s}. {:s} was killed by {:s}, {:s}{:s}", getNameDescription(), getSex() == PLAYERSEX_FEMALE ? "She" : "He", mostDamageCreature->getNameDescription(), lastHitCreature->getNameDescription(), names.size() > 2 ? " and others." : "."));
-			} else {
-				corpse->setSpecialDescription(fmt::format("You recognize {:s}. {:s} was killed by {:s} and others.", getNameDescription(), getSex() == PLAYERSEX_FEMALE ? "She" : "He", mostDamageCreature->getNameDescription()));
-			}
-		} else if (mostDamageCreature) {
-			if (names.size() > 1) {
-				corpse->setSpecialDescription(fmt::format("You recognize {:s}. {:s} was killed by something evil, {:s}, and others", getNameDescription(), getSex() == PLAYERSEX_FEMALE ? "She" : "He", mostDamageCreature->getNameDescription()));
-			} else {
-				corpse->setSpecialDescription(fmt::format("You recognize {:s}. {:s} was killed by something evil and others", getNameDescription(), getSex() == PLAYERSEX_FEMALE ? "She" : "He", mostDamageCreature->getNameDescription()));
-			}
-		} else {
-			corpse->setSpecialDescription(fmt::format("You recognize {:s}. {:s} was killed by something evil {:s}", getNameDescription(), getSex() == PLAYERSEX_FEMALE ? "She" : "He", names.size() ? " and others." : "."));
-		}
+	for (CreatureEvent* deathEvent : getCreatureEvents(CREATURE_EVENT_DEATH)) {
+		deathEvent->executeOnDeath(this, nullptr, lastHitCreature, mostDamageCreature);
 	}
-	return corpse;
+
+	g_game.addMagicEffect(getPosition(), CONST_ME_POFF);
+	return true;
 }
 
 void Player::addInFightTicks(bool pzlock /*= false*/)
@@ -3435,22 +3401,29 @@ void Player::setSex(PlayerSex_t newSex)
 double Player::getLostPercent() const
 {
 	int32_t deathLosePercent = g_config.getNumber(ConfigManager::DEATH_LOSE_PERCENT);
-	if (deathLosePercent != -1) {
-		deathLosePercent -= blessings.count();
-		return std::max<int32_t>(0, deathLosePercent) / 100.;
-	}
-
 	double lossPercent;
-	if (level >= 25) {
+	if (deathLosePercent != -1) {
+		lossPercent = std::clamp<int32_t>(deathLosePercent, 0, 100);
+	} else if (level >= 25) {
 		double tmpLevel = level + (levelPercent / 100.);
 		lossPercent = static_cast<double>((tmpLevel + 50) * 50 * ((tmpLevel * tmpLevel) - (5 * tmpLevel) + 8)) / experience;
 	} else {
 		lossPercent = 10;
 	}
 
-	double percentReduction = 0;
-	percentReduction += blessings.count() * 8;
-	return lossPercent * (1 - (percentReduction / 100.)) / 100.;
+	const double blessingMultiplier = 1.0 - (getBlessingExperienceLossReduction() / 100.0);
+	return lossPercent * blessingMultiplier / 100.0;
+}
+
+uint8_t Player::getBlessingExperienceLossReduction() const
+{
+	uint8_t reduction = 0;
+	for (uint8_t blessing = 0; blessing < blessings.size(); ++blessing) {
+		if (blessings.test(blessing)) {
+			reduction = std::max(reduction, g_config.getBlessingExperienceLossReduction(blessing));
+		}
+	}
+	return reduction;
 }
 
 bool Player::isPremium() const
