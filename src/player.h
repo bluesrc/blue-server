@@ -952,6 +952,11 @@ class Player final : public Creature, public Cylinder
 				client->sendTradeExtendedMessage(buffer);
 			}
 		}
+		void sendDuelExtendedMessage(const std::string& buffer) const {
+			if (client) {
+				client->sendDuelExtendedMessage(buffer);
+			}
+		}
 		void sendTradeClose() const {
 			if (client) {
 				client->sendCloseTrade();
@@ -1086,6 +1091,20 @@ class Player final : public Creature, public Cylinder
 		bool hasActivePokemon() { return activePokemon != nullptr; }
 		Pokeball* getActivePokemon() { return activePokemon; }
 		void setActivePokemon(Pokeball* pokemon) { activePokemon = pokemon; }
+		bool isInDuel() const { return duelSessionId != 0; }
+		uint32_t getDuelSessionId() const { return duelSessionId; }
+		void setDuelSessionId(uint32_t sessionId) { duelSessionId = sessionId; }
+		bool createDuelRoster();
+		void clearDuelRoster();
+		Pokeball* getDuelPokeball(uint16_t inventorySlot) const;
+		Pokeball* resolveDuelPokeball(Pokeball* pokeball) const;
+		bool isDuelPokeball(const Pokeball* pokeball) const;
+		uint16_t getDuelPokeballSlot(const Pokeball* pokeball) const;
+		uint16_t getInventoryPokeballSlot(const Pokeball* pokeball) const;
+		uint8_t getDuelTeamMask() const;
+		uint8_t getDuelAliveMask() const;
+		uint8_t getDuelActiveSlot() const;
+		void sendRealPokemonRoster();
 
 		void addPokemon(std::string pokeballName, std::string pokemon, uint8_t level = 1);
 		void addPokemon(std::string pokeballName, std::string pokemon, const PokemonCreateOptions_t& options);
@@ -1292,6 +1311,11 @@ class Player final : public Creature, public Cylinder
 		int64_t pokemonCombatTicks = 0;
 
 		Pokeball* activePokemon = nullptr;
+		std::array<Pokeball*, 6> duelPokeballs = {};
+		uint32_t duelSessionId = 0;
+		uint32_t duelInviteFromId = 0;
+		uint32_t duelInviteToId = 0;
+		int64_t duelInviteExpiresAt = 0;
 		std::unordered_map<uint16_t, uint32_t> pokemonCatchCounts;
 		uint32_t pokedexCount = 0;
 		uint64_t totalCaught = 0;

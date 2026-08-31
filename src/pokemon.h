@@ -271,6 +271,8 @@ class Pokemon final : public Creature
 		bool rollExecutingMoveHit(const Creature* target) const;
 		bool isExecutingPokemonMove() const { return executingPokemonMove; }
 		const PokemonMoveType* getExecutingMove() const { return executingMove; }
+		bool isDuelPokemon() const { return duelPokemon; }
+		void setDuelPokemon(bool value) { duelPokemon = value; }
 
 	private:
 		CreatureHashSet friendList;
@@ -329,6 +331,7 @@ class Pokemon final : public Creature
 		bool calculatingAbilityStats = false;
 		bool processingFriendshipChange = false;
 		bool abilitySpawnProcessed = false;
+		bool duelPokemon = false;
 		const PokemonMoveType* executingMove = nullptr;
 		PokemonStatusCondition_t pokemonStatus = POKEMON_STATUS_NONE;
 		int64_t pokemonStatusExpiresAt = 0;

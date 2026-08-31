@@ -41,6 +41,20 @@ enum GameState_t {
 	GAME_STATE_MAINTAIN,
 };
 
+struct DuelSession {
+	uint32_t id = 0;
+	uint32_t firstPlayerId = 0;
+	uint32_t secondPlayerId = 0;
+	Position firstReturnPosition;
+	Position secondReturnPosition;
+	uint16_t firstPreviousActiveSlot = 0;
+	uint16_t secondPreviousActiveSlot = 0;
+	Position minPosition;
+	Position maxPosition;
+	int64_t expiresAt = 0;
+	bool finishing = false;
+};
+
 static constexpr int32_t EVENT_LIGHTINTERVAL = 10000;
 static constexpr int32_t EVENT_WORLDTIMEINTERVAL = 2500;
 static constexpr int32_t EVENT_DECAYINTERVAL = 250;
@@ -304,6 +318,16 @@ class Game
 		bool internalStartTrade(Player* player, Player* tradePartner, Item* tradeItem);
 		void playerRequestTradeInvite(uint32_t playerId, uint32_t tradePlayerId);
 		void playerAnswerTradeInvite(uint32_t playerId, uint32_t tradePlayerId, bool accept);
+		void playerRequestDuelInvite(uint32_t playerId, uint32_t duelPlayerId);
+		void playerAnswerDuelInvite(uint32_t playerId, uint32_t duelPlayerId, bool accept);
+		void playerForfeitDuel(uint32_t playerId);
+		void onDuelPokemonFainted(Player* player);
+		void sendDuelState(uint32_t duelSessionId);
+		void finishDuelForPlayer(Player* player, bool disconnected = false);
+		bool areDuelOpponents(const Creature* attacker, const Creature* target) const;
+		bool canSelectDuelTarget(const Player* attacker, const Creature* target) const;
+		bool canMoveInDuel(const Creature* creature, const Position& destination) const;
+		bool isDuelTileAllowed(const Creature* creature, const Position& position) const;
 		void playerAddTradeItem(uint32_t playerId, const Position& pos, uint8_t stackPos, uint16_t spriteId, uint8_t count);
 		void playerRemoveTradeItem(uint32_t playerId, uint8_t index);
 		void playerSetTradeMoney(uint32_t playerId, uint64_t amount);
@@ -531,6 +555,12 @@ class Game
 		void playerEquipPokemonHeldItem(Player* player, uint16_t inventorySlot, const Position& fromPos,
 			uint8_t fromStackPos, uint16_t spriteId);
 		void playerRemovePokemonHeldItem(Player* player, uint16_t inventorySlot);
+		bool startDuel(Player* first, Player* second);
+		void finishDuel(uint32_t duelSessionId, uint32_t winnerPlayerId, const std::string& reason,
+			uint32_t disconnectedPlayerId = 0);
+		void clearDuelInvites(Player* player, bool notifyPartner = true);
+		void expireDuelInvite(uint32_t challengerId, uint32_t opponentId, int64_t expiresAt);
+		const DuelSession* getDuelSession(uint32_t duelSessionId) const;
 		bool playerSayMove(Player* player, SpeakClasses type, const std::string& text);
 		void playerWhisper(Player* player, const std::string& text);
 		bool playerYell(Player* player, const std::string& text);
@@ -548,6 +578,8 @@ class Game
 		std::unordered_map<uint16_t, Item*> uniqueItems;
 		std::map<uint32_t, uint32_t> stages;
 		std::unordered_map<uint32_t, std::unordered_map<uint32_t, int32_t>> accountStorageMap;
+		std::unordered_map<uint32_t, DuelSession> duelSessions;
+		uint32_t nextDuelSessionId = 0;
 
 		std::list<Item*> decayItems[EVENT_DECAY_BUCKETS];
 		std::list<Creature*> checkCreatureLists[EVENT_CREATURECOUNT];

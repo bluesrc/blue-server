@@ -71,6 +71,8 @@ Player::Player(ProtocolGame_ptr p) :
 
 Player::~Player()
 {
+	clearDuelRoster();
+
 	for (Item* item : inventory) {
 		if (item) {
 			item->setParent(nullptr);
@@ -1126,6 +1128,8 @@ void Player::onRemoveCreature(Creature* creature, bool isLogout)
 	Creature::onRemoveCreature(creature, isLogout);
 
 	if (creature == this) {
+		g_game.finishDuelForPlayer(this, true);
+
 		if (isLogout) {
 			loginPosition = getPosition();
 		}
@@ -3127,7 +3131,7 @@ void Player::onAttackedCreature(Creature* target, bool addFightTicks /* = true *
 {
 	Creature::onAttackedCreature(target);
 
-	if (target->getZone() == ZONE_ARENA) {
+	if (target->getZone() == ZONE_ARENA || g_game.canSelectDuelTarget(this, target)) {
 		return;
 	}
 
@@ -3955,17 +3959,172 @@ void Player::updatePokemonInfo(Pokeball* pokeball)
 		return;
 	}
 
-	auto it = std::find(std::begin(inventory), std::end(inventory), pokeball);
-	if (it == std::end(inventory)) {
-		return;
+	uint16_t slot = getDuelPokeballSlot(pokeball);
+	if (slot == 0) {
+		auto it = std::find(std::begin(inventory), std::end(inventory), pokeball);
+		if (it == std::end(inventory)) {
+			return;
+		}
+		slot = static_cast<uint16_t>(std::distance(std::begin(inventory), it));
+	}
+	client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
+}
+
+bool Player::createDuelRoster()
+{
+	if (std::any_of(duelPokeballs.begin(), duelPokeballs.end(), [](const Pokeball* pokeball) {
+			return pokeball != nullptr;
+		})) {
+		return false;
 	}
 
-	const auto slot = static_cast<uint16_t>(std::distance(std::begin(inventory), it));
-	client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
+	bool hasPokemon = false;
+	for (uint16_t slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; ++slot) {
+		Item* realItem = getInventoryItem(static_cast<slots_t>(slot));
+		Pokeball* realPokeball = realItem ? realItem->getPokeball() : nullptr;
+		if (!realPokeball) {
+			continue;
+		}
+
+		Item* virtualItem = Item::CreateItem(realItem->getID(), 1);
+		Pokeball* virtualPokeball = virtualItem ? virtualItem->getPokeball() : nullptr;
+		if (!virtualPokeball) {
+			if (virtualItem) {
+				g_game.ReleaseItem(virtualItem);
+			}
+			clearDuelRoster();
+			return false;
+		}
+
+		PokemonInfo_t info = realPokeball->getPokemonInfo();
+		info.p_id = 0;
+		info.p_uid = 0;
+		info.fainted = false;
+		info.pendingEvolution.clear();
+		if (const PokemonType* pokemonType = g_pokemons.getPokemonType(info.name)) {
+			info.stats = calculatePokemonStats(pokemonType->info.base_stats, info.level, info.ivs, info.evs, info.nature);
+			info.maxHealth = std::max<int32_t>(1, info.stats.hp);
+		}
+		info.health = info.maxHealth;
+		virtualPokeball->setPokemonInfo(std::move(info));
+		duelPokeballs[slot - CONST_SLOT_POKEBALL1] = virtualPokeball;
+		hasPokemon = true;
+	}
+	return hasPokemon;
+}
+
+void Player::clearDuelRoster()
+{
+	for (Pokeball*& pokeball : duelPokeballs) {
+		if (!pokeball) {
+			continue;
+		}
+
+		Pokemon* pokemon = pokeball->getPokemon();
+		if (pokemon && !pokemon->isRemoved()) {
+			if (activePokemon == pokeball) {
+				activePokemon = nullptr;
+			}
+			g_pokemons.executeAbilityRecall(pokemon, this, false);
+			pokemon->leaveAbilityCombat();
+			g_game.removeCreature(pokemon, false);
+			pokeball->setPokemon(nullptr);
+		}
+		g_game.ReleaseItem(pokeball);
+		pokeball = nullptr;
+	}
+}
+
+Pokeball* Player::getDuelPokeball(uint16_t inventorySlot) const
+{
+	if (inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
+		return nullptr;
+	}
+	return duelPokeballs[inventorySlot - CONST_SLOT_POKEBALL1];
+}
+
+Pokeball* Player::resolveDuelPokeball(Pokeball* pokeball) const
+{
+	if (!isInDuel() || !pokeball) {
+		return pokeball;
+	}
+	if (isDuelPokeball(pokeball)) {
+		return pokeball;
+	}
+	const uint16_t slot = getInventoryPokeballSlot(pokeball);
+	return slot == 0 ? nullptr : getDuelPokeball(slot);
+}
+
+bool Player::isDuelPokeball(const Pokeball* pokeball) const
+{
+	return pokeball && std::find(duelPokeballs.begin(), duelPokeballs.end(), pokeball) != duelPokeballs.end();
+}
+
+uint16_t Player::getDuelPokeballSlot(const Pokeball* pokeball) const
+{
+	const auto it = std::find(duelPokeballs.begin(), duelPokeballs.end(), pokeball);
+	return it == duelPokeballs.end() ? 0 :
+		static_cast<uint16_t>(CONST_SLOT_POKEBALL1 + std::distance(duelPokeballs.begin(), it));
+}
+
+uint16_t Player::getInventoryPokeballSlot(const Pokeball* pokeball) const
+{
+	const auto it = std::find(std::begin(inventory), std::end(inventory), pokeball);
+	if (it == std::end(inventory)) {
+		return 0;
+	}
+	const uint16_t slot = static_cast<uint16_t>(std::distance(std::begin(inventory), it));
+	return slot >= CONST_SLOT_POKEBALL1 && slot <= CONST_SLOT_POKEBALL6 ? slot : 0;
+}
+
+uint8_t Player::getDuelTeamMask() const
+{
+	uint8_t mask = 0;
+	for (size_t index = 0; index < duelPokeballs.size(); ++index) {
+		if (duelPokeballs[index]) {
+			mask |= static_cast<uint8_t>(1U << index);
+		}
+	}
+	return mask;
+}
+
+uint8_t Player::getDuelAliveMask() const
+{
+	uint8_t mask = 0;
+	for (size_t index = 0; index < duelPokeballs.size(); ++index) {
+		if (duelPokeballs[index] && !duelPokeballs[index]->isPokemonFainted()) {
+			mask |= static_cast<uint8_t>(1U << index);
+		}
+	}
+	return mask;
+}
+
+uint8_t Player::getDuelActiveSlot() const
+{
+	const uint16_t slot = getDuelPokeballSlot(activePokemon);
+	return slot == 0 ? 0 : static_cast<uint8_t>(slot - CONST_SLOT_POKEBALL1 + 1);
+}
+
+void Player::sendRealPokemonRoster()
+{
+	if (!client) {
+		return;
+	}
+	for (uint16_t slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; ++slot) {
+		Item* item = getInventoryItem(static_cast<slots_t>(slot));
+		Pokeball* pokeball = item ? item->getPokeball() : nullptr;
+		if (pokeball) {
+			client->sendPokemonInfo(slot, pokeball->getPokemonInfo(), activePokemon == pokeball);
+		}
+	}
 }
 
 bool Player::setPokemonMoveSlots(uint16_t inventorySlot, const std::array<uint16_t, 4>& moveIds)
 {
+	if (isInDuel()) {
+		sendCancelMessage("You cannot change Pokemon moves during a duel.");
+		return false;
+	}
 	if (inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
 		return false;
 	}
@@ -4106,6 +4265,18 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 	if (!pokeball)
 		return;
 
+	if (isInDuel()) {
+		pokeball = resolveDuelPokeball(pokeball);
+		if (!pokeball) {
+			sendCancelMessage("That Pokemon is not available in this duel.");
+			return;
+		}
+		if (!death && activePokemon == pokeball) {
+			sendCancelMessage("Select another Pokemon before recalling your active duel Pokemon.");
+			return;
+		}
+	}
+
 	const bool forcedRecall = pz || death;
 
 	if (pokeball->isPokemonFainted() && !death)
@@ -4170,6 +4341,9 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 	}
 
 	pokeball->setPokemon(pokemon);
+	if (isInDuel() && isDuelPokeball(pokeball)) {
+		pokemon->setDuelPokemon(true);
+	}
 	
 	pokemon->setMaster(this);
 
@@ -4194,11 +4368,16 @@ void Player::goback(Pokeball* pokeball, bool pz, bool death)
 	pokemonInfo.moves = pokemon->getMoves();
 	pokeball->setPokemonInfo(pokemonInfo);
 
-	auto idx = std::find(std::begin(inventory), std::end(inventory), pokeball);
-	if (idx != std::end(inventory))
-	{
-		auto index = std::distance(std::begin(inventory), idx);
-		client->sendPokemonInfo(index, pokeball->getPokemonInfo(), true);
+	const uint16_t duelSlot = getDuelPokeballSlot(pokeball);
+	if (duelSlot != 0) {
+		client->sendPokemonInfo(duelSlot, pokeball->getPokemonInfo(), true);
+		g_game.sendDuelState(duelSessionId);
+	} else {
+		auto idx = std::find(std::begin(inventory), std::end(inventory), pokeball);
+		if (idx != std::end(inventory)) {
+			auto index = std::distance(std::begin(inventory), idx);
+			client->sendPokemonInfo(index, pokeball->getPokemonInfo(), true);
+		}
 	}
 }
 

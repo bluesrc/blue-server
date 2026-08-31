@@ -701,6 +701,7 @@ void Creature::onDeath()
 			death(lastHitCreature);
 			pokeball->setPokemonFainted();
 			player->goback(pokeball, false, true);
+			g_game.onDuelPokemonFainted(player);
 			return;
 		}
 		setMaster(nullptr);

@@ -215,6 +215,9 @@ ReturnValue Combat::canTargetCreature(Player* attacker, Creature* target)
 	if (attacker == target) {
 		return RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER;
 	}
+	if (attacker->isInDuel() && !g_game.canSelectDuelTarget(attacker, target)) {
+		return target->getPlayer() ? RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER : RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
+	}
 
 	if (!attacker->hasFlag(PlayerFlag_IgnoreProtectionZone)) {
 		//pz-zone
@@ -240,7 +243,7 @@ ReturnValue Combat::canTargetCreature(Player* attacker, Creature* target)
 		// Selecting an opposing Pokemon is how the trainer commands the active
 		// Pokemon. The trainer still cannot deal damage directly.
 		if (target->getPlayer() || targetController == attacker ||
-				!isInControlledBattleZone(attacker, target)) {
+				(!isInControlledBattleZone(attacker, target) && !g_game.canSelectDuelTarget(attacker, target))) {
 			return target->getPlayer() ? RETURNVALUE_YOUMAYNOTATTACKTHISPLAYER : RETURNVALUE_YOUMAYNOTATTACKTHISCREATURE;
 		}
 
@@ -255,6 +258,9 @@ ReturnValue Combat::canTargetCreature(Player* attacker, Creature* target)
 
 ReturnValue Combat::canDoCombat(Creature* caster, Tile* tile, bool aggressive)
 {
+	if (caster && !g_game.isDuelTileAllowed(caster, tile->getPosition())) {
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
 	if (tile->hasProperty(CONST_PROP_BLOCKPROJECTILE)) {
 		return RETURNVALUE_NOTENOUGHROOM;
 	}
@@ -298,6 +304,13 @@ bool Combat::isInControlledBattleZone(const Creature* attacker, const Creature* 
 
 bool Combat::canEngagePlayerControlledTarget(const Creature* attacker, const Creature* target)
 {
+	const Pokemon* attackerPokemon = attacker ? attacker->getPokemon() : nullptr;
+	const Pokemon* targetPokemon = target ? target->getPokemon() : nullptr;
+	if ((attackerPokemon && attackerPokemon->isDuelPokemon()) ||
+			(targetPokemon && targetPokemon->isDuelPokemon())) {
+		return g_game.areDuelOpponents(attacker, target);
+	}
+
 	const Player* attackerController = getPlayerController(attacker);
 	const Player* targetController = getPlayerController(target);
 	if (!attackerController || !targetController) {
@@ -472,7 +485,8 @@ CallBack* Combat::getCallback(CallBackParam_t key)
 
 void Combat::combatTileEffects(const SpectatorVec& spectators, Creature* caster, Tile* tile, const CombatParams& params)
 {
-	if (params.itemId != 0) {
+	const Pokemon* casterPokemon = caster ? caster->getPokemon() : nullptr;
+	if (params.itemId != 0 && (!casterPokemon || !casterPokemon->isDuelPokemon())) {
 		uint16_t itemId = params.itemId;
 		switch (itemId) {
 			case ITEM_FIREFIELD_PERSISTENT_FULL:

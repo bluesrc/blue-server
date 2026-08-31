@@ -46,6 +46,16 @@ static constexpr uint8_t PLAYER_BACKPACK_CONTAINER_ID = 0x0D;
 static constexpr uint8_t TRADE_BACKPACK_CONTAINER_ID = 0x0E;
 static constexpr uint8_t PLAYER_LOOT_BAG_CONTAINER_ID = 0x0C;
 static constexpr uint8_t SECONDARY_LOOT_BAG_CONTAINER_ID = 0x0B;
+static constexpr int32_t DUEL_INVITE_DURATION = 30000;
+static constexpr int32_t DUEL_DURATION = 10 * 60 * 1000;
+static constexpr int32_t DUEL_ARENA_RADIUS = 5;
+
+static bool isSafeDuelPokemonTile(const Tile* tile)
+{
+	return tile && tile->getGround() && !tile->hasFlag(TILESTATE_PROTECTIONZONE) &&
+		!tile->hasFlag(TILESTATE_FLOORCHANGE) && !tile->hasFlag(TILESTATE_TELEPORT) &&
+		!tile->getTeleportItem();
+}
 
 static bool isLootBagCylinder(const Player* player, const Cylinder* cylinder)
 {
@@ -637,6 +647,10 @@ void Game::playerMoveThing(uint32_t playerId, const Position& fromPos,
 	if (!player) {
 		return;
 	}
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Objects and creatures cannot be moved during a duel.");
+		return;
+	}
 
 	uint8_t fromIndex = 0;
 	if (fromPos.x == 0xFFFF) {
@@ -831,6 +845,12 @@ ReturnValue Game::internalMoveCreature(Creature* creature, Direction direction, 
 
 ReturnValue Game::internalMoveCreature(Creature& creature, Tile& toTile, uint32_t flags /*= 0*/)
 {
+	if (!canMoveInDuel(&creature, toTile.getPosition())) {
+		if (Player* player = creature.getPlayer()) {
+			player->sendCancelMessage("You cannot move during a duel.");
+		}
+		return RETURNVALUE_NOTPOSSIBLE;
+	}
 	//check if we can move the creature to the destination
 	ReturnValue ret = toTile.queryAdd(0, creature, 1, flags);
 	if (ret != RETURNVALUE_NOERROR) {
@@ -1890,6 +1910,9 @@ ReturnValue Game::internalTeleport(Thing* thing, const Position& newPos, bool pu
 	}
 
 	if (Creature* creature = thing->getCreature()) {
+		if (!canMoveInDuel(creature, newPos)) {
+			return RETURNVALUE_NOTPOSSIBLE;
+		}
 		ReturnValue ret = toTile->queryAdd(0, *creature, 1, FLAG_NOLIMIT);
 		if (ret != RETURNVALUE_NOERROR) {
 			return ret;
@@ -1945,6 +1968,10 @@ void Game::playerEquipItem(uint32_t playerId, uint16_t spriteId)
 {
 	Player* player = getPlayerByID(playerId);
 	if (!player) {
+		return;
+	}
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Equipment cannot be changed during a duel.");
 		return;
 	}
 
@@ -2189,6 +2216,10 @@ void Game::playerUseItemEx(uint32_t playerId, const Position& fromPos, uint8_t f
 	if (!player) {
 		return;
 	}
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Items cannot be used during a duel.");
+		return;
+	}
 
 	bool isHotkey = (fromPos.x == 0xFFFF && fromPos.y == 0 && fromPos.z == 0);
 	if (isHotkey && !g_config.getBoolean(ConfigManager::AIMBOT_HOTKEY_ENABLED)) {
@@ -2290,6 +2321,10 @@ void Game::playerUseItem(uint32_t playerId, const Position& pos, uint8_t stackPo
 		player->sendCancelMessage(RETURNVALUE_CANNOTUSETHISOBJECT);
 		return;
 	}
+	if (player->isInDuel() && !item->getPokeball()) {
+		player->sendCancelMessage("Only duel Pokemon can be selected during a duel.");
+		return;
+	}
 
 	ReturnValue ret = g_actions->canUse(player, pos);
 	if (ret != RETURNVALUE_NOERROR) {
@@ -2337,6 +2372,10 @@ void Game::playerUseWithCreature(uint32_t playerId, const Position& fromPos, uin
 {
 	Player* player = getPlayerByID(playerId);
 	if (!player) {
+		return;
+	}
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Items cannot be used during a duel.");
 		return;
 	}
 
@@ -2839,6 +2878,10 @@ void Game::playerRequestTrade(uint32_t playerId, const Position& pos, uint8_t st
 
 bool Game::internalStartTrade(Player* player, Player* tradePartner, Item* tradeItem)
 {
+	if (player->isInDuel() || tradePartner->isInDuel()) {
+		player->sendCancelMessage("Trading is not available during a duel.");
+		return false;
+	}
 	if (player->tradeState != TRADE_NONE && !(player->tradeState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner)) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREALREADYTRADING);
 		return false;
@@ -2878,6 +2921,10 @@ void Game::playerRequestTradeInvite(uint32_t playerId, uint32_t tradePlayerId)
 		if (player) {
 			player->sendCancelMessage("Select a player to trade with.");
 		}
+		return;
+	}
+	if (player->isInDuel() || tradePartner->isInDuel()) {
+		player->sendCancelMessage("Trading is not available during a duel.");
 		return;
 	}
 
@@ -2939,6 +2986,440 @@ void Game::playerAnswerTradeInvite(uint32_t playerId, uint32_t tradePlayerId, bo
 	}
 
 	activateTradeSession(player, tradePartner);
+}
+
+const DuelSession* Game::getDuelSession(uint32_t duelSessionId) const
+{
+	const auto it = duelSessions.find(duelSessionId);
+	return it == duelSessions.end() ? nullptr : &it->second;
+}
+
+void Game::clearDuelInvites(Player* player, bool notifyPartner)
+{
+	if (!player) {
+		return;
+	}
+	const uint32_t fromId = player->duelInviteFromId;
+	const uint32_t toId = player->duelInviteToId;
+	player->duelInviteFromId = 0;
+	player->duelInviteToId = 0;
+	player->duelInviteExpiresAt = 0;
+
+	for (const uint32_t partnerId : {fromId, toId}) {
+		Player* partner = getPlayerByID(partnerId);
+		if (!partner) {
+			continue;
+		}
+		if (partner->duelInviteFromId == player->getID()) {
+			partner->duelInviteFromId = 0;
+		}
+		if (partner->duelInviteToId == player->getID()) {
+			partner->duelInviteToId = 0;
+		}
+		partner->duelInviteExpiresAt = 0;
+		if (notifyPartner) {
+			partner->sendDuelExtendedMessage("C");
+		}
+	}
+	player->sendDuelExtendedMessage("C");
+}
+
+void Game::expireDuelInvite(uint32_t challengerId, uint32_t opponentId, int64_t expiresAt)
+{
+	Player* challenger = getPlayerByID(challengerId);
+	Player* opponent = getPlayerByID(opponentId);
+	if (!challenger || !opponent || challenger->duelInviteToId != opponentId ||
+			opponent->duelInviteFromId != challengerId || challenger->duelInviteExpiresAt != expiresAt ||
+			opponent->duelInviteExpiresAt != expiresAt) {
+		return;
+	}
+	clearDuelInvites(opponent);
+	challenger->sendTextMessage(MESSAGE_STATUS_SMALL, "The duel invitation expired.");
+}
+
+void Game::playerRequestDuelInvite(uint32_t playerId, uint32_t duelPlayerId)
+{
+	Player* player = getPlayerByID(playerId);
+	Player* opponent = getPlayerByID(duelPlayerId);
+	if (!player || !opponent || player == opponent) {
+		if (player) {
+			player->sendCancelMessage("Select another player to duel.");
+		}
+		return;
+	}
+	if (player->isInDuel() || opponent->isInDuel()) {
+		player->sendCancelMessage("One of the players is already in a duel.");
+		return;
+	}
+	const int64_t now = OTSYS_TIME();
+	if (player->duelInviteExpiresAt != 0 && player->duelInviteExpiresAt < now) {
+		clearDuelInvites(player, false);
+	}
+	if (opponent->duelInviteExpiresAt != 0 && opponent->duelInviteExpiresAt < now) {
+		clearDuelInvites(opponent, false);
+	}
+	if (player->tradeSessionActive || opponent->tradeSessionActive ||
+			player->tradeState != TRADE_NONE || opponent->tradeState != TRADE_NONE) {
+		player->sendCancelMessage("A duel cannot be started during a trade.");
+		return;
+	}
+	if (!Position::areInRange<4, 4, 0>(opponent->getPosition(), player->getPosition()) ||
+			!canThrowObjectTo(opponent->getPosition(), player->getPosition(), true, true)) {
+		player->sendCancelMessage(RETURNVALUE_DESTINATIONOUTOFREACH);
+		return;
+	}
+	if (player->duelInviteFromId != 0 || player->duelInviteToId != 0 ||
+			opponent->duelInviteFromId != 0 || opponent->duelInviteToId != 0) {
+		player->sendCancelMessage("One of the players already has a pending duel invitation.");
+		return;
+	}
+
+	player->duelInviteToId = opponent->getID();
+	opponent->duelInviteFromId = player->getID();
+	const int64_t expiresAt = OTSYS_TIME() + DUEL_INVITE_DURATION;
+	player->duelInviteExpiresAt = expiresAt;
+	opponent->duelInviteExpiresAt = expiresAt;
+	player->sendTextMessage(MESSAGE_STATUS_SMALL,
+		fmt::format("Duel invitation sent to {:s}.", opponent->getName()));
+	opponent->sendDuelExtendedMessage(fmt::format("Q;{:d};{:s}", player->getID(), player->getName()));
+	g_scheduler.addEvent(createSchedulerTask(DUEL_INVITE_DURATION,
+		std::bind(&Game::expireDuelInvite, this, player->getID(), opponent->getID(), expiresAt)));
+}
+
+void Game::playerAnswerDuelInvite(uint32_t playerId, uint32_t duelPlayerId, bool accept)
+{
+	Player* player = getPlayerByID(playerId);
+	Player* challenger = getPlayerByID(duelPlayerId);
+	if (!player || !challenger || player->duelInviteFromId != challenger->getID() ||
+			challenger->duelInviteToId != player->getID()) {
+		return;
+	}
+	if (!accept || player->duelInviteExpiresAt < OTSYS_TIME() ||
+			challenger->duelInviteExpiresAt < OTSYS_TIME()) {
+		clearDuelInvites(player);
+		if (!accept) {
+			challenger->sendTextMessage(MESSAGE_STATUS_SMALL, "The duel invitation was rejected.");
+		}
+		return;
+	}
+
+	clearDuelInvites(player, false);
+	if (!startDuel(challenger, player)) {
+		challenger->sendDuelExtendedMessage("C");
+		player->sendDuelExtendedMessage("C");
+	}
+}
+
+bool Game::startDuel(Player* first, Player* second)
+{
+	if (!first || !second || first == second || first->isInDuel() || second->isInDuel() ||
+			first->tradeSessionActive || second->tradeSessionActive ||
+			first->getZone() == ZONE_PROTECTION || second->getZone() == ZONE_PROTECTION ||
+			first->isCombatLocked() || second->isCombatLocked() ||
+			!Position::areInRange<4, 4, 0>(first->getPosition(), second->getPosition()) ||
+			!canThrowObjectTo(first->getPosition(), second->getPosition(), true, true)) {
+		if (first) {
+			first->sendCancelMessage("Both players must be nearby, outside protection zones and out of combat.");
+		}
+		if (second) {
+			second->sendCancelMessage("Both players must be nearby, outside protection zones and out of combat.");
+		}
+		return false;
+	}
+
+	DuelSession session;
+	do {
+		session.id = ++nextDuelSessionId;
+	} while (session.id == 0 || duelSessions.find(session.id) != duelSessions.end());
+	session.firstPlayerId = first->getID();
+	session.secondPlayerId = second->getID();
+	session.firstReturnPosition = first->getPosition();
+	session.secondReturnPosition = second->getPosition();
+	session.firstPreviousActiveSlot = first->getInventoryPokeballSlot(first->getActivePokemon());
+	session.secondPreviousActiveSlot = second->getInventoryPokeballSlot(second->getActivePokemon());
+	session.expiresAt = OTSYS_TIME() + DUEL_DURATION;
+	const Position firstPosition = session.firstReturnPosition;
+	const Position secondPosition = session.secondReturnPosition;
+	const int32_t centerX = (static_cast<int32_t>(firstPosition.x) + secondPosition.x) / 2;
+	const int32_t centerY = (static_cast<int32_t>(firstPosition.y) + secondPosition.y) / 2;
+	session.minPosition = Position(static_cast<uint16_t>(std::max<int32_t>(0, centerX - DUEL_ARENA_RADIUS)),
+		static_cast<uint16_t>(std::max<int32_t>(0, centerY - DUEL_ARENA_RADIUS)), firstPosition.z);
+	session.maxPosition = Position(static_cast<uint16_t>(std::min<int32_t>(UINT16_MAX, centerX + DUEL_ARENA_RADIUS)),
+		static_cast<uint16_t>(std::min<int32_t>(UINT16_MAX, centerY + DUEL_ARENA_RADIUS)), firstPosition.z);
+	for (const auto& entry : duelSessions) {
+		const DuelSession& existing = entry.second;
+		if (!existing.finishing && existing.minPosition.z == session.minPosition.z &&
+				session.minPosition.x <= existing.maxPosition.x && session.maxPosition.x >= existing.minPosition.x &&
+				session.minPosition.y <= existing.maxPosition.y && session.maxPosition.y >= existing.minPosition.y) {
+			first->sendCancelMessage("This area overlaps another duel.");
+			second->sendCancelMessage("This area overlaps another duel.");
+			return false;
+		}
+	}
+
+	if (!isSafeDuelPokemonTile(first->getTile()) || !isSafeDuelPokemonTile(second->getTile())) {
+		first->sendCancelMessage("Both players must stand on safe tiles to start a duel.");
+		second->sendCancelMessage("Both players must stand on safe tiles to start a duel.");
+		return false;
+	}
+
+	first->stopWalk();
+	second->stopWalk();
+	if (first->getActivePokemon()) {
+		first->goback(first->getActivePokemon(), true);
+	}
+	if (second->getActivePokemon()) {
+		second->goback(second->getActivePokemon(), true);
+	}
+
+	first->setDuelSessionId(session.id);
+	second->setDuelSessionId(session.id);
+	if (!first->createDuelRoster() || !second->createDuelRoster()) {
+		first->clearDuelRoster();
+		second->clearDuelRoster();
+		first->setDuelSessionId(0);
+		second->setDuelSessionId(0);
+		first->sendRealPokemonRoster();
+		second->sendRealPokemonRoster();
+		if (session.firstPreviousActiveSlot != 0) {
+			Item* item = first->getInventoryItem(static_cast<slots_t>(session.firstPreviousActiveSlot));
+			if (Pokeball* pokeball = item ? item->getPokeball() : nullptr) {
+				first->goback(pokeball, true);
+			}
+		}
+		if (session.secondPreviousActiveSlot != 0) {
+			Item* item = second->getInventoryItem(static_cast<slots_t>(session.secondPreviousActiveSlot));
+			if (Pokeball* pokeball = item ? item->getPokeball() : nullptr) {
+				second->goback(pokeball, true);
+			}
+		}
+		first->gobackTicks = 0;
+		second->gobackTicks = 0;
+		first->sendCancelMessage("A duel team could not be created.");
+		second->sendCancelMessage("A duel team could not be created.");
+		return false;
+	}
+
+	duelSessions.emplace(session.id, session);
+	for (uint16_t slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; ++slot) {
+		if (Pokeball* pokeball = first->getDuelPokeball(slot)) {
+			first->updatePokemonInfo(pokeball);
+		}
+		if (Pokeball* pokeball = second->getDuelPokeball(slot)) {
+			second->updatePokemonInfo(pokeball);
+		}
+	}
+
+	const auto summonFirst = [](Player* player) {
+		for (uint16_t slot = CONST_SLOT_POKEBALL1; slot <= CONST_SLOT_POKEBALL6; ++slot) {
+			if (Pokeball* pokeball = player->getDuelPokeball(slot)) {
+				player->goback(pokeball, true);
+				return;
+			}
+		}
+	};
+	summonFirst(first);
+	summonFirst(second);
+	if (!first->getActivePokemon() || !first->isDuelPokeball(first->getActivePokemon()) ||
+			!second->getActivePokemon() || !second->isDuelPokeball(second->getActivePokemon())) {
+		finishDuel(session.id, 0, "The duel could not place both teams.");
+		return false;
+	}
+
+	const std::string startMessage = fmt::format(
+		"S;{:d};{:d};{:d};{:d};{:d};{:d};{:d};{:s};{:d};{:d};{:d};{:d};{:s};{:d};{:d};{:d}",
+		session.id, session.minPosition.x, session.minPosition.y, session.minPosition.z,
+		session.maxPosition.x, session.maxPosition.y,
+		first->getID(), first->getName(), first->getDuelTeamMask(), first->getDuelAliveMask(), first->getDuelActiveSlot(),
+		second->getID(), second->getName(), second->getDuelTeamMask(), second->getDuelAliveMask(), second->getDuelActiveSlot());
+	first->sendDuelExtendedMessage(startMessage);
+	second->sendDuelExtendedMessage(startMessage);
+	sendDuelState(session.id);
+	first->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Duel against {:s} started.", second->getName()));
+	second->sendTextMessage(MESSAGE_EVENT_ADVANCE, fmt::format("Duel against {:s} started.", first->getName()));
+
+	g_scheduler.addEvent(createSchedulerTask(DUEL_DURATION,
+		std::bind(&Game::finishDuel, this, session.id, 0, std::string("The duel ended by time limit."), 0)));
+	return true;
+}
+
+void Game::sendDuelState(uint32_t duelSessionId)
+{
+	const DuelSession* session = getDuelSession(duelSessionId);
+	if (!session || session->finishing) {
+		return;
+	}
+	Player* first = getPlayerByID(session->firstPlayerId);
+	Player* second = getPlayerByID(session->secondPlayerId);
+	if (!first || !second) {
+		return;
+	}
+	const std::string firstState = fmt::format("U;{:d};{:d};{:d};{:d}", first->getID(),
+		first->getDuelTeamMask(), first->getDuelAliveMask(), first->getDuelActiveSlot());
+	const std::string secondState = fmt::format("U;{:d};{:d};{:d};{:d}", second->getID(),
+		second->getDuelTeamMask(), second->getDuelAliveMask(), second->getDuelActiveSlot());
+	first->sendDuelExtendedMessage(firstState);
+	first->sendDuelExtendedMessage(secondState);
+	second->sendDuelExtendedMessage(firstState);
+	second->sendDuelExtendedMessage(secondState);
+}
+
+void Game::onDuelPokemonFainted(Player* player)
+{
+	if (!player || !player->isInDuel()) {
+		return;
+	}
+	const uint32_t sessionId = player->getDuelSessionId();
+	sendDuelState(sessionId);
+	if (player->getDuelAliveMask() != 0) {
+		return;
+	}
+	const DuelSession* session = getDuelSession(sessionId);
+	if (!session) {
+		return;
+	}
+	const uint32_t winnerId = session->firstPlayerId == player->getID()
+		? session->secondPlayerId : session->firstPlayerId;
+	finishDuel(sessionId, winnerId, fmt::format("{:s} has no Pokemon left.", player->getName()));
+}
+
+void Game::playerForfeitDuel(uint32_t playerId)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player || !player->isInDuel()) {
+		return;
+	}
+	const DuelSession* session = getDuelSession(player->getDuelSessionId());
+	if (!session) {
+		return;
+	}
+	const uint32_t winnerId = session->firstPlayerId == playerId ? session->secondPlayerId : session->firstPlayerId;
+	finishDuel(session->id, winnerId, fmt::format("{:s} forfeited the duel.", player->getName()));
+}
+
+void Game::finishDuelForPlayer(Player* player, bool disconnected)
+{
+	if (!player) {
+		return;
+	}
+	clearDuelInvites(player);
+	if (!player->isInDuel()) {
+		return;
+	}
+	const DuelSession* session = getDuelSession(player->getDuelSessionId());
+	if (!session) {
+		player->clearDuelRoster();
+		player->setDuelSessionId(0);
+		return;
+	}
+	const uint32_t winnerId = session->firstPlayerId == player->getID()
+		? session->secondPlayerId : session->firstPlayerId;
+	finishDuel(session->id, winnerId,
+		fmt::format("{:s} disconnected from the duel.", player->getName()),
+		disconnected ? player->getID() : 0);
+}
+
+void Game::finishDuel(uint32_t duelSessionId, uint32_t winnerPlayerId, const std::string& reason,
+	uint32_t disconnectedPlayerId)
+{
+	auto sessionIt = duelSessions.find(duelSessionId);
+	if (sessionIt == duelSessions.end() || sessionIt->second.finishing) {
+		return;
+	}
+	sessionIt->second.finishing = true;
+	const DuelSession session = sessionIt->second;
+	Player* first = getPlayerByID(session.firstPlayerId);
+	Player* second = getPlayerByID(session.secondPlayerId);
+
+	const auto restorePlayer = [&](Player* player, const Position& returnPosition, uint16_t previousActiveSlot) {
+		if (!player) {
+			return;
+		}
+		player->setAttackedCreature(nullptr);
+		player->setFollowCreature(nullptr);
+		player->clearDuelRoster();
+		player->setDuelSessionId(0);
+		player->pokemonCombatTicks = 0;
+		player->gobackTicks = 0;
+		if (player->getID() == disconnectedPlayerId) {
+			return;
+		}
+		internalTeleport(player, returnPosition, true);
+		if (previousActiveSlot != 0) {
+			Item* item = player->getInventoryItem(static_cast<slots_t>(previousActiveSlot));
+			if (Pokeball* pokeball = item ? item->getPokeball() : nullptr) {
+				player->goback(pokeball, true);
+			}
+		}
+		player->gobackTicks = 0;
+		player->sendRealPokemonRoster();
+	};
+
+	restorePlayer(first, session.firstReturnPosition, session.firstPreviousActiveSlot);
+	restorePlayer(second, session.secondReturnPosition, session.secondPreviousActiveSlot);
+
+	const std::string finishMessage = fmt::format("F;{:d};{:s}", winnerPlayerId, reason);
+	if (first && first->getID() != disconnectedPlayerId) {
+		first->sendDuelExtendedMessage(finishMessage);
+		first->sendTextMessage(MESSAGE_EVENT_ADVANCE, reason);
+	}
+	if (second && second->getID() != disconnectedPlayerId) {
+		second->sendDuelExtendedMessage(finishMessage);
+		second->sendTextMessage(MESSAGE_EVENT_ADVANCE, reason);
+	}
+	duelSessions.erase(sessionIt);
+}
+
+bool Game::areDuelOpponents(const Creature* attacker, const Creature* target) const
+{
+	const Pokemon* attackerPokemon = attacker ? attacker->getPokemon() : nullptr;
+	const Pokemon* targetPokemon = target ? target->getPokemon() : nullptr;
+	if (!attackerPokemon || !targetPokemon || !attackerPokemon->isDuelPokemon() || !targetPokemon->isDuelPokemon()) {
+		return false;
+	}
+	const Player* attackerPlayer = attackerPokemon->getMaster() ? attackerPokemon->getMaster()->getPlayer() : nullptr;
+	const Player* targetPlayer = targetPokemon->getMaster() ? targetPokemon->getMaster()->getPlayer() : nullptr;
+	return attackerPlayer && targetPlayer && attackerPlayer != targetPlayer && attackerPlayer->isInDuel() &&
+		attackerPlayer->getDuelSessionId() == targetPlayer->getDuelSessionId() &&
+		getDuelSession(attackerPlayer->getDuelSessionId()) != nullptr;
+}
+
+bool Game::canSelectDuelTarget(const Player* attacker, const Creature* target) const
+{
+	const Pokemon* targetPokemon = target ? target->getPokemon() : nullptr;
+	const Player* targetPlayer = targetPokemon && targetPokemon->getMaster()
+		? targetPokemon->getMaster()->getPlayer() : nullptr;
+	return attacker && targetPokemon && targetPokemon->isDuelPokemon() && targetPlayer && attacker != targetPlayer &&
+		attacker->isInDuel() && attacker->getDuelSessionId() == targetPlayer->getDuelSessionId() &&
+		getDuelSession(attacker->getDuelSessionId()) != nullptr;
+}
+
+bool Game::canMoveInDuel(const Creature* creature, const Position& destination) const
+{
+	const Player* player = creature ? creature->getPlayer() : nullptr;
+	if (player && player->isInDuel()) {
+		return destination == creature->getPosition();
+	}
+	if (!player) {
+		const Pokemon* pokemon = creature ? creature->getPokemon() : nullptr;
+		if (!pokemon || !pokemon->isDuelPokemon() || !pokemon->getMaster()) {
+			return true;
+		}
+		player = pokemon->getMaster()->getPlayer();
+	}
+	if (!player || !player->isInDuel()) {
+		return true;
+	}
+	const DuelSession* session = getDuelSession(player->getDuelSessionId());
+	return session && destination.z == session->minPosition.z && isSafeDuelPokemonTile(map.getTile(destination)) &&
+		destination.x >= session->minPosition.x && destination.x <= session->maxPosition.x &&
+		destination.y >= session->minPosition.y && destination.y <= session->maxPosition.y;
+}
+
+bool Game::isDuelTileAllowed(const Creature* creature, const Position& position) const
+{
+	const Pokemon* pokemon = creature ? creature->getPokemon() : nullptr;
+	return !pokemon || !pokemon->isDuelPokemon() || canMoveInDuel(creature, position);
 }
 
 bool Game::activateTradeSession(Player* player, Player* tradePartner)
@@ -4520,6 +5001,12 @@ void Game::combatGetTypeInfo(CombatType_t combatType, Creature* target, TextColo
 
 bool Game::combatChangeHealth(Creature* attacker, Creature* target, CombatDamage& damage)
 {
+	if ((damage.primary.value < 0 || damage.secondary.value < 0)) {
+		const Player* targetPlayer = target ? target->getPlayer() : nullptr;
+		if (targetPlayer && targetPlayer->isInDuel()) {
+			return false;
+		}
+	}
 	if (attacker && (damage.primary.value < 0 || damage.secondary.value < 0) &&
 			!Combat::canEngagePlayerControlledTarget(attacker, target)) {
 		return false;
@@ -5926,6 +6413,7 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	static constexpr uint8_t PLAYER_BACKPACK_EXTENDED_OPCODE = 75;
 	static constexpr uint8_t POKEMON_MOVE_SLOTS_EXTENDED_OPCODE = 76;
 	static constexpr uint8_t POKEMON_HELD_ITEM_EXTENDED_OPCODE = 77;
+	static constexpr uint8_t PLAYER_DUEL_EXTENDED_OPCODE = 78;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
 	static constexpr uint16_t BOX_POKEMON_INFO_SLOT_BASE = 1000;
@@ -6090,6 +6578,29 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		return;
 	}
 
+	if (opcode == PLAYER_DUEL_EXTENDED_OPCODE) {
+		if (buffer == "F") {
+			playerForfeitDuel(playerId);
+			return;
+		}
+
+		const size_t separator = buffer.find(';');
+		if (separator == std::string::npos || separator != 1) {
+			return;
+		}
+		uint64_t value = 0;
+		if (!parseUnsigned(buffer.substr(separator + 1), value) || value > UINT32_MAX) {
+			return;
+		}
+		const uint32_t otherPlayerId = static_cast<uint32_t>(value);
+		if (buffer[0] == 'I') {
+			playerRequestDuelInvite(playerId, otherPlayerId);
+		} else if (buffer[0] == 'Y' || buffer[0] == 'N') {
+			playerAnswerDuelInvite(playerId, otherPlayerId, buffer[0] == 'Y');
+		}
+		return;
+	}
+
 	if (opcode == PLAYER_TRADE_EXTENDED_OPCODE) {
 		if (buffer == "X") {
 			playerCloseTrade(playerId);
@@ -6179,6 +6690,10 @@ void Game::playerEquipPokemonHeldItem(Player* player, uint16_t inventorySlot, co
 	if (!player || inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
 		return;
 	}
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Held items cannot be changed during a duel.");
+		return;
+	}
 	Pokeball* activePokeball = player->getActivePokemon();
 	Pokemon* activePokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
 	if (player->getZone() != ZONE_PROTECTION &&
@@ -6259,6 +6774,10 @@ void Game::playerEquipPokemonHeldItem(Player* player, uint16_t inventorySlot, co
 void Game::playerRemovePokemonHeldItem(Player* player, uint16_t inventorySlot)
 {
 	if (!player || inventorySlot < CONST_SLOT_POKEBALL1 || inventorySlot > CONST_SLOT_POKEBALL6) {
+		return;
+	}
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Held items cannot be changed during a duel.");
 		return;
 	}
 	Pokeball* activePokeball = player->getActivePokemon();
