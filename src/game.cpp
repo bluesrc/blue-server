@@ -6628,6 +6628,35 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 			return;
 		}
 
+		if (buffer.rfind("D;", 0) == 0) {
+			const StringVector parts = explodeString(buffer, ";");
+			uint64_t directionValue = 0;
+			uint64_t viewportXValue = 0;
+			uint64_t viewportYValue = 0;
+			if (parts.size() != 4 || parts[0] != "D" ||
+					!parseUnsigned(parts[1], directionValue) || directionValue > DIRECTION_WEST ||
+					!parseUnsigned(parts[2], viewportXValue) || viewportXValue == 0 || viewportXValue > Map::maxClientViewportX ||
+					!parseUnsigned(parts[3], viewportYValue) || viewportYValue == 0 || viewportYValue > Map::maxClientViewportY) {
+				return;
+			}
+
+			const Direction direction = static_cast<Direction>(directionValue);
+			const Position targetPosition = getNextPosition(direction, pokemon->getPosition());
+			const uint8_t viewportX = static_cast<uint8_t>(viewportXValue);
+			const uint8_t viewportY = static_cast<uint8_t>(viewportYValue);
+			if (targetPosition.z != player->getPosition().z ||
+					!Position::areInRange(player->getPosition(), targetPosition, viewportX, viewportY) ||
+					!pokemon->orderStep(direction, viewportX, viewportY)) {
+				return;
+			}
+
+			if (player->getAttackedCreature()) {
+				player->setAttackedCreature(nullptr);
+				player->sendCancelTarget();
+			}
+			return;
+		}
+
 		if (buffer.rfind("M;", 0) != 0) {
 			return;
 		}

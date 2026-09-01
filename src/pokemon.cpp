@@ -2855,6 +2855,14 @@ void Pokemon::onWalk()
 	Creature::onWalk();
 }
 
+void Pokemon::onWalk(Direction& direction)
+{
+	// A directly controlled step must keep the direction chosen by the player.
+	if (orderType != PokemonOrderType::STAY) {
+		Creature::onWalk(direction);
+	}
+}
+
 void Pokemon::onWalkComplete()
 {
 	// Continue walking to spawn
@@ -2895,6 +2903,33 @@ bool Pokemon::orderMoveTo(const Position& targetPosition)
 	} else {
 		orderFollow();
 	}
+	return true;
+}
+
+bool Pokemon::orderStep(Direction direction, uint8_t viewportX, uint8_t viewportY)
+{
+	if (!isSummon() || direction > DIRECTION_WEST) {
+		return false;
+	}
+
+	const Position targetPosition = getNextPosition(direction, getPosition());
+	Tile* targetTile = g_game.map.getTile(targetPosition);
+	if (!targetTile || targetTile->hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT) ||
+			!canWalkTo(getPosition(), direction)) {
+		return false;
+	}
+
+	setAttackedCreature(nullptr);
+	setFollowCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::STAY;
+	orderViewportX = viewportX;
+	orderViewportY = viewportY;
+	startAutoWalk(direction);
 	return true;
 }
 
@@ -3037,7 +3072,20 @@ bool Pokemon::getNextStep(Direction& direction, uint32_t& flags)
 	}
 
 	bool result = false;
-	if (!walkingToSpawn && (!followCreature || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
+	if (!walkingToSpawn && isSummon() && orderType == PokemonOrderType::STAY) {
+		randomStepping = false;
+		result = Creature::getNextStep(direction, flags);
+		if (result) {
+			Player* masterPlayer = getMaster() ? getMaster()->getPlayer() : nullptr;
+			const Position nextPosition = getNextPosition(direction, getPosition());
+			if (!masterPlayer || nextPosition.z != masterPlayer->getPosition().z ||
+					!Position::areInRange(masterPlayer->getPosition(), nextPosition, orderViewportX, orderViewportY)) {
+				listWalkDir.clear();
+				return false;
+			}
+			flags |= FLAG_PATHFINDING;
+		}
+	} else if (!walkingToSpawn && (!followCreature || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
 		if (getTimeSinceLastMove() >= 1000) {
 			randomStepping = true;
 			//choose a random direction

@@ -157,6 +157,7 @@ class Pokemon final : public Creature
 		}
 		bool walkToSpawn();
 		void onWalk() override;
+		void onWalk(Direction& direction) override;
 		void onWalkComplete() override;
 		bool getNextStep(Direction& direction, uint32_t& flags) override;
 		void onFollowCreatureComplete(const Creature* creature) override;
@@ -280,6 +281,7 @@ class Pokemon final : public Creature
 		bool isDuelPokemon() const { return duelPokemon; }
 		void setDuelPokemon(bool value) { duelPokemon = value; }
 		bool orderMoveTo(const Position& targetPosition);
+		bool orderStep(Direction direction, uint8_t viewportX, uint8_t viewportY);
 		void orderStay();
 		void orderFollow();
 		PokemonOrderType getOrderType() const { return orderType; }
@@ -343,6 +345,8 @@ class Pokemon final : public Creature
 		bool abilitySpawnProcessed = false;
 		bool duelPokemon = false;
 		PokemonOrderType orderType = PokemonOrderType::FOLLOW;
+		uint8_t orderViewportX = 7;
+		uint8_t orderViewportY = 5;
 		const PokemonMoveType* executingMove = nullptr;
 		PokemonStatusCondition_t pokemonStatus = POKEMON_STATUS_NONE;
 		int64_t pokemonStatusExpiresAt = 0;
