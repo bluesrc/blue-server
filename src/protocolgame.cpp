@@ -1385,6 +1385,7 @@ void ProtocolGame::sendTrainerInfo()
 	msg.addString(player->getGuild() ? player->getGuild()->getName() : std::string());
 	msg.add<uint32_t>(player->getPokedexCount());
 	msg.add<uint64_t>(player->getTotalCaught());
+	msg.addByte(static_cast<uint8_t>(player->getAccountType()));
 	writeToOutputBuffer(msg);
 }
 

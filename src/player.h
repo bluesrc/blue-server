@@ -553,9 +553,6 @@ class Player final : public Creature, public Cylinder
 		void addSkillAdvance(skills_t skill, uint64_t count);
 		void removeSkillTries(skills_t skill, uint64_t count, bool notify = false);
 
-		float getAttackFactor() const override;
-		float getDefenseFactor() const override;
-
 		void addInFightTicks(bool pzlock = false);
 
 		uint64_t getGainedExperience(Creature*) const override { return 0; }

@@ -218,26 +218,6 @@ uint64_t Player::getRequiredSkillTries(skills_t skill, uint16_t level)
 	return static_cast<uint64_t>(progression.base * std::pow(progression.multiplier, level - (MINIMUM_SKILL_LEVEL + 1)));
 }
 
-float Player::getAttackFactor() const
-{
-	switch (fightMode) {
-		case FIGHTMODE_ATTACK: return 1.0f;
-		case FIGHTMODE_BALANCED: return 1.2f;
-		case FIGHTMODE_DEFENSE: return 2.0f;
-		default: return 1.0f;
-	}
-}
-
-float Player::getDefenseFactor() const
-{
-	switch (fightMode) {
-		case FIGHTMODE_ATTACK: return (OTSYS_TIME() - lastAttack) < getAttackSpeed() ? 0.5f : 1.0f;
-		case FIGHTMODE_BALANCED: return (OTSYS_TIME() - lastAttack) < getAttackSpeed() ? 0.75f : 1.0f;
-		case FIGHTMODE_DEFENSE: return 1.0f;
-		default: return 1.0f;
-	}
-}
-
 uint16_t Player::getClientIcons() const
 {
 	uint16_t icons = 0;
