@@ -25,6 +25,12 @@ enum TargetSearchType_t {
 	TARGETSEARCH_NEAREST,
 };
 
+enum class PokemonOrderType : uint8_t {
+	FOLLOW,
+	MOVE,
+	STAY,
+};
+
 enum PokemonBattleStat_t : uint8_t {
 	POKEMON_BATTLE_STAT_ATTACK,
 	POKEMON_BATTLE_STAT_DEFENSE,
@@ -273,6 +279,10 @@ class Pokemon final : public Creature
 		const PokemonMoveType* getExecutingMove() const { return executingMove; }
 		bool isDuelPokemon() const { return duelPokemon; }
 		void setDuelPokemon(bool value) { duelPokemon = value; }
+		bool orderMoveTo(const Position& targetPosition);
+		void orderStay();
+		void orderFollow();
+		PokemonOrderType getOrderType() const { return orderType; }
 
 	private:
 		CreatureHashSet friendList;
@@ -332,6 +342,7 @@ class Pokemon final : public Creature
 		bool processingFriendshipChange = false;
 		bool abilitySpawnProcessed = false;
 		bool duelPokemon = false;
+		PokemonOrderType orderType = PokemonOrderType::FOLLOW;
 		const PokemonMoveType* executingMove = nullptr;
 		PokemonStatusCondition_t pokemonStatus = POKEMON_STATUS_NONE;
 		int64_t pokemonStatusExpiresAt = 0;

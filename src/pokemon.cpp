@@ -2161,7 +2161,21 @@ void Pokemon::onThink(uint32_t interval)
 			addEventWalk();
 
 			if (isSummon()) {
-				if (!attackedCreature) {
+				Creature* masterTarget = getMaster() ? getMaster()->getAttackedCreature() : nullptr;
+				if (masterTarget && orderType == PokemonOrderType::MOVE) {
+					// Attacking can interrupt a movement order, but never a persistent
+					// stay order. Stay is released only by its toggle or a new order.
+					orderType = PokemonOrderType::FOLLOW;
+					stopEventWalk();
+					listWalkDir.clear();
+					hasFollowPath = false;
+				}
+
+				if (orderType == PokemonOrderType::STAY || orderType == PokemonOrderType::MOVE) {
+					if (followCreature) {
+						setFollowCreature(nullptr);
+					}
+				} else if (!attackedCreature) {
 					if (getMaster() && getMaster()->getAttackedCreature()) {
 						//This happens if the pokemon is summoned during combat
 						selectTarget(getMaster()->getAttackedCreature());
@@ -2847,7 +2861,65 @@ void Pokemon::onWalkComplete()
 	if (walkingToSpawn) {
 		walkingToSpawn = false;
 		walkToSpawn();
+	} else if (orderType == PokemonOrderType::MOVE) {
+		orderFollow();
 	}
+}
+
+bool Pokemon::orderMoveTo(const Position& targetPosition)
+{
+	if (!isSummon() || targetPosition.z != getPosition().z || !canSee(targetPosition)) {
+		return false;
+	}
+
+	std::vector<Direction> directions;
+	if (targetPosition != getPosition() &&
+			!getPathTo(targetPosition, directions, 0, 0, true, true, 12)) {
+		return false;
+	}
+
+	setAttackedCreature(nullptr);
+	setFollowCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::MOVE;
+
+	if (!directions.empty()) {
+		listWalkDir = std::move(directions);
+		// Player summons use the immediate-first-step scheduling path. The
+		// vector overload delays multi-tile paths by a full movement cycle.
+		startAutoWalk();
+	} else {
+		orderFollow();
+	}
+	return true;
+}
+
+void Pokemon::orderStay()
+{
+	setAttackedCreature(nullptr);
+	setFollowCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::STAY;
+}
+
+void Pokemon::orderFollow()
+{
+	setAttackedCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::FOLLOW;
+	setFollowCreature(getMaster());
 }
 
 bool Pokemon::pushItem(Item* item)

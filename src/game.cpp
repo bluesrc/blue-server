@@ -6414,6 +6414,7 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 	static constexpr uint8_t POKEMON_MOVE_SLOTS_EXTENDED_OPCODE = 76;
 	static constexpr uint8_t POKEMON_HELD_ITEM_EXTENDED_OPCODE = 77;
 	static constexpr uint8_t PLAYER_DUEL_EXTENDED_OPCODE = 78;
+	static constexpr uint8_t POKEMON_ORDER_EXTENDED_OPCODE = 79;
 	static constexpr uint8_t BOX_CONTAINER_ID = 0x0F;
 	static constexpr uint16_t BOX_DEPOT_COUNT = 17;
 	static constexpr uint16_t BOX_POKEMON_INFO_SLOT_BASE = 1000;
@@ -6598,6 +6599,73 @@ void Game::parsePlayerExtendedOpcode(uint32_t playerId, uint8_t opcode, const st
 		} else if (buffer[0] == 'Y' || buffer[0] == 'N') {
 			playerAnswerDuelInvite(playerId, otherPlayerId, buffer[0] == 'Y');
 		}
+		return;
+	}
+
+	if (opcode == POKEMON_ORDER_EXTENDED_OPCODE) {
+		Pokeball* activePokeball = player->getActivePokemon();
+		Pokemon* pokemon = activePokeball ? activePokeball->getPokemon() : nullptr;
+		if (!pokemon || pokemon->isRemoved() || pokemon->getMaster() != player) {
+			player->sendCancelMessage("You need an active Pokemon to give an order.");
+			return;
+		}
+
+		if (buffer == "S" || buffer == "F" || buffer == "T") {
+			if (player->getAttackedCreature()) {
+				player->setAttackedCreature(nullptr);
+				player->sendCancelTarget();
+			}
+
+			const bool shouldStay = buffer == "S" ||
+				(buffer == "T" && pokemon->getOrderType() != PokemonOrderType::STAY);
+			if (shouldStay) {
+				pokemon->orderStay();
+				player->sendTextMessage(MESSAGE_STATUS_SMALL, "Your Pokemon will stay in place.");
+			} else {
+				pokemon->orderFollow();
+				player->sendTextMessage(MESSAGE_STATUS_SMALL, "Your Pokemon will follow you.");
+			}
+			return;
+		}
+
+		if (buffer.rfind("M;", 0) != 0) {
+			return;
+		}
+
+		std::array<uint64_t, 3> coordinates = {};
+		size_t start = 2;
+		for (size_t index = 0; index < coordinates.size(); ++index) {
+			const size_t separator = buffer.find(';', start);
+			if ((index + 1 < coordinates.size() && separator == std::string::npos) ||
+					(index + 1 == coordinates.size() && separator != std::string::npos)) {
+				return;
+			}
+
+			const std::string part = buffer.substr(start,
+				separator == std::string::npos ? std::string::npos : separator - start);
+			if (!parseUnsigned(part, coordinates[index])) {
+				return;
+			}
+			start = separator == std::string::npos ? buffer.size() : separator + 1;
+		}
+
+		if (coordinates[0] > UINT16_MAX || coordinates[1] > UINT16_MAX || coordinates[2] > UINT8_MAX) {
+			return;
+		}
+
+		const Position targetPosition(static_cast<uint16_t>(coordinates[0]),
+			static_cast<uint16_t>(coordinates[1]), static_cast<uint8_t>(coordinates[2]));
+		if (targetPosition.z != player->getPosition().z || !player->canSee(targetPosition) ||
+				!map.getTile(targetPosition) || !pokemon->orderMoveTo(targetPosition)) {
+			player->sendCancelMessage("Your Pokemon cannot reach that position.");
+			return;
+		}
+
+		if (player->getAttackedCreature()) {
+			player->setAttackedCreature(nullptr);
+			player->sendCancelTarget();
+		}
+		player->sendTextMessage(MESSAGE_STATUS_SMALL, "Your Pokemon is moving to the selected position.");
 		return;
 	}
 
