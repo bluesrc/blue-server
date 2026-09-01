@@ -66,7 +66,7 @@ if NpcHandler == nil then
 		talkStart = nil,
 		idleTime = 120,
 		talkRadius = 3,
-		talkDelayTime = 1, -- Seconds to delay outgoing messages.
+		talkDelayTime = 0.1, -- Keep private dialog responses responsive without making them synchronous.
 		talkDelay = nil,
 		callbackFunctions = nil,
 		modules = nil,
