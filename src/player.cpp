@@ -4436,7 +4436,7 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 	if (a >= 255.0) {
 		g_game.addDistanceEffect(getPosition(), pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].throwEffect);
 		g_game.removeCreature(pokemon);
-		sendMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchSuccessEffect);
+		g_game.addMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchSuccessEffect);
 		registerPokemonCatch(virtualPokemon.number);
 
 		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, thrownPokeballId]() {
@@ -4463,7 +4463,7 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 	if (shakes == 4) {
 		g_game.addDistanceEffect(getPosition(), pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].throwEffect);
 		g_game.removeCreature(pokemon);
-		sendMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchSuccessEffect);
+		g_game.addMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchSuccessEffect);
 		registerPokemonCatch(virtualPokemon.number);
 
 		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, thrownPokeballId]() {
@@ -4473,7 +4473,7 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 	else {
 		g_game.addDistanceEffect(getPosition(), pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].throwEffect);
 		g_game.removeCreature(pokemon);
-		sendMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchFailEffect);
+		g_game.addMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchFailEffect);
 
 		g_scheduler.addEvent(createSchedulerTask(4000, [virtualPokemon, pokemonPosition]() {
 			g_game.placeCreature(Pokemon::createPlayerPokemon(virtualPokemon), pokemonPosition);
