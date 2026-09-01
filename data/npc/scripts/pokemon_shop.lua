@@ -37,6 +37,8 @@ local stock = {
 	{names = {"light ball"}, id = 5914, price = 1, name = "light ball"},
 }
 
+local rootOptions = "{Poke Balls}, {Technical Machines}, {Held Items} or {trade}"
+
 for _, item in ipairs(stock) do
 	shopModule:addBuyableItem(item.names, item.id, item.price, 1, item.name)
 end
@@ -47,16 +49,20 @@ local function creatureSayCallback(cid, type, msg)
 	end
 
 	if msgcontains(msg, "pokeballs") or msgcontains(msg, "poke balls") then
-		npcHandler:say("I sell Poke Balls, Great Balls and Ultra Balls. Say {trade} to see them.", cid)
+		npcHandler:say("I sell Poke Balls, Great Balls and Ultra Balls. Choose " .. rootOptions .. ".", cid)
+		return true
 	elseif msgcontains(msg, "tms") or msgcontains(msg, "technical machines") then
-		npcHandler:say("I stock every Technical Machine currently available. Say {trade} to see them.", cid)
+		npcHandler:say("I stock every Technical Machine currently available. Choose " .. rootOptions .. ".", cid)
+		return true
 	elseif msgcontains(msg, "held items") then
-		npcHandler:say("I stock berries and held items for offensive, defensive and speed-focused builds. Say {trade} to see them.", cid)
+		npcHandler:say("I stock berries and held items for offensive, defensive and speed-focused builds. Choose " .. rootOptions .. ".", cid)
+		return true
 	end
-	return true
+	return false
 end
 
-npcHandler:setMessage(MESSAGE_GREET, "Welcome, |PLAYERNAME|! I sell Poke Balls, TMs and held items. Say {trade} to browse my stock.")
+npcHandler:setMessage(MESSAGE_GREET, "Welcome, |PLAYERNAME|! Ask about " .. rootOptions .. ".")
 npcHandler:setMessage(MESSAGE_FAREWELL, "Good luck in your next battle, |PLAYERNAME|!")
+npcHandler:setMessage(MESSAGE_ONCLOSESHOP, "Would you like anything else? Choose " .. rootOptions .. ".")
 npcHandler:setCallback(CALLBACK_MESSAGE_DEFAULT, creatureSayCallback)
 npcHandler:addModule(FocusModule:new())
