@@ -2161,7 +2161,21 @@ void Pokemon::onThink(uint32_t interval)
 			addEventWalk();
 
 			if (isSummon()) {
-				if (!attackedCreature) {
+				Creature* masterTarget = getMaster() ? getMaster()->getAttackedCreature() : nullptr;
+				if (masterTarget && orderType == PokemonOrderType::MOVE) {
+					// Attacking can interrupt a movement order, but never a persistent
+					// stay order. Stay is released only by its toggle or a new order.
+					orderType = PokemonOrderType::FOLLOW;
+					stopEventWalk();
+					listWalkDir.clear();
+					hasFollowPath = false;
+				}
+
+				if (orderType == PokemonOrderType::STAY || orderType == PokemonOrderType::MOVE) {
+					if (followCreature) {
+						setFollowCreature(nullptr);
+					}
+				} else if (!attackedCreature) {
 					if (getMaster() && getMaster()->getAttackedCreature()) {
 						//This happens if the pokemon is summoned during combat
 						selectTarget(getMaster()->getAttackedCreature());
@@ -2841,13 +2855,106 @@ void Pokemon::onWalk()
 	Creature::onWalk();
 }
 
+void Pokemon::onWalk(Direction& direction)
+{
+	// A directly controlled step must keep the direction chosen by the player.
+	if (orderType != PokemonOrderType::STAY) {
+		Creature::onWalk(direction);
+	}
+}
+
 void Pokemon::onWalkComplete()
 {
 	// Continue walking to spawn
 	if (walkingToSpawn) {
 		walkingToSpawn = false;
 		walkToSpawn();
+	} else if (orderType == PokemonOrderType::MOVE) {
+		orderFollow();
 	}
+}
+
+bool Pokemon::orderMoveTo(const Position& targetPosition)
+{
+	if (!isSummon() || targetPosition.z != getPosition().z || !canSee(targetPosition)) {
+		return false;
+	}
+
+	std::vector<Direction> directions;
+	if (targetPosition != getPosition() &&
+			!getPathTo(targetPosition, directions, 0, 0, true, true, 12)) {
+		return false;
+	}
+
+	setAttackedCreature(nullptr);
+	setFollowCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::MOVE;
+
+	if (!directions.empty()) {
+		listWalkDir = std::move(directions);
+		// Player summons use the immediate-first-step scheduling path. The
+		// vector overload delays multi-tile paths by a full movement cycle.
+		startAutoWalk();
+	} else {
+		orderFollow();
+	}
+	return true;
+}
+
+bool Pokemon::orderStep(Direction direction, uint8_t viewportX, uint8_t viewportY)
+{
+	if (!isSummon() || direction > DIRECTION_WEST) {
+		return false;
+	}
+
+	const Position targetPosition = getNextPosition(direction, getPosition());
+	Tile* targetTile = g_game.map.getTile(targetPosition);
+	if (!targetTile || targetTile->hasFlag(TILESTATE_PROTECTIONZONE | TILESTATE_FLOORCHANGE | TILESTATE_TELEPORT) ||
+			!canWalkTo(getPosition(), direction)) {
+		return false;
+	}
+
+	setAttackedCreature(nullptr);
+	setFollowCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::STAY;
+	orderViewportX = viewportX;
+	orderViewportY = viewportY;
+	startAutoWalk(direction);
+	return true;
+}
+
+void Pokemon::orderStay()
+{
+	setAttackedCreature(nullptr);
+	setFollowCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::STAY;
+}
+
+void Pokemon::orderFollow()
+{
+	setAttackedCreature(nullptr);
+	stopEventWalk();
+	listWalkDir.clear();
+	hasFollowPath = false;
+	forceUpdateFollowPath = false;
+	isUpdatingPath = false;
+	orderType = PokemonOrderType::FOLLOW;
+	setFollowCreature(getMaster());
 }
 
 bool Pokemon::pushItem(Item* item)
@@ -2965,7 +3072,20 @@ bool Pokemon::getNextStep(Direction& direction, uint32_t& flags)
 	}
 
 	bool result = false;
-	if (!walkingToSpawn && (!followCreature || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
+	if (!walkingToSpawn && isSummon() && orderType == PokemonOrderType::STAY) {
+		randomStepping = false;
+		result = Creature::getNextStep(direction, flags);
+		if (result) {
+			Player* masterPlayer = getMaster() ? getMaster()->getPlayer() : nullptr;
+			const Position nextPosition = getNextPosition(direction, getPosition());
+			if (!masterPlayer || nextPosition.z != masterPlayer->getPosition().z ||
+					!Position::areInRange(masterPlayer->getPosition(), nextPosition, orderViewportX, orderViewportY)) {
+				listWalkDir.clear();
+				return false;
+			}
+			flags |= FLAG_PATHFINDING;
+		}
+	} else if (!walkingToSpawn && (!followCreature || !hasFollowPath) && (!isSummon() || !isMasterInRange)) {
 		if (getTimeSinceLastMove() >= 1000) {
 			randomStepping = true;
 			//choose a random direction

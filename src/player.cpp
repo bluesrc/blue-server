@@ -1220,7 +1220,7 @@ void Player::onCreatureMove(Creature* creature, const Tile* newTile, const Posit
 {
 	if (creature == this && activePokemon) {
 		Pokemon* pokemon = activePokemon->getPokemon();
-		if (pokemon && !pokemon->isRemoved()) {
+		if (pokemon && !pokemon->isRemoved() && pokemon->getOrderType() == PokemonOrderType::FOLLOW) {
 			const Position& pokemonPos = pokemon->getPosition();
 			const bool changedFloor = oldPos.z != newPos.z;
 			const bool outsideFollowView =
