@@ -1310,6 +1310,7 @@ class LuaScriptInterface
 		static int luaPokemonTypeMaxSummons(lua_State* L);
 
 		static int luaPokemonTypeOutfit(lua_State* L);
+		static int luaPokemonTypeShinyOutfit(lua_State* L);
 		static int luaPokemonTypeRace(lua_State* L);
 		static int luaPokemonTypeCorpseId(lua_State* L);
 		static int luaPokemonTypeBaseSpeed(lua_State* L);

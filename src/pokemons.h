@@ -231,6 +231,8 @@ class PokemonType
 		std::vector<summonBlock_t> summons;
 
 		Outfit_t outfit = {};
+		Outfit_t shinyOutfit = {};
+		bool hasShinyOutfit = false;
 		RaceType_t race = RACE_BLOOD;
 
 		LightInfo light = {};

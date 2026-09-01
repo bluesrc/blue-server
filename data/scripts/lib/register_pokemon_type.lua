@@ -201,6 +201,11 @@ registerPokemonType.outfit = function(mtype, mask)
 		mtype:outfit(mask.outfit)
 	end
 end
+registerPokemonType.shinyOutfit = function(mtype, mask)
+	if mask.shinyOutfit then
+		mtype:shinyOutfit(mask.shinyOutfit)
+	end
+end
 registerPokemonType.maxHealth = function(mtype, mask)
 	if mask.maxHealth then
 		mtype:maxHealth(mask.maxHealth)

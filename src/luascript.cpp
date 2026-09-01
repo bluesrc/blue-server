@@ -2994,6 +2994,7 @@ void LuaScriptInterface::registerFunctions()
 	registerMethod("PokemonType", "maxSummons", LuaScriptInterface::luaPokemonTypeMaxSummons);
 
 	registerMethod("PokemonType", "outfit", LuaScriptInterface::luaPokemonTypeOutfit);
+	registerMethod("PokemonType", "shinyOutfit", LuaScriptInterface::luaPokemonTypeShinyOutfit);
 	registerMethod("PokemonType", "race", LuaScriptInterface::luaPokemonTypeRace);
 	registerMethod("PokemonType", "corpseId", LuaScriptInterface::luaPokemonTypeCorpseId);
 	registerMethod("PokemonType", "baseSpeed", LuaScriptInterface::luaPokemonTypeBaseSpeed);
@@ -14225,6 +14226,28 @@ int LuaScriptInterface::luaPokemonTypeOutfit(lua_State* L)
 			pushOutfit(L, pokemonType->info.outfit);
 		} else {
 			pokemonType->info.outfit = getOutfit(L, 2);
+			pushBoolean(L, true);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int LuaScriptInterface::luaPokemonTypeShinyOutfit(lua_State* L)
+{
+	// get: pokemonType:shinyOutfit() set: pokemonType:shinyOutfit(outfit)
+	PokemonType* pokemonType = getUserdata<PokemonType>(L, 1);
+	if (pokemonType) {
+		if (lua_gettop(L) == 1) {
+			if (pokemonType->info.hasShinyOutfit) {
+				pushOutfit(L, pokemonType->info.shinyOutfit);
+			} else {
+				lua_pushnil(L);
+			}
+		} else {
+			pokemonType->info.shinyOutfit = getOutfit(L, 2);
+			pokemonType->info.hasShinyOutfit = true;
 			pushBoolean(L, true);
 		}
 	} else {
