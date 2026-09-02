@@ -157,10 +157,15 @@ class QTreeLeafNode final : public QTreeNode
 class Map
 {
 	public:
-		static constexpr int32_t maxViewportX = 14; //min value: maxClientViewportX + 1
-		static constexpr int32_t maxViewportY = 11; //min value: maxClientViewportY + 1
-		static constexpr int32_t maxClientViewportX = 13;
-		static constexpr int32_t maxClientViewportY = 7;
+		// The client renders 12/6 tiles around the player. The map packet needs one
+		// additional tile on each axis so movement can reveal the next row/column.
+		static constexpr int32_t clientVisibleViewportX = 12;
+		static constexpr int32_t clientVisibleViewportY = 6;
+		static constexpr int32_t maxClientViewportX = clientVisibleViewportX + 1;
+		static constexpr int32_t maxClientViewportY = clientVisibleViewportY + 1;
+
+		static constexpr int32_t maxViewportX = maxClientViewportX + 1;
+		static constexpr int32_t maxViewportY = 11;
 
 		uint32_t clean() const;
 
