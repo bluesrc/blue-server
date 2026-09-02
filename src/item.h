@@ -860,7 +860,31 @@ class Item : virtual public Thing
 			return items[id].pickupable;
 		}
 		bool isUseable() const {
-			return items[id].useable;
+			if (items[id].useable) {
+				return true;
+			}
+
+			// Pokemon consumables reuse legacy appearances whose use flags differ
+			// between items.otb versions. They always require a target here.
+			switch (id) {
+				case 6569:  // Rare Candy
+				case 7588:  // Super Potion
+				case 7591:  // Hyper Potion
+				case 7618:  // Potion
+				case 8472:  // Full Restore
+				case 8473:  // Max Potion
+				case 8474:  // Antidote
+				case 8704:  // Awakening
+				case 9930:  // Burn Heal
+				case 12422: // Ice Heal
+				case 15465: // Full Heal
+				case 23875: // Paralyze Heal
+				case 26030: // Revive
+				case 26031: // Max Revive
+					return true;
+				default:
+					return false;
+			}
 		}
 		bool isHangable() const {
 			return items[id].isHangable;

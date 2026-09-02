@@ -16,6 +16,22 @@ local stock = {
 	{names = {"great ball", "greatball"}, id = 26463, price = 1, name = "great ball"},
 	{names = {"ultra ball", "ultraball"}, id = 26464, price = 1, name = "ultra ball"},
 
+	-- Pokemon medicines.
+	{names = {"potion"}, id = 7618, price = 1, name = "potion"},
+	{names = {"super potion"}, id = 7588, price = 1, name = "super potion"},
+	{names = {"hyper potion"}, id = 7591, price = 1, name = "hyper potion"},
+	{names = {"max potion"}, id = 8473, price = 1, name = "max potion"},
+	{names = {"revive"}, id = 26030, price = 1, name = "revive"},
+	{names = {"max revive"}, id = 26031, price = 1, name = "max revive"},
+	{names = {"full heal"}, id = 15465, price = 1, name = "full heal"},
+	{names = {"full restore"}, id = 8472, price = 1, name = "full restore"},
+	{names = {"antidote"}, id = 8474, price = 1, name = "antidote"},
+	{names = {"awakening"}, id = 8704, price = 1, name = "awakening"},
+	{names = {"burn heal"}, id = 9930, price = 1, name = "burn heal"},
+	{names = {"ice heal"}, id = 12422, price = 1, name = "ice heal"},
+	{names = {"paralyze heal", "paralysis heal"}, id = 23875, price = 1, name = "paralyze heal"},
+	{names = {"rare candy", "candy"}, id = 6569, price = 1, name = "rare candy"},
+
 	-- Technical Machines.
 	{names = {"tm sludge bomb", "sludge bomb"}, id = 2263, price = 1, name = "TM Sludge Bomb"},
 	{names = {"tm ice beam", "ice beam"}, id = 2264, price = 1, name = "TM Ice Beam"},
@@ -37,7 +53,7 @@ local stock = {
 	{names = {"light ball"}, id = 5914, price = 1, name = "light ball"},
 }
 
-local rootOptions = "{Poke Balls}, {Technical Machines}, {Held Items} or {trade}"
+local rootOptions = "{Poke Balls}, {Medicines}, {Technical Machines}, {Held Items} or {trade}"
 
 for _, item in ipairs(stock) do
 	shopModule:addBuyableItem(item.names, item.id, item.price, 1, item.name)
@@ -50,6 +66,9 @@ local function creatureSayCallback(cid, type, msg)
 
 	if msgcontains(msg, "pokeballs") or msgcontains(msg, "poke balls") then
 		npcHandler:say("I sell Poke Balls, Great Balls and Ultra Balls. Choose " .. rootOptions .. ".", cid)
+		return true
+	elseif msgcontains(msg, "medicines") or msgcontains(msg, "medicine") or msgcontains(msg, "potions") then
+		npcHandler:say("I sell Potions, Revives and medicine for every common status condition. Choose " .. rootOptions .. ".", cid)
 		return true
 	elseif msgcontains(msg, "tms") or msgcontains(msg, "technical machines") then
 		npcHandler:say("I stock every Technical Machine currently available. Choose " .. rootOptions .. ".", cid)

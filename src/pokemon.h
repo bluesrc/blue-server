@@ -287,6 +287,8 @@ class Pokemon final : public Creature
 		PokemonOrderType getOrderType() const { return orderType; }
 
 	private:
+		const Outfit_t& getTypeOutfit() const;
+
 		CreatureHashSet friendList;
 		CreatureList targetList;
 

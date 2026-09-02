@@ -553,9 +553,6 @@ class Player final : public Creature, public Cylinder
 		void addSkillAdvance(skills_t skill, uint64_t count);
 		void removeSkillTries(skills_t skill, uint64_t count, bool notify = false);
 
-		float getAttackFactor() const override;
-		float getDefenseFactor() const override;
-
 		void addInFightTicks(bool pzlock = false);
 
 		uint64_t getGainedExperience(Creature*) const override { return 0; }
@@ -1084,6 +1081,30 @@ class Player final : public Creature, public Cylinder
 		}
 
 		bool canTryCatch() const { return tryCatchTicks <= OTSYS_TIME(); }
+		void setPotionCooldown(int64_t time) {
+			if (time > potionCooldown) {
+				potionCooldown = time;
+				sendPlayerCooldown(PLAYER_COOLDOWN_POTION,
+					static_cast<uint32_t>(std::max<int64_t>(0, time - OTSYS_TIME())));
+			}
+		}
+		bool canUsePotion() const { return potionCooldown <= OTSYS_TIME(); }
+		void setReviveCooldown(int64_t time) {
+			if (time > reviveCooldown) {
+				reviveCooldown = time;
+				sendPlayerCooldown(PLAYER_COOLDOWN_REVIVE,
+					static_cast<uint32_t>(std::max<int64_t>(0, time - OTSYS_TIME())));
+			}
+		}
+		bool canUseRevive() const { return reviveCooldown <= OTSYS_TIME(); }
+		void setCureCooldown(int64_t time) {
+			if (time > cureCooldown) {
+				cureCooldown = time;
+				sendPlayerCooldown(PLAYER_COOLDOWN_CURE,
+					static_cast<uint32_t>(std::max<int64_t>(0, time - OTSYS_TIME())));
+			}
+		}
+		bool canUseCure() const { return cureCooldown <= OTSYS_TIME(); }
 		void markPokemonCombat(int64_t expiresAt);
 		bool isInPokemonCombat() const { return pokemonCombatTicks > OTSYS_TIME(); }
 		bool isCombatLocked() const { return hasCondition(CONDITION_INFIGHT) || isInPokemonCombat(); }
@@ -1203,6 +1224,9 @@ class Player final : public Creature, public Cylinder
 		int64_t lastPing;
 		int64_t lastPong;
 		int64_t nextAction = 0;
+		int64_t potionCooldown = 0;
+		int64_t reviveCooldown = 0;
+		int64_t cureCooldown = 0;
 
 		BedItem* bedItem = nullptr;
 		Guild* guild = nullptr;

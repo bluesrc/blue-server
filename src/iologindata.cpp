@@ -6,6 +6,7 @@
 #include "iologindata.h"
 #include "configmanager.h"
 #include "game.h"
+#include "outfit.h"
 #include "pokeball.h"
 
 #include <fmt/format.h>
@@ -266,8 +267,13 @@ bool IOLoginData::createCharacter(uint32_t accountId, std::string name, PlayerSe
 		error = "No starting town is configured.";
 		return false;
 	}
+	const auto& outfits = Outfits::getInstance().getOutfits(sex);
+	if (outfits.empty()) {
+		error = "No starting outfit is configured for this character sex.";
+		return false;
+	}
 	const uint32_t townId = towns.begin()->first;
-	const uint16_t lookType = sex == PLAYERSEX_MALE ? 128 : 136;
+	const uint16_t lookType = outfits.front().lookType;
 	if (!db.executeQuery(fmt::format(
 		"INSERT INTO `players` (`name`, `account_id`, `sex`, `looktype`, `town_id`) VALUES ({:s}, {:d}, {:d}, {:d}, {:d})",
 		db.escapeString(name), accountId, static_cast<uint8_t>(sex), lookType, townId))) {

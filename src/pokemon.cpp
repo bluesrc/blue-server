@@ -102,6 +102,14 @@ Pokemon* Pokemon::createPlayerPokemon(PokemonInfo_t pInfo)
 	return new Pokemon(mType, pInfo);
 }
 
+const Outfit_t& Pokemon::getTypeOutfit() const
+{
+	if (shiny && mType->info.hasShinyOutfit) {
+		return mType->info.shinyOutfit;
+	}
+	return mType->info.outfit;
+}
+
 const PokemonAbilityType* Pokemon::getAbility() const
 {
 	return g_pokemons.getAbilityById(abilityId);
@@ -182,8 +190,8 @@ Pokemon::Pokemon(PokemonType* mType) :
 	nameDescription(mType->nameDescription),
 	mType(mType)
 {
-	defaultOutfit = mType->info.outfit;
-	currentOutfit = mType->info.outfit;
+	defaultOutfit = getTypeOutfit();
+	currentOutfit = defaultOutfit;
 	baseSpeed = mType->info.baseSpeed;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
@@ -236,8 +244,9 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	nameDescription(mType->nameDescription),
 	mType(mType)
 {
-	defaultOutfit = mType->info.outfit;
-	currentOutfit = mType->info.outfit;
+	shiny = pInfo.shiny;
+	defaultOutfit = getTypeOutfit();
+	currentOutfit = defaultOutfit;
 	internalLight = mType->info.light;
 	hiddenHealth = mType->info.hiddenHealth;
 	level = std::clamp<uint8_t>(pInfo.level, 1, 100);
@@ -266,7 +275,6 @@ Pokemon::Pokemon(PokemonType* mType, PokemonInfo_t pInfo) :
 	learnAvailableMoves();
 	friendship = pInfo.friendship;
 	combatFriendshipTime = std::min<uint32_t>(pInfo.combatFriendshipTime, POKEMON_COMBAT_FRIENDSHIP_INTERVAL - 1);
-	shiny = pInfo.shiny;
 	gender = pInfo.gender;
 	abilitySlot = pInfo.abilitySlot >= 1 && pInfo.abilitySlot <= 3 ? pInfo.abilitySlot :
 		g_pokemons.getAbilitySlot(*mType, pInfo.abilityId);
@@ -387,6 +395,12 @@ void Pokemon::applyCreateOptions(const PokemonCreateOptions_t& options, bool ful
 
 	if (options.shiny >= 0) {
 		shiny = options.shiny != 0;
+		defaultOutfit = getTypeOutfit();
+		if (getTile()) {
+			g_game.internalCreatureChangeOutfit(this, defaultOutfit);
+		} else {
+			currentOutfit = defaultOutfit;
+		}
 	}
 
 	if (options.gender >= 0) {
@@ -677,7 +691,7 @@ bool Pokemon::evolve(EvolveTypes_t trigger, uint32_t requirement)
 
 	mType = evolvedType;
 	nameDescription = evolvedType->nameDescription;
-	defaultOutfit = evolvedType->info.outfit;
+	defaultOutfit = getTypeOutfit();
 	internalLight = evolvedType->info.light;
 	hiddenHealth = evolvedType->info.hiddenHealth;
 	abilityState.clear();

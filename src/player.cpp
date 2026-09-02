@@ -41,6 +41,10 @@ namespace {
 	constexpr uint32_t PLAYER_HEALTH_REGEN_TICKS = 6000;
 	constexpr uint32_t PLAYER_HEALTH_REGEN_AMOUNT = 1;
 	constexpr uint32_t PLAYER_NO_PONG_KICK_TIME = 60;
+	constexpr uint32_t TRY_CATCH_SHAKE_INTERVAL = 1000;
+	constexpr int TRY_CATCH_MAX_VISIBLE_SHAKES = 3;
+	constexpr MagicEffectClasses TRY_CATCH_SHAKE_EFFECT = CONST_ME_BLOCKHIT;
+	constexpr MagicEffectClasses TRY_CATCH_SUCCESS_EFFECT = CONST_ME_FIREWORK_YELLOW;
 
 	struct SkillProgression {
 		uint32_t base;
@@ -216,26 +220,6 @@ uint64_t Player::getRequiredSkillTries(skills_t skill, uint16_t level)
 
 	const SkillProgression& progression = SKILL_PROGRESSIONS[skill];
 	return static_cast<uint64_t>(progression.base * std::pow(progression.multiplier, level - (MINIMUM_SKILL_LEVEL + 1)));
-}
-
-float Player::getAttackFactor() const
-{
-	switch (fightMode) {
-		case FIGHTMODE_ATTACK: return 1.0f;
-		case FIGHTMODE_BALANCED: return 1.2f;
-		case FIGHTMODE_DEFENSE: return 2.0f;
-		default: return 1.0f;
-	}
-}
-
-float Player::getDefenseFactor() const
-{
-	switch (fightMode) {
-		case FIGHTMODE_ATTACK: return (OTSYS_TIME() - lastAttack) < getAttackSpeed() ? 0.5f : 1.0f;
-		case FIGHTMODE_BALANCED: return (OTSYS_TIME() - lastAttack) < getAttackSpeed() ? 0.75f : 1.0f;
-		case FIGHTMODE_DEFENSE: return 1.0f;
-		default: return 1.0f;
-	}
 }
 
 uint16_t Player::getClientIcons() const
@@ -4433,13 +4417,25 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 	a = g_pokemons.executeAbilityCaptureAttempt(
 		pokemon, this, pokemon, thrownPokeballId, a, true);
 
-	if (a >= 255.0) {
-		g_game.addDistanceEffect(getPosition(), pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].throwEffect);
-		g_game.removeCreature(pokemon);
-		sendMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchSuccessEffect);
-		registerPokemonCatch(virtualPokemon.number);
+	const auto& pokeballProperties = PokeballManager::pokeballData[thrownPokeballId];
+	g_game.addDistanceEffect(getPosition(), pokemonPosition, pokeballProperties.throwEffect);
+	g_game.removeCreature(pokemon);
 
-		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, thrownPokeballId]() {
+	auto scheduleShakeEffects = [pokemonPosition](int shakeCount) {
+		for (int shake = 1; shake <= shakeCount; ++shake) {
+			g_scheduler.addEvent(createSchedulerTask(TRY_CATCH_SHAKE_INTERVAL * shake, [pokemonPosition]() {
+				g_game.addMagicEffect(pokemonPosition, TRY_CATCH_SHAKE_EFFECT);
+			}));
+		}
+	};
+
+	if (a >= 255.0) {
+		registerPokemonCatch(virtualPokemon.number);
+		scheduleShakeEffects(TRY_CATCH_MAX_VISIBLE_SHAKES);
+
+		g_scheduler.addEvent(createSchedulerTask(TRY_CATCH_SHAKE_INTERVAL * (TRY_CATCH_MAX_VISIBLE_SHAKES + 1),
+			[this, virtualPokemon, thrownPokeballId, pokemonPosition]() {
+			g_game.addMagicEffect(pokemonPosition, TRY_CATCH_SUCCESS_EFFECT);
 			addPokemon(PokeballManager::pokeballData[thrownPokeballId].pokeballId, Pokemon::createPlayerPokemon(virtualPokemon));
 		}));
 
@@ -4461,22 +4457,22 @@ void Player::tryCatch(ThrowablePokeball* pokeball, Pokemon* pokemon)
 	}
 
 	if (shakes == 4) {
-		g_game.addDistanceEffect(getPosition(), pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].throwEffect);
-		g_game.removeCreature(pokemon);
-		sendMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchSuccessEffect);
 		registerPokemonCatch(virtualPokemon.number);
+		scheduleShakeEffects(TRY_CATCH_MAX_VISIBLE_SHAKES);
 
-		g_scheduler.addEvent(createSchedulerTask(4000, [this, virtualPokemon, thrownPokeballId]() {
+		g_scheduler.addEvent(createSchedulerTask(TRY_CATCH_SHAKE_INTERVAL * (TRY_CATCH_MAX_VISIBLE_SHAKES + 1),
+			[this, virtualPokemon, thrownPokeballId, pokemonPosition]() {
+			g_game.addMagicEffect(pokemonPosition, TRY_CATCH_SUCCESS_EFFECT);
 			addPokemon(PokeballManager::pokeballData[thrownPokeballId].pokeballId, Pokemon::createPlayerPokemon(virtualPokemon));
 		}));
 	}
 	else {
-		g_game.addDistanceEffect(getPosition(), pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].throwEffect);
-		g_game.removeCreature(pokemon);
-		sendMagicEffect(pokemonPosition, PokeballManager::pokeballData[thrownPokeballId].catchFailEffect);
+		scheduleShakeEffects(shakes);
 
-		g_scheduler.addEvent(createSchedulerTask(4000, [virtualPokemon, pokemonPosition]() {
+		g_scheduler.addEvent(createSchedulerTask(TRY_CATCH_SHAKE_INTERVAL * (shakes + 1),
+			[virtualPokemon, pokemonPosition]() {
 			g_game.placeCreature(Pokemon::createPlayerPokemon(virtualPokemon), pokemonPosition);
+			g_game.addMagicEffect(pokemonPosition, CONST_ME_POFF);
 		}));
 	}
 }
