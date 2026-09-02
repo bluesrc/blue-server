@@ -5379,6 +5379,27 @@ void Game::addCreatureHealth(const SpectatorVec& spectators, const Creature* tar
 	}
 }
 
+void Game::addAnimatedText(const Position& pos, uint32_t value, TextColor_t color)
+{
+	if (value == 0 || color == TEXTCOLOR_NONE) {
+		return;
+	}
+
+	TextMessage message;
+	message.type = MESSAGE_HEALED_OTHERS;
+	message.position = pos;
+	message.primary.value = value;
+	message.primary.color = color;
+
+	SpectatorVec spectators;
+	map.getSpectators(spectators, pos, true, true);
+	for (Creature* spectator : spectators) {
+		if (Player* tmpPlayer = spectator->getPlayer()) {
+			tmpPlayer->sendTextMessage(message);
+		}
+	}
+}
+
 void Game::addMagicEffect(const Position& pos, uint8_t effect)
 {
 	SpectatorVec spectators;

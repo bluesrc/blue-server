@@ -399,6 +399,276 @@ static void showUseHotkeyMessage(Player* player, const Item* item, uint32_t coun
 	}
 }
 
+namespace {
+
+enum class PokemonMedicineCategory : uint8_t {
+	Potion,
+	Revive,
+	Cure,
+};
+
+constexpr uint32_t POTION_COOLDOWN = 6000;
+constexpr uint32_t REVIVE_COOLDOWN = 3 * 60 * 1000;
+constexpr uint32_t CURE_COOLDOWN = 10000;
+
+struct PokemonMedicine {
+	int32_t healAmount = 0; // -1 heals to full health.
+	uint8_t revivePercent = 0;
+	PokemonStatusCondition_t curedStatus = POKEMON_STATUS_NONE;
+	bool cureAllStatuses = false;
+	PokemonMedicineCategory category = PokemonMedicineCategory::Potion;
+};
+
+const PokemonMedicine* getPokemonMedicine(uint16_t itemId)
+{
+	static const PokemonMedicine potion{20};
+	static const PokemonMedicine superPotion{60};
+	static const PokemonMedicine hyperPotion{120};
+	static const PokemonMedicine maxPotion{-1};
+	static const PokemonMedicine revive{0, 50, POKEMON_STATUS_NONE, false, PokemonMedicineCategory::Revive};
+	static const PokemonMedicine maxRevive{0, 100, POKEMON_STATUS_NONE, false, PokemonMedicineCategory::Revive};
+	static const PokemonMedicine fullHeal{0, 0, POKEMON_STATUS_NONE, true, PokemonMedicineCategory::Cure};
+	static const PokemonMedicine fullRestore{-1, 0, POKEMON_STATUS_NONE, true, PokemonMedicineCategory::Cure};
+	static const PokemonMedicine antidote{0, 0, POKEMON_STATUS_POISON, false, PokemonMedicineCategory::Cure};
+	static const PokemonMedicine awakening{0, 0, POKEMON_STATUS_SLEEP, false, PokemonMedicineCategory::Cure};
+	static const PokemonMedicine burnHeal{0, 0, POKEMON_STATUS_BURN, false, PokemonMedicineCategory::Cure};
+	static const PokemonMedicine iceHeal{0, 0, POKEMON_STATUS_FREEZE, false, PokemonMedicineCategory::Cure};
+	static const PokemonMedicine paralyzeHeal{0, 0, POKEMON_STATUS_PARALYSIS, false, PokemonMedicineCategory::Cure};
+
+	switch (itemId) {
+		case 7588: return &superPotion;
+		case 7591: return &hyperPotion;
+		case 7618: return &potion;
+		case 8472: return &fullRestore;
+		case 8473: return &maxPotion;
+		case 8474: return &antidote;
+		case 8704: return &awakening;
+		case 9930: return &burnHeal;
+		case 12422: return &iceHeal;
+		case 15465: return &fullHeal;
+		case 23875: return &paralyzeHeal;
+		case 26030: return &revive;
+		case 26031: return &maxRevive;
+		default: return nullptr;
+	}
+}
+
+bool useRareCandy(Player* player, Item* item, const Position& toPos,
+		uint8_t toStackPos, Creature* creature)
+{
+	static_cast<void>(toPos);
+	static_cast<void>(toStackPos);
+
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Rare Candy cannot be used during a duel.");
+		return false;
+	}
+
+	Pokemon* targetPokemon = creature ? creature->getPokemon() : nullptr;
+	Pokeball* targetPokeball = player->getActivePokemon();
+	if (!targetPokemon || !targetPokeball || targetPokeball->getPokemon() != targetPokemon) {
+		player->sendCancelMessage("Use this Rare Candy directly on your active Pokemon.");
+		return false;
+	}
+
+	PokemonInfo_t info = targetPokeball->getPokemonInfo();
+	if (info.fainted || targetPokemon->getHealth() <= 0) {
+		player->sendCancelMessage(fmt::format("{} is fainted. Use a Revive first.", info.name));
+		return false;
+	}
+
+	const uint8_t currentLevel = targetPokemon->getLevel();
+	const uint8_t maxLevel = player->getPokemonLevelLimit();
+	if (currentLevel >= maxLevel) {
+		player->sendCancelMessage(fmt::format("{} has reached your current Pokemon level limit ({}).",
+			info.name, maxLevel));
+		return false;
+	}
+
+	if (g_game.internalRemoveItem(item, 1) != RETURNVALUE_NOERROR) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return false;
+	}
+
+	return targetPokemon->addLevel(false);
+}
+
+bool canUsePokemonMedicine(Player* player, PokemonMedicineCategory category)
+{
+	switch (category) {
+		case PokemonMedicineCategory::Potion:
+			return player->canUsePotion();
+		case PokemonMedicineCategory::Revive:
+			return player->canUseRevive();
+		case PokemonMedicineCategory::Cure:
+			return player->canUseCure();
+	}
+	return false;
+}
+
+void startPokemonMedicineCooldown(Player* player, PokemonMedicineCategory category)
+{
+	const int64_t now = OTSYS_TIME();
+	switch (category) {
+		case PokemonMedicineCategory::Potion:
+			player->setPotionCooldown(now + POTION_COOLDOWN);
+			break;
+		case PokemonMedicineCategory::Revive:
+			player->setReviveCooldown(now + REVIVE_COOLDOWN);
+			break;
+		case PokemonMedicineCategory::Cure:
+			player->setCureCooldown(now + CURE_COOLDOWN);
+			break;
+	}
+}
+
+const char* getPokemonMedicineCategoryName(PokemonMedicineCategory category)
+{
+	switch (category) {
+		case PokemonMedicineCategory::Potion: return "potion";
+		case PokemonMedicineCategory::Revive: return "Revive";
+		case PokemonMedicineCategory::Cure: return "status medicine";
+	}
+	return "medicine";
+}
+
+bool usePokemonMedicine(Player* player, Item* item, const PokemonMedicine& medicine,
+		const Position& toPos, uint8_t toStackPos, Creature* creature)
+{
+	if (player->isInDuel()) {
+		player->sendCancelMessage("Medicines cannot be used during a duel.");
+		return false;
+	}
+	if (!canUsePokemonMedicine(player, medicine.category)) {
+		player->sendCancelMessage(fmt::format("You must wait before using another {}.",
+			getPokemonMedicineCategoryName(medicine.category)));
+		return false;
+	}
+
+	Pokeball* targetPokeball = nullptr;
+	Pokemon* targetPokemon = creature ? creature->getPokemon() : nullptr;
+	if (targetPokemon) {
+		targetPokeball = player->getActivePokemon();
+		if (!targetPokeball || targetPokeball->getPokemon() != targetPokemon) {
+			targetPokeball = nullptr;
+			targetPokemon = nullptr;
+		}
+	} else if (!creature) {
+		Thing* targetThing = g_game.internalGetThing(player, toPos, toStackPos, 0, STACKPOS_USETARGET);
+		Item* targetItem = targetThing ? targetThing->getItem() : nullptr;
+		targetPokeball = targetItem ? targetItem->getPokeball() : nullptr;
+		if (targetPokeball && targetPokeball->getTopParent() != player) {
+			targetPokeball = nullptr;
+		}
+		if (targetPokeball == player->getActivePokemon()) {
+			targetPokemon = targetPokeball->getPokemon();
+		}
+	}
+
+	if (!targetPokeball) {
+		player->sendCancelMessage("Use this medicine on one of your Pokemon or its Poke Ball.");
+		return false;
+	}
+
+	PokemonInfo_t info = targetPokeball->getPokemonInfo();
+	const int32_t currentHealth = targetPokemon ? targetPokemon->getHealth() : info.health;
+	const int32_t maxHealth = targetPokemon ? targetPokemon->getMaxHealth() : info.maxHealth;
+	const bool fainted = info.fainted || currentHealth <= 0;
+	if (maxHealth <= 0) {
+		player->sendCancelMessage("This Pokemon has invalid health data.");
+		return false;
+	}
+
+	if (medicine.revivePercent != 0) {
+		if (targetPokemon || player->getInventoryPokeballSlot(targetPokeball) == 0) {
+			player->sendCancelMessage("Use Revive directly on a fainted Pokemon slot in the Poke Bar.");
+			return false;
+		}
+		if (!fainted) {
+			player->sendCancelMessage(fmt::format("{} is not fainted.", info.name));
+			return false;
+		}
+		if (g_game.internalRemoveItem(item, 1) != RETURNVALUE_NOERROR) {
+			player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+			return false;
+		}
+
+		const int32_t revivedHealth = std::max<int32_t>(1,
+			static_cast<int32_t>((static_cast<int64_t>(maxHealth) * medicine.revivePercent + 99) / 100));
+		info.health = std::min(maxHealth, revivedHealth);
+		info.fainted = false;
+		targetPokeball->setPokemonInfo(info);
+		player->updatePokemonInfo(targetPokeball);
+		startPokemonMedicineCooldown(player, medicine.category);
+		player->sendTextMessage(MESSAGE_STATUS_SMALL,
+			fmt::format("{} was revived with {} HP.", info.name, info.health));
+		g_game.addAnimatedText(player->getPosition(), info.health, TEXTCOLOR_LIGHTBLUE);
+		g_game.addMagicEffect(player->getPosition(), CONST_ME_MAGIC_GREEN);
+		return true;
+	}
+
+	if (fainted) {
+		player->sendCancelMessage(fmt::format("{} is fainted. Use a Revive first.", info.name));
+		return false;
+	}
+
+	const PokemonStatusCondition_t currentStatus = targetPokemon ?
+		targetPokemon->getPokemonStatusCondition() : POKEMON_STATUS_NONE;
+	const bool canHeal = medicine.healAmount != 0 && currentHealth < maxHealth;
+	const bool canCure = targetPokemon && currentStatus != POKEMON_STATUS_NONE &&
+		(medicine.cureAllStatuses || medicine.curedStatus == currentStatus);
+	if (!canHeal && !canCure) {
+		player->sendCancelMessage(fmt::format("This medicine has no effect on {}.", info.name));
+		return false;
+	}
+
+	if (g_game.internalRemoveItem(item, 1) != RETURNVALUE_NOERROR) {
+		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+		return false;
+	}
+
+	int32_t healedHealth = currentHealth;
+	if (canHeal) {
+		healedHealth = medicine.healAmount < 0 ? maxHealth :
+			std::min(maxHealth, currentHealth + medicine.healAmount);
+		if (targetPokemon) {
+			targetPokemon->changeHealth(healedHealth - currentHealth);
+			healedHealth = targetPokemon->getHealth();
+		} else {
+			info.health = healedHealth;
+		}
+	}
+	if (canCure) {
+		targetPokemon->cureStatusCondition();
+	}
+
+	if (targetPokemon) {
+		info = targetPokeball->getPokemonInfo();
+		info.health = targetPokemon->getHealth();
+		info.maxHealth = targetPokemon->getMaxHealth();
+	}
+	targetPokeball->setPokemonInfo(info);
+	player->updatePokemonInfo(targetPokeball);
+	startPokemonMedicineCooldown(player, medicine.category);
+
+	const int32_t recoveredHealth = std::max<int32_t>(0, healedHealth - currentHealth);
+	if (recoveredHealth > 0 && canCure) {
+		player->sendTextMessage(MESSAGE_STATUS_SMALL,
+			fmt::format("{} recovered {} HP and was cured.", info.name, recoveredHealth));
+	} else if (recoveredHealth > 0) {
+		player->sendTextMessage(MESSAGE_STATUS_SMALL,
+			fmt::format("{} recovered {} HP.", info.name, recoveredHealth));
+	} else {
+		player->sendTextMessage(MESSAGE_STATUS_SMALL, fmt::format("{} was cured.", info.name));
+	}
+	const Position& effectPosition = targetPokemon ? targetPokemon->getPosition() : player->getPosition();
+	g_game.addAnimatedText(effectPosition, recoveredHealth, TEXTCOLOR_LIGHTBLUE);
+	g_game.addMagicEffect(effectPosition, CONST_ME_MAGIC_GREEN);
+	return true;
+}
+
+}
+
 static bool useTechnicalMachine(Player* player, Item* item, const Position& toPos,
 		uint8_t toStackPos, Creature* creature)
 {
@@ -522,6 +792,24 @@ bool Actions::useItemEx(Player* player, const Position& fromPos, const Position&
 			player->tryCatch(item->getThrowablePokeball(), pokemon);
 			return true;
 		}
+	}
+
+	if (item->getID() == 6569) {
+		if (isHotkey) {
+			const uint16_t subType = item->getSubType();
+			showUseHotkeyMessage(player, item,
+				player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
+		}
+		return useRareCandy(player, item, toPos, toStackPos, creature);
+	}
+
+	if (const PokemonMedicine* medicine = getPokemonMedicine(item->getID())) {
+		if (isHotkey) {
+			const uint16_t subType = item->getSubType();
+			showUseHotkeyMessage(player, item,
+				player->getItemTypeCount(item->getID(), subType != item->getItemCount() ? subType : -1));
+		}
+		return usePokemonMedicine(player, item, *medicine, toPos, toStackPos, creature);
 	}
 
 	if (!Item::items[item->getID()].tmMoveName.empty()) {

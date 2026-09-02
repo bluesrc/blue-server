@@ -9523,7 +9523,8 @@
 		<attribute key="decayTo" value="5080" />
 		<attribute key="duration" value="3" />
 	</item>
-	<item id="6569" article="a" name="candy" plural="candies">
+	<item id="6569" article="a" name="rare candy" plural="rare candies">
+		<attribute key="description" value="Raises a Pokemon's level by one." />
 	</item>
 	<item fromid="6570" toid="6571" article="a" name="surprise bag">
 	</item>
@@ -10806,18 +10807,19 @@
 	<item id="7587" article="a" name="bag">
 		<attribute key="description" value="It contains Ahmet's stolen property." />
 	</item>
-	<item id="7588" article="a" name="strong health potion">
-		<attribute key="description" value="This potion can only be consumed by paladins and knights of level 50 or higher." />
+	<item id="7588" article="a" name="super potion">
+		<attribute key="description" value="Restores 60 HP to a Pokemon." />
 	</item>
-	<item id="7591" article="a" name="great health potion">
-		<attribute key="description" value="This potion can only be consumed by knights of level 80 or higher." />
+	<item id="7591" article="a" name="hyper potion">
+		<attribute key="description" value="Restores 120 HP to a Pokemon." />
 	</item>
 	<item fromid="7592" toid="7599" name="linen" />
 	<item id="7600" name="wood" />
 	<item fromid="7601" toid="7604" name="linen" />
 	<item fromid="7605" toid="7616" article="a" name="tent" />
 	<item id="7617" name="linen" />
-	<item id="7618" article="a" name="health potion">
+	<item id="7618" article="a" name="potion">
+		<attribute key="description" value="Restores 20 HP to a Pokemon." />
 	</item>
 	<item id="7619" name="linen" />
 	<item id="7621" article="a" name="dead dragon hatchling">
@@ -12415,13 +12417,14 @@
 	<item fromid="8435" toid="8458" name="cobbled pavement" />
 	<item id="8459" article="a" name="strange statue" />
 	<item fromid="8460" toid="8471" name="earth" />
-	<item id="8472" article="a" name="great spirit potion">
-		<attribute key="description" value="This potion can only be consumed by paladins of level 80 or higher." />
+	<item id="8472" article="a" name="full restore">
+		<attribute key="description" value="Fully restores a Pokemon's HP and cures all status conditions." />
 	</item>
-	<item id="8473" article="an" name="ultimate health potion">
-		<attribute key="description" value="This potion can only be consumed by knights of level 130 or higher." />
+	<item id="8473" article="a" name="max potion">
+		<attribute key="description" value="Fully restores a Pokemon's HP." />
 	</item>
-	<item id="8474" article="an" name="antidote potion">
+	<item id="8474" article="an" name="antidote">
+		<attribute key="description" value="Cures a poisoned Pokemon." />
 	</item>
 	<item fromid="8475" toid="8525" article="a" name="stone wall" />
 	<item fromid="8526" toid="8533" article="a" name="gem" />
@@ -12649,7 +12652,8 @@
 	<item id="8703" article="a" name="buried coffin">
 		<attribute key="containerSize" value="6" />
 	</item>
-	<item id="8704" article="a" name="small health potion">
+	<item id="8704" article="an" name="awakening">
+		<attribute key="description" value="Awakens a sleeping Pokemon." />
 	</item>
 	<item fromid="8705" toid="8706" name="balloons" />
 	<item id="8707" name="your student book">
@@ -14267,8 +14271,8 @@
 	<item id="9929" article="a" name="flower dress">
 		<attribute key="slotType" value="body" />
 	</item>
-	<item id="9930" article="a" name="flask of rust remover">
-		<attribute key="description" value="It can be used to clean and polish old and rusty armors." />
+	<item id="9930" article="a" name="burn heal">
+		<attribute key="description" value="Cures a burned Pokemon." />
 	</item>
 	<item id="9931" name="coconut shoes">
 		<attribute key="slotType" value="feet" />
@@ -17226,7 +17230,8 @@
 	</item>
 	<item id="12421" article="an" name="elven astral observer">
 	</item>
-	<item id="12422" article="a" name="flask of embalming fluid" plural="flasks of embalming fluid">
+	<item id="12422" article="an" name="ice heal">
+		<attribute key="description" value="Thaws a frozen Pokemon." />
 	</item>
 	<item id="12423" article="a" name="ghoul snack">
 	</item>
@@ -20304,7 +20309,8 @@
 	</item>
 	<item id="15464" article="a" name="flask of dissolved chitin">
 	</item>
-	<item id="15465" article="a" name="reagent flask">
+	<item id="15465" article="a" name="full heal">
+		<attribute key="description" value="Cures all status conditions affecting a Pokemon." />
 	</item>
 	<item id="15466" article="an" name="aggressive fluid">
 		<attribute key="description" value="It is unstable and will lose its aggressive properties soon." />
@@ -28307,8 +28313,8 @@
 	<item id="23874" article="a" name="flask with oil and blood">
 		<attribute key="description" value="It contains a strange mixture of embalming fluid and medusa blood." />
 	</item>
-	<item id="23875" article="a" name="flask of Medusa's Ointment">
-		<attribute key="description" value="This fluid may be able to unpetrify a petrified object." />
+	<item id="23875" article="a" name="paralyze heal">
+		<attribute key="description" value="Cures a paralyzed Pokemon." />
 	</item>
 	<item id="23876" article="a" name="pinch of crystal dust">
 		<attribute key="description" value="It shimmers greenly and sparkles softly." />
@@ -30479,11 +30485,11 @@
 	<item id="26026" article="a" name="spike trap" />
 	<item id="26027" name="strange slits" />
 	<item id="26028" name="strange holes" />
-	<item id="26030" article="an" name="ultimate spirit potion">
-		<attribute key="description" value="This potion can only be consumed by paladins of level 130 or higher." />
+	<item id="26030" article="a" name="revive">
+		<attribute key="description" value="Revives a fainted Pokemon with 50% of its maximum HP." />
 	</item>
-	<item id="26031" article="a" name="supreme health potion">
-		<attribute key="description" value="This potion can only be consumed by knights of level 200 or higher." />
+	<item id="26031" article="a" name="max revive">
+		<attribute key="description" value="Revives a fainted Pokemon with all of its HP." />
 	</item>
 	<item fromid="26032" toid="26034" name="stones" />
 	<item fromid="26035" toid="26043" article="a" name="stone" />
